@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import {
   type BulkOperationResult,
@@ -21,12 +21,15 @@ interface InitiativeArchiveResult extends BulkOperationResult {
 export const archiveCommand = new Command("archive")
   .description("Archive a Linear initiative")
   .argument("[initiativeId]")
-  .option("-y, --force", "Skip confirmation prompt")
+  .option("-y, --yes", "Skip confirmation prompt")
+  // Back-compat alias for the old --force flag (hidden).
+  .addOption(new Option("--force", "Skip confirmation prompt (alias for --yes)").hideHelp())
   .option("--bulk <ids...>", "Archive multiple initiatives by ID, slug, or name")
   .option("--bulk-file <file>", "Read initiative IDs from a file (one per line)")
   .option("--bulk-stdin", "Read initiative IDs from stdin")
   .action(async (initiativeId: string | undefined, options) => {
-    const { force, bulk, bulkFile, bulkStdin } = options
+    const { bulk, bulkFile, bulkStdin } = options
+    const force = options.yes || options.force
     const client = getGraphQLClient()
 
     // Check if bulk mode
@@ -96,7 +99,7 @@ async function handleSingleArchive(
   // Confirm archival
   if (!force) {
     if (!isStdinTTY()) {
-      throw new ValidationError("Interactive confirmation required. Use --force to skip.")
+      throw new ValidationError("Interactive confirmation required. Use --yes to skip.")
     }
     const confirmed = await confirm({
       message: `Archive initiative "${initiative.name}"?`,
@@ -165,7 +168,7 @@ async function handleBulkArchive(
   // Confirm bulk operation
   if (!force) {
     if (!isStdinTTY()) {
-      throw new ValidationError("Interactive confirmation required. Use --force to skip.")
+      throw new ValidationError("Interactive confirmation required. Use --yes to skip.")
     }
     const confirmed = await confirm({
       message: `Archive ${ids.length} initiative(s)?`,

@@ -54,8 +54,9 @@ function formatDate(dateString: string): string {
 export const listCommand = new Command("list")
   .description("List cycles for a team")
   .option("--team <team>", "Team key (defaults to current team)")
+  .option("-j, --json", "Output as JSON")
   .action(async (options) => {
-    const { team } = options
+    const { team, json } = options
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
@@ -67,7 +68,7 @@ export const listCommand = new Command("list")
         throw new NotFoundError("Team", teamKey)
       }
 
-      const spinner = createSpinner("", shouldShowSpinner())
+      const spinner = createSpinner("", shouldShowSpinner() && !json)
       spinner.start()
 
       const client = getGraphQLClient()
@@ -76,12 +77,17 @@ export const listCommand = new Command("list")
 
       const cycles = result.team?.cycles?.nodes || []
 
+      const sortedCycles = [...cycles].sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+
+      if (json) {
+        console.log(JSON.stringify({ nodes: sortedCycles }, null, 2))
+        return
+      }
+
       if (cycles.length === 0) {
         console.log("No cycles found for this team.")
         return
       }
-
-      const sortedCycles = [...cycles].sort((a, b) => b.startsAt.localeCompare(a.startsAt))
 
       const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 

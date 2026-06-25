@@ -34,9 +34,10 @@ const GetProjectMilestones = gql(`
 export const listCommand = new Command("list")
   .description("List milestones for a project")
   .requiredOption("--project <projectId>", "Project ID")
+  .option("-j, --json", "Output as JSON")
   .action(async (options) => {
-    const { project: projectIdOrSlug } = options
-    const spinner = createSpinner("", shouldShowSpinner())
+    const { project: projectIdOrSlug, json } = options
+    const spinner = createSpinner("", shouldShowSpinner() && !json)
     spinner.start()
 
     try {
@@ -51,11 +52,6 @@ export const listCommand = new Command("list")
 
       const milestones = result.project?.projectMilestones?.nodes || []
 
-      if (milestones.length === 0) {
-        console.log("No milestones found for this project.")
-        return
-      }
-
       // Sort milestones by targetDate (nulls last) then by name
       const sortedMilestones = milestones.sort((a, b) => {
         if (!a.targetDate && !b.targetDate) return a.name.localeCompare(b.name)
@@ -64,6 +60,16 @@ export const listCommand = new Command("list")
         const dateComparison = a.targetDate.localeCompare(b.targetDate)
         return dateComparison !== 0 ? dateComparison : a.name.localeCompare(b.name)
       })
+
+      if (json) {
+        console.log(JSON.stringify({ nodes: sortedMilestones }, null, 2))
+        return
+      }
+
+      if (milestones.length === 0) {
+        console.log("No milestones found for this project.")
+        return
+      }
 
       // Calculate column widths
       const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }

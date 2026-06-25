@@ -8,6 +8,7 @@ List milestones for a project
 
 Options:
   --project <projectId>  Project ID
+  -j, --json             Output as JSON
   -h, --help             display help for command
 "
 stderr:

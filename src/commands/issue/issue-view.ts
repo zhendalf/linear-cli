@@ -129,6 +129,12 @@ export const viewCommand = new Command("view")
         const cycleName = issueData.cycle.name ?? `Cycle ${issueData.cycle.number}`
         metaParts.push(`**Cycle:** ${cycleName}`)
       }
+      if (issueData.labels && issueData.labels.length > 0) {
+        const labelChips = issueData.labels
+          .map((label) => (isStdoutTTY() ? chalk.hex(label.color)(label.name) : label.name))
+          .join(", ")
+        metaParts.push(`**Labels:** ${labelChips}`)
+      }
       const metaLine = metaParts.length > 0 ? "\n\n" + metaParts.join(" | ") : ""
 
       let markdown = `# ${identifier}: ${title}${metaLine}${

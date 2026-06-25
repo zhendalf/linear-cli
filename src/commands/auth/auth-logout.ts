@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, Option } from "commander"
 import {
   getDefaultWorkspace,
   getWorkspaces,
@@ -11,7 +11,9 @@ import { confirm, select } from "../../utils/prompt.ts"
 export const logoutCommand = new Command("logout")
   .description("Remove a workspace credential")
   .argument("[workspace]", "Workspace slug to remove")
-  .option("-f, --force", "Skip confirmation prompt")
+  .option("-y, --yes", "Skip confirmation prompt")
+  // Back-compat alias for the old -f/--force flag (hidden).
+  .addOption(new Option("-f, --force", "Skip confirmation prompt (alias for --yes)").hideHelp())
   .action(async (workspace: string | undefined, options) => {
     try {
       const workspaces = getWorkspaces()
@@ -40,8 +42,8 @@ export const logoutCommand = new Command("logout")
         throw new NotFoundError("Workspace", workspace)
       }
 
-      // Confirm removal unless --force is specified
-      if (!options.force) {
+      // Confirm removal unless --yes/--force is specified
+      if (!(options.yes || options.force)) {
         const confirmed = await confirm({
           message: `Remove credentials for workspace "${workspace}"?`,
           default: false,

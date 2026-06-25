@@ -14,6 +14,7 @@ Options:
   -w, --web      Open document in browser
   --json         Output full document as JSON
   --no-download  Keep remote URLs instead of downloading files
+  --no-pager     Disable automatic paging for long output
   -h, --help     display help for command
 "
 stderr:

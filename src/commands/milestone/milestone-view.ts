@@ -5,6 +5,7 @@ import { formatRelativeTime } from "../../utils/display.ts"
 import { NotFoundError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 
@@ -43,7 +44,9 @@ export const viewCommand = new Command("view")
   .alias("v")
   .description("View milestone details")
   .argument("<milestoneId>", "Milestone ID")
-  .action(async (milestoneId: string) => {
+  .option("--no-pager", "Disable automatic paging for long output")
+  .action(async (milestoneId: string, options) => {
+    const usePager = options.pager !== false
     const spinner = createSpinner("", shouldShowSpinner())
     spinner.start()
 
@@ -143,7 +146,12 @@ export const viewCommand = new Command("view")
 
       if (isStdoutTTY()) {
         const terminalWidth = getConsoleSize().columns
-        console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
+        const finalOutput = renderMarkdown(markdown, { lineWidth: terminalWidth })
+        if (shouldUsePager(finalOutput.split("\n"), usePager)) {
+          await pipeToUserPager(finalOutput)
+        } else {
+          console.log(finalOutput)
+        }
       } else {
         console.log(markdown)
       }

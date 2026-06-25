@@ -9,15 +9,8 @@ List teams
 Options:
   -w, --web   Open in web browser
   -a, --app   Open in Linear.app
+  -j, --json  Output as JSON
   -h, --help  display help for command
-"
-stderr:
-"""
-`;
-
-exports[`Team List Command - No Teams Found 1`] = `
-"stdout:
-"No teams found.
 "
 stderr:
 """
@@ -29,6 +22,14 @@ exports[`Team List Command - With Mock Teams 1`] = `
 BACKEND  Backend Team  Yes    575 days ago team-1
 FRONTEND Frontend Team No     577 days ago team-2
 SEC      Security Team Yes    572 days ago team-3
+"
+stderr:
+"""
+`;
+
+exports[`Team List Command - No Teams Found 1`] = `
+"stdout:
+"No teams found.
 "
 stderr:
 """

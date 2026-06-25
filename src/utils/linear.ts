@@ -209,6 +209,12 @@ const issueDetailsWithCommentsQuery = gql(/* GraphQL */ `
         name
         number
       }
+      labels {
+        nodes {
+          name
+          color
+        }
+      }
       parent {
         identifier
         title
@@ -304,6 +310,12 @@ const issueDetailsQuery = gql(/* GraphQL */ `
         name
         number
       }
+      labels {
+        nodes {
+          name
+          color
+        }
+      }
       parent {
         identifier
         title
@@ -367,21 +379,23 @@ export type FetchedIssueComment = IssueDetailsWithComments["comments"]["nodes"][
 
 export type FetchedIssueDetailsWithComments = Omit<
   IssueDetailsWithComments,
-  "children" | "comments" | "attachments" | "documents"
+  "children" | "comments" | "attachments" | "documents" | "labels"
 > & {
   children: IssueDetailsWithComments["children"]["nodes"]
   comments: IssueDetailsWithComments["comments"]["nodes"]
   attachments: IssueDetailsWithComments["attachments"]["nodes"]
   documents: IssueDetailsWithComments["documents"]["nodes"]
+  labels: IssueDetailsWithComments["labels"]["nodes"]
 }
 
 export type FetchedIssueDetailsWithoutComments = Omit<
   IssueDetailsWithoutComments,
-  "children" | "attachments" | "documents"
+  "children" | "attachments" | "documents" | "labels"
 > & {
   children: IssueDetailsWithoutComments["children"]["nodes"]
   attachments: IssueDetailsWithoutComments["attachments"]["nodes"]
   documents: IssueDetailsWithoutComments["documents"]["nodes"]
+  labels: IssueDetailsWithoutComments["labels"]["nodes"]
 }
 
 export type FetchedIssueDetails =
@@ -410,6 +424,7 @@ export async function fetchIssueDetails(
         comments: data.comments?.nodes || [],
         attachments: data.attachments?.nodes || [],
         documents: data.documents?.nodes || [],
+        labels: data.labels?.nodes || [],
       }
     }
 
@@ -421,6 +436,7 @@ export async function fetchIssueDetails(
       children: data.children?.nodes || [],
       attachments: data.attachments?.nodes || [],
       documents: data.documents?.nodes || [],
+      labels: data.labels?.nodes || [],
     }
   } catch (error) {
     spinner.stop()

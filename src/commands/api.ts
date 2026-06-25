@@ -49,7 +49,7 @@ export const apiCommand = new Command("api")
       const headers = {
         "Content-Type": "application/json",
         Authorization: apiKey,
-        "User-Agent": `schpet-linear-cli/${pkg.version}`,
+        "User-Agent": `zhendalf-linear-cli/${pkg.version}`,
       }
 
       if (options.paginate) {

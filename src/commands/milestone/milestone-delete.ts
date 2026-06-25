@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
@@ -18,14 +18,16 @@ const DeleteProjectMilestone = gql(`
 export const deleteCommand = new Command("delete")
   .description("Delete a project milestone")
   .argument("<id>", "Milestone ID")
-  .option("-f, --force", "Skip confirmation prompt")
+  .option("-y, --yes", "Skip confirmation prompt")
+  // Back-compat alias for the old -f/--force flag (hidden).
+  .addOption(new Option("-f, --force", "Skip confirmation prompt (alias for --yes)").hideHelp())
   .action(async (id: string, options) => {
-    const { force } = options
+    const force = options.yes || options.force
     // Confirmation prompt unless --force is used
     if (!force) {
       if (!isStdinTTY()) {
         throw new ValidationError("Interactive confirmation required", {
-          suggestion: "Use --force to skip confirmation.",
+          suggestion: "Use --yes to skip confirmation.",
         })
       }
       const confirmed = await confirm({

@@ -104,7 +104,7 @@ export function createGraphQLClient(apiKey: string): GraphQLClient {
   return new GraphQLClient(getGraphQLEndpoint(), {
     headers: {
       Authorization: apiKey,
-      "User-Agent": `schpet-linear-cli/${pkg.version}`,
+      "User-Agent": `zhendalf-linear-cli/${pkg.version}`,
     },
   })
 }

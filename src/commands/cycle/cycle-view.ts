@@ -6,6 +6,7 @@ import { NotFoundError, ValidationError, handleError } from "../../utils/errors.
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getCycleIdByNameOrNumber, getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 
@@ -49,8 +50,10 @@ export const viewCommand = new Command("view")
   .description("View cycle details")
   .argument("<cycleRef>", "Cycle reference (name or number)")
   .option("--team <team>", "Team key (defaults to current team)")
+  .option("--no-pager", "Disable automatic paging for long output")
   .action(async (cycleRef: string, options) => {
-    const { team } = options
+    const { team, pager } = options
+    const usePager = pager !== false
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
@@ -159,7 +162,12 @@ export const viewCommand = new Command("view")
 
       if (isStdoutTTY()) {
         const terminalWidth = getConsoleSize().columns
-        console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
+        const finalOutput = renderMarkdown(markdown, { lineWidth: terminalWidth })
+        if (shouldUsePager(finalOutput.split("\n"), usePager)) {
+          await pipeToUserPager(finalOutput)
+        } else {
+          console.log(finalOutput)
+        }
       } else {
         console.log(markdown)
       }

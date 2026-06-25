@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
@@ -185,9 +185,11 @@ export const removeProjectCommand = new Command("remove-project")
   .description("Unlink a project from an initiative")
   .argument("<initiative>")
   .argument("<project>")
-  .option("-y, --force", "Skip confirmation prompt")
+  .option("-y, --yes", "Skip confirmation prompt")
+  // Back-compat alias for the old --force flag (hidden).
+  .addOption(new Option("--force", "Skip confirmation prompt (alias for --yes)").hideHelp())
   .action(async (initiativeArg: string, projectArg: string, options) => {
-    const { force } = options
+    const force = options.yes || options.force
     const client = getGraphQLClient()
 
     // Resolve initiative
@@ -230,7 +232,7 @@ export const removeProjectCommand = new Command("remove-project")
     // Confirm removal
     if (!force) {
       if (!isStdinTTY()) {
-        throw new ValidationError("Interactive confirmation required. Use --force to skip.")
+        throw new ValidationError("Interactive confirmation required. Use --yes to skip.")
       }
       const confirmed = await confirm({
         message: `Remove "${project.name}" from initiative "${initiative.name}"?`,

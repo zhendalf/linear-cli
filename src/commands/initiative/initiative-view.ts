@@ -5,6 +5,7 @@ import { formatRelativeTime } from "../../utils/display.ts"
 import { NotFoundError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
@@ -70,8 +71,10 @@ export const viewCommand = new Command("view")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
   .option("-j, --json", "Output as JSON")
+  .option("--no-pager", "Disable automatic paging for long output")
   .action(async (initiativeId: string, options) => {
-    const { web, app, json } = options
+    const { web, app, json, pager } = options
+    const usePager = pager !== false
 
     const client = getGraphQLClient()
 
@@ -131,12 +134,14 @@ export const viewCommand = new Command("view")
       lines.push(`**Slug:** ${initiative.slugId}`)
       lines.push(`**URL:** ${initiative.url}`)
 
-      // Status with color styling
+      // Status with color styling (buffered into statusOutput so it can be
+      // paged alongside the rendered body while keeping its ANSI color).
       const statusDisplay = INITIATIVE_STATUS_DISPLAY[initiative.status] || initiative.status
       const statusLine = `**Status:** ${statusDisplay}`
+      let statusOutput: string | null = null
       if (isStdoutTTY()) {
         const statusColor = STATUS_COLORS[initiative.status] || "#6B6F76"
-        console.log(applyConsoleFormat(`%c${statusLine}%c`, `color: ${statusColor}`, ""))
+        statusOutput = applyConsoleFormat(`%c${statusLine}%c`, `color: ${statusColor}`, "")
       } else {
         lines.push(statusLine)
       }
@@ -223,7 +228,13 @@ export const viewCommand = new Command("view")
 
       if (isStdoutTTY()) {
         const terminalWidth = getConsoleSize().columns
-        console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
+        const rendered = renderMarkdown(markdown, { lineWidth: terminalWidth })
+        const finalOutput = statusOutput ? `${statusOutput}\n${rendered}` : rendered
+        if (shouldUsePager(finalOutput.split("\n"), usePager)) {
+          await pipeToUserPager(finalOutput)
+        } else {
+          console.log(finalOutput)
+        }
       } else {
         console.log(markdown)
       }

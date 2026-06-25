@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import {
   type BulkOperationResult,
@@ -21,12 +21,15 @@ export const deleteCommand = new Command("delete")
   .description("Delete an issue")
   .alias("d")
   .argument("[issueId]")
-  .option("-y, --confirm", "Skip confirmation prompt")
+  .option("-y, --yes", "Skip confirmation prompt")
+  // Back-compat alias for the old --confirm flag (hidden).
+  .addOption(new Option("--confirm", "Skip confirmation prompt (alias for --yes)").hideHelp())
   .option("--bulk <ids...>", "Delete multiple issues by identifier (e.g., TC-123 TC-124)")
   .option("--bulk-file <file>", "Read issue identifiers from a file (one per line)")
   .option("--bulk-stdin", "Read issue identifiers from stdin")
   .action(async (issueId: string | undefined, options) => {
-    const { confirm: confirmFlag, bulk, bulkFile, bulkStdin } = options
+    const { bulk, bulkFile, bulkStdin } = options
+    const confirmFlag = options.yes || options.confirm
     try {
       const client = getGraphQLClient()
 
@@ -87,7 +90,7 @@ async function handleSingleDelete(
   if (!confirmFlag) {
     if (!isStdinTTY()) {
       throw new ValidationError("Interactive confirmation required", {
-        suggestion: "Use --confirm to skip.",
+        suggestion: "Use --yes to skip.",
       })
     }
     const confirmed = await confirm({
@@ -152,7 +155,7 @@ async function handleBulkDelete(
   if (!confirmFlag) {
     if (!isStdinTTY()) {
       throw new ValidationError("Interactive confirmation required", {
-        suggestion: "Use --confirm to skip.",
+        suggestion: "Use --yes to skip.",
       })
     }
     const confirmed = await confirm({

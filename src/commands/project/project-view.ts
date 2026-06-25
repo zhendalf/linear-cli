@@ -6,6 +6,7 @@ import { formatRelativeTime } from "../../utils/display.ts"
 import { NotFoundError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
@@ -80,8 +81,10 @@ export const viewCommand = new Command("view")
   .argument("<projectId>", "Project ID or slug")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
+  .option("--no-pager", "Disable automatic paging for long output")
   .action(async (projectId: string, options) => {
-    const { web, app } = options
+    const { web, app, pager } = options
+    const usePager = pager !== false
 
     if (web || app) {
       await openProjectPage(projectId, { app, web: !app })
@@ -113,10 +116,12 @@ export const viewCommand = new Command("view")
       lines.push(`**Slug:** ${project.slugId}`)
       lines.push(`**URL:** ${project.url}`)
 
-      // Status with color styling (inline — not added to lines array)
+      // Status with color styling (rendered separately from the markdown body so
+      // it can keep its ANSI color; buffered into statusOutput for paging).
       const statusLine = `**Status:** ${project.status.name}`
+      let statusOutput: string | null = null
       if (isStdoutTTY()) {
-        console.log(applyConsoleFormat(`%c${statusLine}%c`, `color: ${project.status.color}`, ""))
+        statusOutput = applyConsoleFormat(`%c${statusLine}%c`, `color: ${project.status.color}`, "")
       } else {
         lines.push(statusLine)
       }
@@ -232,7 +237,14 @@ export const viewCommand = new Command("view")
 
       if (isStdoutTTY()) {
         const terminalWidth = getConsoleSize().columns
-        console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
+        const rendered = renderMarkdown(markdown, { lineWidth: terminalWidth })
+        const finalOutput = statusOutput ? `${statusOutput}\n${rendered}` : rendered
+        const outputLines = finalOutput.split("\n")
+        if (shouldUsePager(outputLines, usePager)) {
+          await pipeToUserPager(finalOutput)
+        } else {
+          console.log(finalOutput)
+        }
       } else {
         console.log(markdown)
       }

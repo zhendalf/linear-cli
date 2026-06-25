@@ -1,5 +1,6 @@
 import { Command } from "commander"
 import { agentSessionCommand } from "./issue-agent-session.ts"
+import { archiveCommand } from "./issue-archive.ts"
 import { attachCommand } from "./issue-attach.ts"
 import { commentCommand } from "./issue-comment.ts"
 import { commitsCommand } from "./issue-commits.ts"
@@ -14,6 +15,7 @@ import { queryCommand } from "./issue-query.ts"
 import { relationCommand } from "./issue-relation.ts"
 import { startCommand } from "./issue-start.ts"
 import { titleCommand } from "./issue-title.ts"
+import { unarchiveCommand } from "./issue-unarchive.ts"
 import { updateCommand } from "./issue-update.ts"
 import { urlCommand } from "./issue-url.ts"
 import { viewCommand } from "./issue-view.ts"
@@ -35,6 +37,8 @@ export const issueCommand = new Command("issue")
   .addCommand(deleteCommand)
   .addCommand(createCommand)
   .addCommand(updateCommand)
+  .addCommand(archiveCommand)
+  .addCommand(unarchiveCommand)
   .addCommand(commentCommand)
   .addCommand(attachCommand)
   .addCommand(linkCommand)

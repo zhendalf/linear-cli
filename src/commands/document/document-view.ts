@@ -8,6 +8,7 @@ import { NotFoundError, handleError, isClientError, isNotFoundError } from "../.
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { downloadMarkdownImages, replaceImageUrls } from "../../utils/markdown-images.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 
@@ -45,8 +46,10 @@ export const viewCommand = new Command("view")
   .option("-w, --web", "Open document in browser")
   .option("--json", "Output full document as JSON")
   .option("--no-download", "Keep remote URLs instead of downloading files")
+  .option("--no-pager", "Disable automatic paging for long output")
   .action(async (id: string, options) => {
-    const { raw, web, json, download } = options
+    const { raw, web, json, download, pager } = options
+    const usePager = pager !== false
     const spinner = createSpinner("", shouldShowSpinner() && !raw && !json)
     spinner.start()
 
@@ -125,7 +128,12 @@ export const viewCommand = new Command("view")
 
       const markdown = lines.join("\n")
       const terminalWidth = getConsoleSize().columns
-      console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
+      const finalOutput = renderMarkdown(markdown, { lineWidth: terminalWidth })
+      if (shouldUsePager(finalOutput.split("\n"), usePager)) {
+        await pipeToUserPager(finalOutput)
+      } else {
+        console.log(finalOutput)
+      }
     } catch (error) {
       spinner.stop()
       if (isClientError(error) && isNotFoundError(error)) {

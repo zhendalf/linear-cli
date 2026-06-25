@@ -127,19 +127,20 @@ export const mineCommand = new Command("mine")
       }
       const stateArray: string[] = state ?? ["unstarted"]
 
-      const sort = sortFlag || (getOption("issue_sort") as "manual" | "priority" | undefined)
-      if (!sort) {
-        throw new ValidationError(
-          "Sort must be provided via command line flag, configuration file, or LINEAR_ISSUE_SORT environment variable",
-        )
-      }
+      // Default to "priority" when no sort is supplied anywhere (flag, config,
+      // or LINEAR_ISSUE_SORT) so `issue mine` works out of the box.
+      const sort =
+        sortFlag || (getOption("issue_sort") as "manual" | "priority" | undefined) || "priority"
       const validSortValues = ["manual", "priority"]
       if (!validSortValues.includes(sort)) {
         throw new ValidationError(`Sort must be one of: ${validSortValues.join(", ")}`)
       }
       const teamKey = team || getTeamKey()
       if (!teamKey) {
-        throw new ValidationError("Could not determine team key from directory name or team flag")
+        throw new ValidationError("No team configured and no team scope provided", {
+          suggestion:
+            "Use --team <key> to specify a team, or run from a directory named after the team key. To query across all teams, use 'linear issue query --all-teams'.",
+        })
       }
 
       if (project != null && projectLabel != null) {

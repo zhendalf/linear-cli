@@ -5,6 +5,7 @@ import { formatRelativeTime } from "../../utils/display.ts"
 import { NotFoundError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 
@@ -78,8 +79,10 @@ export const agentSessionViewCommand = new Command("view")
   .alias("v")
   .argument("<sessionId>")
   .option("-j, --json", "Output as JSON")
+  .option("--no-pager", "Disable automatic paging for long output")
   .action(async (sessionId: string, options) => {
-    const { json } = options
+    const { json, pager } = options
+    const usePager = pager !== false
     try {
       const spinner = createSpinner("", shouldShowSpinner() && !json)
       spinner.start()
@@ -167,7 +170,12 @@ export const agentSessionViewCommand = new Command("view")
 
       if (isStdoutTTY()) {
         const { columns: terminalWidth } = getConsoleSize()
-        console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
+        const finalOutput = renderMarkdown(markdown, { lineWidth: terminalWidth })
+        if (shouldUsePager(finalOutput.split("\n"), usePager)) {
+          await pipeToUserPager(finalOutput)
+        } else {
+          console.log(finalOutput)
+        }
       } else {
         console.log(markdown)
       }

@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
@@ -131,9 +131,12 @@ export const deleteCommand = new Command("delete")
   .description("Delete an issue label")
   .argument("<nameOrId>", "Label name or ID")
   .option("-t, --team <teamKey>", "Team key to disambiguate labels with same name")
-  .option("-f, --force", "Skip confirmation prompt")
+  .option("-y, --yes", "Skip confirmation prompt")
+  // Back-compat alias for the old -f/--force flag (hidden).
+  .addOption(new Option("-f, --force", "Skip confirmation prompt (alias for --yes)").hideHelp())
   .action(async (nameOrId: string, options) => {
-    const { team: teamKey, force } = options
+    const { team: teamKey } = options
+    const force = options.yes || options.force
     try {
       const client = getGraphQLClient()
 
@@ -156,7 +159,7 @@ export const deleteCommand = new Command("delete")
       if (!force) {
         if (!isStdinTTY()) {
           throw new ValidationError("Interactive confirmation required", {
-            suggestion: "Use --force to skip confirmation.",
+            suggestion: "Use --yes to skip confirmation.",
           })
         }
         const confirmed = await confirm({

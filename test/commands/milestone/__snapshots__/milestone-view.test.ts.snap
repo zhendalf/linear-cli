@@ -10,6 +10,7 @@ Arguments:
   milestoneId  Milestone ID
 
 Options:
+  --no-pager   Disable automatic paging for long output
   -h, --help   display help for command
 "
 stderr:

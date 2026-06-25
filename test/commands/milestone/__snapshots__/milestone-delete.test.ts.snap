@@ -7,11 +7,11 @@ exports[`Milestone Delete Command - Help Text 1`] = `
 Delete a project milestone
 
 Arguments:
-  id           Milestone ID
+  id          Milestone ID
 
 Options:
-  -f, --force  Skip confirmation prompt
-  -h, --help   display help for command
+  -y, --yes   Skip confirmation prompt
+  -h, --help  display help for command
 "
 stderr:
 """

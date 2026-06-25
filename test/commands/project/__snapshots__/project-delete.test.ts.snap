@@ -7,11 +7,11 @@ exports[`Project Delete Command - Help Text 1`] = `
 Delete (trash) a Linear project
 
 Arguments:
-  projectId    Project ID or slug
+  projectId   Project ID or slug
 
 Options:
-  -f, --force  Skip confirmation prompt
-  -h, --help   display help for command
+  -y, --yes   Skip confirmation prompt
+  -h, --help  display help for command
 "
 stderr:
 """
