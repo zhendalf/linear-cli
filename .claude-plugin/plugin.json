@@ -3,8 +3,8 @@
   "description": "Manage Linear issues from the command line",
   "version": "2.0.0",
   "author": {
-    "name": "schpet"
+    "name": "zhendalf"
   },
-  "homepage": "https://github.com/schpet/linear-cli",
+  "homepage": "https://github.com/zhendalf/linear-cli",
   "skills": ["./skills/linear-cli"]
 }

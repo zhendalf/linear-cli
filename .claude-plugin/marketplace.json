@@ -1,19 +1,19 @@
 {
   "name": "linear-cli",
   "owner": {
-    "name": "schpet"
+    "name": "zhendalf"
   },
-  "description": "marketplace for linear-cli claude code plugin",
+  "description": "marketplace for the linear-cli claude code plugin",
   "version": "2.0.0",
   "plugins": [
     {
       "name": "linear-cli",
-      "description": "skill for using the linear-cli to manage Linear issues",
+      "description": "skill for using linear-cli to manage Linear issues",
       "version": "2.0.0",
       "author": {
-        "name": "schpet"
+        "name": "zhendalf"
       },
-      "homepage": "https://github.com/schpet/linear-cli",
+      "homepage": "https://github.com/zhendalf/linear-cli",
       "source": "./",
       "skills": ["./skills/linear-cli"]
     }

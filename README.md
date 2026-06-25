@@ -1,6 +1,8 @@
 # linear cli
 
-a cli to list, start and create issues in the [linear](https://linear.app/) issue tracker. git and [jj](https://www.jj-vcs.dev/) aware to keep you in the right views in linear. allows jumping to the web or the linear desktop app similar to `gh`.
+a cli to list, start and create issues in the [linear](https://linear.app/) issue tracker. git and [jj](https://github.com/jj-vcs/jj) aware to keep you in the right views in linear. allows jumping to the web or the linear desktop app similar to `gh`.
+
+> a native **Node + Bun** fork of [schpet/linear-cli](https://github.com/schpet/linear-cli) — no Deno, no cargo-dist. published to npm as [`@zhendalf/linear-cli`](https://www.npmjs.com/package/@zhendalf/linear-cli). see [credits](#credits).
 
 **works great with AI agents** — the CLI includes a [skill](#skills) that lets agents create issues, update status, and manage your Linear workflow alongside your code.
 
@@ -212,13 +214,27 @@ linear document delete <slug> --permanent       # permanent delete
 linear document delete --bulk <slug1> <slug2>   # bulk delete
 ```
 
+### auth commands
+
+```bash
+linear auth login              # add a workspace (prompts for API key)
+linear auth login --key <key>  # add a workspace non-interactively (for scripts)
+linear auth list               # list configured workspaces
+linear auth status             # show how auth resolves in the current directory
+linear auth default <slug>     # set the default workspace
+linear auth logout <slug>      # remove a workspace
+linear auth whoami             # show current user and workspace
+linear auth token              # print the resolved API key
+```
+
 ### other commands
 
 ```bash
 linear --help          # show all commands
 linear --version       # show version
-linear config          # setup the project
-linear completions     # generate shell completions
+linear config          # interactively generate .linear.toml for the repo
+linear schema          # print the Linear GraphQL schema to stdout
+linear api '<query>'   # make a raw GraphQL request (fallback for unsupported ops)
 ```
 
 ## configuration options
@@ -251,11 +267,11 @@ install the skill using [claude code's plugin system](https://code.claude.com/do
 
 ```bash
 # from claude code
-/plugin marketplace add schpet/linear-cli
+/plugin marketplace add zhendalf/linear-cli
 /plugin install linear-cli@linear-cli
 
 # from bash
-claude plugin marketplace add schpet/linear-cli
+claude plugin marketplace add zhendalf/linear-cli
 claude plugin install linear-cli@linear-cli
 
 # to update
@@ -263,15 +279,10 @@ claude plugin marketplace update linear-cli
 claude plugin update linear-cli@linear-cli
 ```
 
-### skills.sh for other agents
+### other agents
 
-install the skill using [skills.sh](https://skills.sh):
-
-```bash
-npx skills add schpet/linear-cli
-```
-
-view the skill at [skills.sh/schpet/linear-cli/linear-cli](https://skills.sh/schpet/linear-cli/linear-cli)
+the skill is a plain directory at [`skills/linear-cli/`](skills/linear-cli/) — copy
+it into any agent that loads markdown skills, or point your tooling at this repo.
 
 ## development
 
@@ -289,7 +300,11 @@ this will:
 - generate reference documentation for each command
 - update the `SKILL.md` file from `SKILL.template.md`
 
-**important:** the CI checks will fail if the generated docs are out of date, so make sure to run this before committing changes that affect command structure or help text.
+> **note:** the reference files under `skills/linear-cli/references/` were
+> generated from cliffy's old `--help` format and are stale after the commander
+> port. The generator's parser needs updating for commander's help output before
+> a clean regeneration (`LINEAR_CLI="node dist/main.js" bun run generate-skill-docs`).
+> Until then, `SKILL.md` is the authoritative quick reference.
 
 ### code formatting
 
@@ -311,5 +326,15 @@ linear's UI is incredibly good but it slows me down. i find the following pretty
 - linear's suggested git branch doesn't account for it already existing or having a merged pull request
 
 this cli solves this. it knows what you're working on (via git branches or jj commit trailers), does the work of managing your version control state, and will write your pull request details for you.
+
+## credits
+
+this project is a fork of [schpet/linear-cli](https://github.com/schpet/linear-cli) by Peter Schilling and contributors, which is the original and excellent Deno implementation. this fork rewrites it as a native Node + Bun TypeScript package (cliffy → commander, keyring → `credentials.json`, Deno/cargo-dist → Bun bundler) and is published as `@zhendalf/linear-cli`. all credit for the original design and the bulk of the command behavior goes to the upstream project.
+
+licensed under the [ISC License](LICENSE), preserving the upstream copyright.
+
+## license
+
+ISC © Peter Schilling and contributors (original) · Eugene Beloded and contributors (fork). see [LICENSE](LICENSE).
 
 [^1]: creating an API key requires member access, it is not available for guest accounts.

@@ -19,11 +19,11 @@ linear --version
 If not installed globally, you can run it without installing via npx:
 
 ```bash
-npx @schpet/linear-cli --version
+npx @zhendalf/linear-cli --version
 ```
 
-All subsequent commands can be prefixed with `npx @schpet/linear-cli` in place of `linear`. Otherwise, follow the install instructions at:\
-https://github.com/schpet/linear-cli?tab=readme-ov-file#install
+All subsequent commands can be prefixed with `npx @zhendalf/linear-cli` in place of `linear`. Otherwise, follow the install instructions at:\
+https://github.com/zhendalf/linear-cli?tab=readme-ov-file#install
 
 ## Best Practices for Markdown Content
 

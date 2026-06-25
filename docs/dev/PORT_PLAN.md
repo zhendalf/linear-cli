@@ -1,3 +1,7 @@
+> **Historical / dev doc.** This captures the original Deno → Node/Bun migration
+> plan. The port is complete; this is kept for context and is not a guide for
+> using the CLI. See the [README](../../README.md) for usage.
+
 # Port Plan: schpet/linear-cli — Deno → native Node + Bun TypeScript
 
 Authoritative migration plan synthesized from 8 subsystem-mapping reports. This is a **full native rewrite** (no `dnt`): `cliffy → commander`, tokens in a config file via `env-paths` + `LINEAR_API_KEY` override (no keyring FFI), GraphQL/codegen retained, lightweight npm package (no embedded runtime), targets **Node LTS (>=20)** and **Bun**.

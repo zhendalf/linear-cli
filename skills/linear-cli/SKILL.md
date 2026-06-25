@@ -19,11 +19,11 @@ linear --version
 If not installed globally, you can run it without installing via npx:
 
 ```bash
-npx @schpet/linear-cli --version
+npx @zhendalf/linear-cli --version
 ```
 
-All subsequent commands can be prefixed with `npx @schpet/linear-cli` in place of `linear`. Otherwise, follow the install instructions at:\
-https://github.com/schpet/linear-cli?tab=readme-ov-file#install
+All subsequent commands can be prefixed with `npx @zhendalf/linear-cli` in place of `linear`. Otherwise, follow the install instructions at:\
+https://github.com/zhendalf/linear-cli?tab=readme-ov-file#install
 
 ## Best Practices for Markdown Content
 
@@ -75,7 +75,7 @@ linear auth list
 linear auth default
 linear auth token
 linear auth whoami
-linear auth migrate
+linear auth status
 
 linear issue
 linear issue id
@@ -171,6 +171,11 @@ linear api
 ```
 
 ## Reference Documentation
+
+> Note: the per-command files under `references/` were generated from the old
+> cliffy help format and are stale after the commander port. Treat this `SKILL.md`
+> and `--help` output as authoritative; the reference files need regeneration once
+> the doc generator's parser is updated for commander.
 
 - [auth](references/auth.md) - Manage Linear authentication
 - [issue](references/issue.md) - Manage Linear issues

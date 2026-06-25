@@ -2,16 +2,39 @@
 
 the CLI supports multiple authentication methods with the following precedence:
 
-1. `--api-key` flag (explicit key for single command)
-2. `LINEAR_API_KEY` environment variable
-3. `api_key` in project `.linear.toml` config
-4. `--workspace` flag → stored credentials lookup
-5. project's `workspace` config → stored credentials lookup
-6. default workspace from stored credentials
+1. `LINEAR_API_KEY` environment variable
+2. `api_key` in the project `.linear.toml` config
+3. `--workspace` flag → stored credentials lookup
+4. project's `workspace` config → stored credentials lookup
+5. default workspace from stored credentials
+
+> **Note:** `LINEAR_API_KEY` and `--workspace` are mutually exclusive. If
+> `LINEAR_API_KEY` is set (e.g. in your shell or CI) and you also pass
+> `--workspace`, the CLI errors rather than silently preferring one — unset
+> `LINEAR_API_KEY` or drop `--workspace`.
 
 ## stored credentials (recommended)
 
-API keys are stored in your system's native keyring (macOS Keychain, Linux libsecret, Windows CredentialManager). workspace metadata is stored in `~/.config/linear/credentials.toml`.
+API keys are stored in `~/.config/linear/credentials.json` with `0600`
+permissions (owner read/write only). On Windows the file lives under
+`%APPDATA%\linear\Config\credentials.json`. The location honors
+`XDG_CONFIG_HOME` when set.
+
+The file is plain JSON: the special `default` key names the active workspace
+and every other key maps a workspace slug to its API key.
+
+```json
+{
+  "default": "acme",
+  "acme": "lin_api_...",
+  "side-project": "lin_api_..."
+}
+```
+
+> **Migrating from the original Deno release:** earlier versions stored tokens in
+> the OS keyring (macOS Keychain, libsecret, Windows Credential Manager). That
+> keyring backend has been removed. After upgrading you must re-run
+> `linear auth login` for each workspace to populate `credentials.json`.
 
 ### commands
 
@@ -19,8 +42,9 @@ API keys are stored in your system's native keyring (macOS Keychain, Linux libse
 linear auth login              # add a workspace (prompts for API key)
 linear auth login --key <key>  # add with key directly (for scripts)
 linear auth list               # list configured workspaces
-linear auth default            # interactively set default workspace
-linear auth default <slug>     # set default workspace directly
+linear auth status             # show auth resolution for the current directory
+linear auth default            # interactively set the default workspace
+linear auth default <slug>     # set the default workspace directly
 linear auth logout <slug>      # remove a workspace
 linear auth logout <slug> -f   # remove without confirmation
 linear auth whoami             # show current user and workspace
@@ -30,7 +54,7 @@ linear auth token              # print the resolved API key
 ### adding workspaces
 
 ```bash
-# first workspace becomes the default
+# the first workspace becomes the default
 $ linear auth login
 Enter your Linear API key: ***
 Logged in to workspace: Acme Corp (acme)
@@ -61,38 +85,14 @@ the `*` indicates the default workspace.
 # set a new default
 linear auth default side-project
 
-# or use --workspace flag for a single command
+# or use the --workspace flag for a single command
 linear --workspace side-project issue list
 linear --workspace acme issue create --title "Bug fix"
 ```
 
-### credentials file format
-
-```toml
-# ~/.config/linear/credentials.toml
-default = "acme"
-workspaces = ["acme", "side-project"]
-```
-
-API keys are not stored in this file. they are stored in the system keyring and loaded at startup.
-
-### platform requirements
-
-- **macOS**: uses Keychain via `/usr/bin/security` (built-in)
-- **Linux**: requires `secret-tool` from libsecret
-  - Debian/Ubuntu: `apt install libsecret-tools`
-  - Arch: `pacman -S libsecret`
-- **Windows**: uses Credential Manager via `advapi32.dll` (built-in)
-
-if the keyring is unavailable, set `LINEAR_API_KEY` as a fallback.
-
-### migrating from plaintext credentials
-
-older versions stored API keys directly in the TOML file. if the CLI detects this format, it will continue to work but print a warning. run `linear auth login` for each workspace to migrate keys to the system keyring.
-
 ## environment variable
 
-for simpler setups or CI environments, you can use an environment variable:
+for CI or simple setups, set an environment variable:
 
 ```sh
 # bash/zsh
@@ -102,13 +102,9 @@ export LINEAR_API_KEY="lin_api_..."
 set -Ux LINEAR_API_KEY "lin_api_..."
 ```
 
-this takes precedence over stored credentials. if you have `LINEAR_API_KEY` set and try to use `linear auth login`, you'll see a warning:
-
-```
-Warning: LINEAR_API_KEY environment variable is set.
-It takes precedence over stored credentials.
-Remove it from your shell config to use multi-workspace auth.
-```
+this takes precedence over stored credentials. if `LINEAR_API_KEY` is set and
+you run `linear auth login`, the CLI warns you that the env var will shadow the
+stored credentials.
 
 ## project config
 
@@ -120,11 +116,12 @@ workspace = "acme"
 team_id = "ENG"
 ```
 
-this is useful for project-specific credentials but less secure than stored credentials since it may be committed to version control.
+this is convenient for project-specific credentials but less secure than stored
+credentials, since the file may be committed to version control.
 
 ## workspace matching
 
-when your project config has a `workspace` setting:
+when your project config sets a `workspace`:
 
 ```toml
 # .linear.toml
@@ -132,14 +129,17 @@ workspace = "acme"
 team_id = "ENG"
 ```
 
-the CLI will automatically use the stored credentials for that workspace, even if a different workspace is your default. this lets you work on multiple projects with different workspaces without constantly switching.
+the CLI automatically uses the stored credentials for that workspace, even if a
+different workspace is your global default. this lets you work across multiple
+projects with different workspaces without switching the default each time.
 
 ## creating an API key
 
 1. go to [linear.app/settings/account/security](https://linear.app/settings/account/security)
 2. scroll to "Personal API keys"
 3. click "Create key"
-4. give it a label (e.g., "CLI")
+4. give it a label (e.g. "CLI")
 5. copy the key (starts with `lin_api_`)
 
-note: creating an API key requires member access; it is not available for guest accounts.
+note: creating an API key requires member access; it is not available for guest
+accounts.

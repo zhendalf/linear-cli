@@ -6,7 +6,12 @@
 
 - issue view now orders comment threads chronologically (oldest first), matching Linear's UI
 
-## [2.0.0] - 2026-06-25 (native Node/Bun rewrite)
+## [2.0.0] - 2026-06-25 — native Node/Bun fork (`@zhendalf/linear-cli`)
+
+This is the first release of the fork. It is a native Node.js + Bun rewrite of
+[schpet/linear-cli](https://github.com/schpet/linear-cli). Entries below the
+"upstream history" marker are inherited from the original Deno project and are
+retained for reference.
 
 ### Breaking Changes
 
@@ -25,7 +30,13 @@
 - linter: `deno lint` → biome
 - type checker: `deno check` → `tsc --noEmit`
 
-## [2.0.0] - 2026-04-03
+---
+
+## Upstream history (schpet/linear-cli)
+
+The entries below are from the original Deno project, kept for provenance.
+
+## [2.0.0-upstream] - 2026-04-03
 
 ### Fixed
 

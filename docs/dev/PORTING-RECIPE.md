@@ -1,3 +1,7 @@
+> **Historical / dev doc.** Internal recipe used during the Deno → Node/Bun port
+> to convert command files from cliffy to commander. Kept for reference; not a
+> guide for using the CLI. See the [README](../../README.md) for usage.
+
 # cliffy → commander Conversion Recipe
 
 **Audience:** Phase D batch agents porting command files under `src/commands/**`.

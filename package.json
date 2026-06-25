@@ -1,7 +1,7 @@
 {
   "name": "@zhendalf/linear-cli",
   "version": "2.0.0",
-  "description": "Handy linear commands from the command line",
+  "description": "Handy Linear commands from the command line — git/jj-aware, agent-friendly. Native Node/Bun fork of schpet/linear-cli.",
   "type": "module",
   "bin": {
     "linear": "./dist/main.js"
@@ -10,6 +10,32 @@
     "node": ">=20"
   },
   "files": ["dist"],
+  "keywords": [
+    "linear",
+    "linear.app",
+    "cli",
+    "issue-tracker",
+    "issues",
+    "git",
+    "jj",
+    "jujutsu",
+    "productivity",
+    "graphql",
+    "developer-tools"
+  ],
+  "license": "ISC",
+  "author": "Eugene Beloded",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhendalf/linear-cli.git"
+  },
+  "homepage": "https://github.com/zhendalf/linear-cli#readme",
+  "bugs": {
+    "url": "https://github.com/zhendalf/linear-cli/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "bun src/main.ts",
     "build": "bun run codegen && bun run scripts/build.ts",

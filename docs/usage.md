@@ -250,30 +250,15 @@ linear project list
 linear project view PROJECT-ID
 ```
 
-### shell completions
-
-generate shell completions for better command-line experience:
-
-```bash
-# For bash
-source <(linear completions bash)
-
-# For zsh  
-source <(linear completions zsh)
-
-# For fish
-linear completions fish | source
-```
-
-add the appropriate line to your shell's configuration file (e.g., `~/.bashrc`, `~/.zshrc`, or `~/.config/fish/config.fish`).
-
 ### global options
 
-most commands support these options:
-
-- `--no-pager` - disable automatic paging for long output
-- `--no-color` - disable colored output
+- `--workspace <slug>` - target a specific stored-credentials workspace for one command
+- `--no-pager` - disable automatic paging for long output (`issue list`)
 - `--help` - show help for the command
+- `--version` - print the CLI version
+
+set `NO_COLOR=1` in your environment to disable colored output, and
+`LINEAR_DEBUG=1` to print full error details including stack traces.
 
 ### examples
 

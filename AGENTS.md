@@ -1,3 +1,17 @@
+> This file is the contributor guide. It is symlinked as `CLAUDE.md`.
+
+## project layout
+
+- `src/main.ts` — commander entry point; wires up top-level commands
+- `src/commands/**` — one directory per command group; each module owns its name/alias/description
+- `src/config.ts`, `src/credentials.ts`, `src/const.ts` — config, credentials (JSON store), constants
+- `src/utils/**` — shared helpers (errors, paths, runtime shims, formatting)
+- `src/__codegen__/`, `graphql/`, `codegen.ts` — generated GraphQL types and schema
+- `scripts/build.ts` — Bun bundler that produces `dist/main.js`
+- `test/**` — mirrors `src/` (see "tests" below)
+- `docs/` — user docs (`authentication.md`, `usage.md`); `docs/dev/` holds historical porting docs
+- `skills/linear-cli/` — the agent skill (note: `references/` are stale post-port, see README)
+
 ## basics
 
 - this is a native Node/Bun TypeScript app (NOT Deno). package manager and bundler are **bun**

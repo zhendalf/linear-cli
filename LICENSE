@@ -1,6 +1,7 @@
 ISC License
 
-Copyright (c) Peter Schilling and contributors
+Copyright (c) Peter Schilling and contributors (original work, schpet/linear-cli)
+Copyright (c) Eugene Beloded and contributors (native Node/Bun fork)
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above

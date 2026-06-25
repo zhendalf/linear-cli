@@ -1,15 +1,11 @@
 /**
  * Entry point — commander shell.
  *
- * Ported from Deno/cliffy:
+ * Originally ported from Deno/cliffy (see docs/dev/ for the historical plan):
  *   - @cliffy/command  → commander@13
- *   - CompletionsCommand dropped (PORT_PLAN.md §7 locked decision)
+ *   - shell `completions` command dropped (to be revisited)
  *   - globalOption(--workspace) + globalAction → root .option + preAction hook
  *   - .parse(Deno.args) → await program.parseAsync(process.argv)
- *
- * NOTE: command modules under src/commands/** are still cliffy until Phase D.
- * The addCommand() calls below will produce TypeScript errors (cliffy Command ≠
- * commander Command) — this is expected and clears as Phase D batches land.
  */
 
 // Side-effect inits: config (reads .linear.toml + .env) then credentials.
@@ -23,7 +19,6 @@ import pkg from "../package.json" with { type: "json" }
 import { setCliWorkspace } from "./config.ts"
 
 import { apiCommand } from "./commands/api.ts"
-// Command modules (still cliffy until Phase D — type errors expected here)
 import { authCommand } from "./commands/auth/auth.ts"
 import { configCommand } from "./commands/config.ts"
 import { cycleCommand } from "./commands/cycle/cycle.ts"
@@ -71,7 +66,7 @@ Environment Variables:
 // ---------------------------------------------------------------------------
 // Register subcommands
 //
-// Convention (documented in docs/PORTING-RECIPE.md):
+// Convention (see docs/dev/PORTING-RECIPE.md):
 //   Each command MODULE is responsible for its own name, alias, and
 //   description. It exports a configured commander Command that
 //   main.ts picks up via program.addCommand(). main.ts never sets
@@ -79,7 +74,7 @@ Environment Variables:
 //
 // Aliases are set on the child Command via cmd.alias("x") inside the
 // command module file, NOT here. The table below is the authoritative
-// alias list carried from cliffy until Phase D ports each module:
+// alias list:
 //
 //   issue          → "i"
 //   team           → "t"
@@ -107,7 +102,7 @@ program.addCommand(configCommand)
 program.addCommand(schemaCommand)
 program.addCommand(apiCommand)
 
-// completions command intentionally dropped — see PORT_PLAN.md §7 locked decision.
+// completions command intentionally dropped during the port (to be revisited).
 
 // Make --workspace position-independent: register it on every command in the
 // tree (Commander won't parse a parent option appearing after the subcommand
