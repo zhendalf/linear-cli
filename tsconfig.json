@@ -12,6 +12,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["src", "codegen.ts", "tsup.config.ts", "vitest.config.ts"],
-  "exclude": ["dist", "node_modules", "src/__codegen__"]
+  "include": ["src", "codegen.ts"],
+  "exclude": ["dist", "node_modules"]
 }

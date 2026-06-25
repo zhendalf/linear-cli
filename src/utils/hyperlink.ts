@@ -7,6 +7,9 @@
  * See: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
  */
 
+import { hostname } from "node:os"
+import { isStdoutTTY } from "./runtime.ts"
+
 /**
  * Wrap text in an OSC-8 hyperlink escape sequence
  */
@@ -21,10 +24,10 @@ export function hyperlink(text: string, url: string): string {
  * - stdout is not a terminal
  */
 export function shouldEnableHyperlinks(): boolean {
-  if (Deno.env.get("NO_COLOR") != null) {
+  if (process.env["NO_COLOR"] != null) {
     return false
   }
-  if (!Deno.stdout.isTerminal()) {
+  if (!isStdoutTTY()) {
     return false
   }
   return true
@@ -40,10 +43,10 @@ export function shouldEnableHyperlinks(): boolean {
  * other tools that capture output (e.g., AI assistants, scripts).
  */
 export function shouldShowSpinner(): boolean {
-  if (Deno.env.get("NO_COLOR") != null) {
+  if (process.env["NO_COLOR"] != null) {
     return false
   }
-  if (!Deno.stdout.isTerminal()) {
+  if (!isStdoutTTY()) {
     return false
   }
   return true
@@ -77,12 +80,10 @@ export function formatPathHyperlink(
     url = pathOrUrl
   } else {
     // Local path - apply format template
-    const host = Deno.hostname()
+    const host = hostname()
     // Percent-encode the path for URI safety
     const encodedPath = encodeURI(pathOrUrl).replace(/#/g, "%23")
-    url = resolvedFormat
-      .replace("{host}", host)
-      .replace("{path}", encodedPath)
+    url = resolvedFormat.replace("{host}", host).replace("{path}", encodedPath)
   }
 
   return hyperlink(displayText, url)

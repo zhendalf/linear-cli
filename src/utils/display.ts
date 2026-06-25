@@ -1,7 +1,7 @@
-import { unicodeWidth } from "@std/cli"
+import stringWidth from "string-width"
 
 export function padDisplay(s: string, width: number): string {
-  const w = unicodeWidth(s)
+  const w = stringWidth(s)
   return s + " ".repeat(Math.max(0, width - w))
 }
 
@@ -11,7 +11,7 @@ export function stripConsoleFormat(s: string): string {
 
 export function padDisplayFormatted(s: string, width: number): string {
   const plain = stripConsoleFormat(s)
-  const w = unicodeWidth(plain)
+  const w = stringWidth(plain)
   return s + " ".repeat(Math.max(0, width - w))
 }
 
@@ -31,7 +31,7 @@ export function getTimeAgo(date: Date): string {
 }
 
 export function truncateText(text: string, maxWidth: number): string {
-  if (unicodeWidth(text) <= maxWidth) {
+  if (stringWidth(text) <= maxWidth) {
     return text
   }
 
@@ -45,7 +45,7 @@ export function truncateText(text: string, maxWidth: number): string {
   const maxContentWidth = maxWidth - 3 // Reserve space for "..."
 
   for (const char of text) {
-    const charWidth = unicodeWidth(char)
+    const charWidth = stringWidth(char)
     if (width + charWidth > maxContentWidth) {
       break
     }

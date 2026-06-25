@@ -12,7 +12,9 @@ import type {
   PaginationOrderBy,
   SearchIssuesQuery,
 } from "../__codegen__/graphql.ts"
-import { Select } from "@cliffy/prompt"
+import { select } from "./prompt.ts"
+import { createSpinner } from "./spinner.ts"
+import { shouldShowSpinner } from "./hyperlink.ts"
 import { getOption } from "../config.ts"
 import { NotFoundError, ValidationError } from "./errors.ts"
 import { getGraphQLClient } from "./graphql.ts"
@@ -426,10 +428,8 @@ export async function fetchIssueDetails(
   _showSpinner = false,
   includeComments = false,
 ): Promise<FetchedIssueDetails> {
-  const { Spinner } = await import("@std/cli/unstable-spinner")
-  const { shouldShowSpinner } = await import("./hyperlink.ts")
-  const spinner = shouldShowSpinner() ? new Spinner() : null
-  spinner?.start()
+  const spinner = createSpinner("", shouldShowSpinner())
+  spinner.start()
   try {
     const client = getGraphQLClient()
 
@@ -438,7 +438,7 @@ export async function fetchIssueDetails(
         id: issueId,
       })
       const data = response.issue
-      spinner?.stop()
+      spinner.stop()
       return {
         ...data,
         children: data.children?.nodes || [],
@@ -450,7 +450,7 @@ export async function fetchIssueDetails(
 
     const response = await client.request(issueDetailsQuery, { id: issueId })
     const data = response.issue
-    spinner?.stop()
+    spinner.stop()
     return {
       ...data,
       children: data.children?.nodes || [],
@@ -458,7 +458,7 @@ export async function fetchIssueDetails(
       documents: data.documents?.nodes || [],
     }
   } catch (error) {
-    spinner?.stop()
+    spinner.stop()
     throw error
   }
 }
@@ -1658,34 +1658,37 @@ export async function selectOption(
   originalValue: string,
   options: Record<string, string>,
 ): Promise<string | undefined> {
-  const NO = Object()
   const keys = Object.keys(options)
+  // Sentinel for "none of the above" that cannot collide with a real option key
+  // (choice values are the option keys).
+  let NO_VALUE = "__none__"
+  while (keys.includes(NO_VALUE)) NO_VALUE += "_"
   if (keys.length === 0) {
     return undefined
   } else if (keys.length === 1) {
     const key = keys[0]
-    const result = await Select.prompt({
+    const result = await select({
       message: `${dataName} named ${originalValue} does not exist, but ${
         options[key]
       } exists. Is this what you meant?`,
-      options: [
+      choices: [
         { name: "yes", value: key },
-        { name: "no", value: NO },
+        { name: "no", value: NO_VALUE },
       ],
     })
-    return result === NO ? undefined : result
+    return result === NO_VALUE ? undefined : result
   } else {
-    const result = await Select.prompt({
+    const result = await select({
       message:
         `${dataName} with ${originalValue} does not exist, but the following exist. Is any of these what you meant?`,
-      options: [
+      choices: [
         ...Object.entries(options).map(([value, name]: [string, string]) => ({
           name,
           value,
         })),
-        { name: "none of the above", value: NO },
+        { name: "none of the above", value: NO_VALUE },
       ],
     })
-    return result === NO ? undefined : result
+    return result === NO_VALUE ? undefined : result
   }
 }

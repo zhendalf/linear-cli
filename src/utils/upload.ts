@@ -1,7 +1,11 @@
 import { gql } from "../__codegen__/gql.ts"
 import { getGraphQLClient } from "./graphql.ts"
-import { basename, extname } from "@std/path"
+import { basename, extname } from "node:path"
+import { stat, readFile } from "node:fs/promises"
 import { CliError, NotFoundError, ValidationError } from "./errors.ts"
+import { isNotFoundError } from "./runtime.ts"
+import { shouldShowSpinner } from "./hyperlink.ts"
+import { createSpinner } from "./spinner.ts"
 
 /**
  * MIME type mapping for common file extensions
@@ -157,8 +161,8 @@ export async function uploadFile(
   const { showProgress = false } = options
 
   // Read file and get metadata
-  const fileInfo = await Deno.stat(filepath)
-  if (!fileInfo.isFile) {
+  const fileInfo = await stat(filepath)
+  if (!fileInfo.isFile()) {
     throw new ValidationError(`Not a file: ${filepath}`, {
       suggestion: "Please provide a path to a valid file",
     })
@@ -195,12 +199,12 @@ export async function uploadFile(
   `)
 
   const client = getGraphQLClient()
-  const { Spinner } = await import("@std/cli/unstable-spinner")
-  const { shouldShowSpinner } = await import("./hyperlink.ts")
-  const spinner = showProgress && shouldShowSpinner()
-    ? new Spinner({ message: `Uploading ${filename}...` })
-    : null
-  spinner?.start()
+
+  const spinner = createSpinner(
+    `Uploading ${filename}...`,
+    showProgress && shouldShowSpinner(),
+  )
+  spinner.start()
 
   // Auto-detect makePublic based on file type (only images can be public)
   const makePublic = options.makePublic ?? canBePublic(contentType)
@@ -220,7 +224,7 @@ export async function uploadFile(
     const { assetUrl, uploadUrl, headers } = data.fileUpload.uploadFile
 
     // Step 2: Upload file to signed URL
-    const fileData = await Deno.readFile(filepath)
+    const fileData = await readFile(filepath)
 
     // Build headers - start with Content-Type which is required by the signed URL
     const uploadHeaders: Record<string, string> = {
@@ -245,7 +249,7 @@ export async function uploadFile(
       )
     }
 
-    spinner?.stop()
+    spinner.stop()
 
     return {
       assetUrl,
@@ -254,7 +258,7 @@ export async function uploadFile(
       contentType,
     }
   } catch (error) {
-    spinner?.stop()
+    spinner.stop()
     throw error
   }
 }
@@ -285,14 +289,14 @@ export async function uploadFiles(
  */
 export async function validateFilePath(filepath: string): Promise<void> {
   try {
-    const info = await Deno.stat(filepath)
-    if (!info.isFile) {
+    const info = await stat(filepath)
+    if (!info.isFile()) {
       throw new ValidationError(`Not a file: ${filepath}`, {
         suggestion: "Please provide a path to a valid file",
       })
     }
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
+    if (isNotFoundError(error)) {
       throw new NotFoundError("File", filepath)
     }
     throw error

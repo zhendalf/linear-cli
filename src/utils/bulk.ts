@@ -5,8 +5,10 @@
  * across multiple commands (initiative archive/delete, issue archive/delete, label delete, etc.)
  */
 
+import { readFile } from "node:fs/promises"
 import { shouldShowSpinner } from "./hyperlink.ts"
 import { NotFoundError } from "./errors.ts"
+import { isNotFoundError } from "./runtime.ts"
 
 /**
  * Result of a single bulk operation
@@ -47,23 +49,15 @@ export interface BulkExecutionOptions {
  * Supports one ID per line or space-separated IDs
  */
 export async function readIdsFromStdin(): Promise<string[]> {
-  const decoder = new TextDecoder()
-  const chunks: Uint8Array[] = []
+  const chunks: Buffer[] = []
 
-  for await (const chunk of Deno.stdin.readable) {
-    chunks.push(chunk)
-  }
+  await new Promise<void>((resolve, reject) => {
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk))
+    process.stdin.on("end", resolve)
+    process.stdin.on("error", reject)
+  })
 
-  // Concatenate all chunks into a single Uint8Array
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
-  const combined = new Uint8Array(totalLength)
-  let offset = 0
-  for (const chunk of chunks) {
-    combined.set(chunk, offset)
-    offset += chunk.length
-  }
-
-  const input = decoder.decode(combined)
+  const input = Buffer.concat(chunks).toString("utf8")
   return parseIds(input)
 }
 
@@ -73,10 +67,10 @@ export async function readIdsFromStdin(): Promise<string[]> {
  */
 export async function readIdsFromFile(filePath: string): Promise<string[]> {
   try {
-    const content = await Deno.readTextFile(filePath)
+    const content = await readFile(filePath, "utf8")
     return parseIds(content)
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
+    if (isNotFoundError(error)) {
       throw new NotFoundError("File", filePath)
     }
     throw error
@@ -168,7 +162,7 @@ export async function executeBulkOperations<T extends BulkOperationResult>(
       const status = colorEnabled
         ? `\r⏳ Processing: ${completed}/${total} (${percent}%) - ✓ ${succeeded} ✗ ${failed}`
         : `\rProcessing: ${completed}/${total} (${percent}%) - OK: ${succeeded} Failed: ${failed}`
-      Deno.stdout.writeSync(new TextEncoder().encode(status))
+      process.stdout.write(status)
     }
   }
 
@@ -197,9 +191,7 @@ export async function executeBulkOperations<T extends BulkOperationResult>(
 
   // Clear progress line
   if (showProgress && spinnerEnabled) {
-    Deno.stdout.writeSync(
-      new TextEncoder().encode("\r" + " ".repeat(80) + "\r"),
-    )
+    process.stdout.write("\r" + " ".repeat(80) + "\r")
   }
 
   const succeeded = results.filter((r) => r.success).length

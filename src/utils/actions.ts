@@ -1,4 +1,3 @@
-import { open } from "@opensrc/deno-open"
 import {
   fetchIssueDetails,
   getIssueIdentifier,
@@ -7,7 +6,6 @@ import {
   updateIssueState,
 } from "./linear.ts"
 import { getOption } from "../config.ts"
-import { encodeBase64 } from "@std/encoding/base64"
 import { getNoIssueFoundMessage, startVcsWork } from "./vcs.ts"
 import { LINEAR_WEB_BASE_URL } from "../const.ts"
 
@@ -18,7 +16,7 @@ export async function openIssuePage(
   const issueId = await getIssueIdentifier(providedId)
   if (!issueId) {
     console.error(getNoIssueFoundMessage())
-    Deno.exit(1)
+    process.exit(1)
   }
 
   const workspace = getOption("workspace")
@@ -26,13 +24,14 @@ export async function openIssuePage(
     console.error(
       "workspace is not set via command line, configuration file, or environment.",
     )
-    Deno.exit(1)
+    process.exit(1)
   }
 
   const url = `${LINEAR_WEB_BASE_URL}/${workspace}/issue/${issueId}`
   const destination = options.app ? "Linear.app" : "web browser"
   console.log(`Opening ${url} in ${destination}`)
-  await open(url, options.app ? { app: { name: "Linear" } } : undefined)
+  const openMod = await import("open")
+  await openMod.default(url, options.app ? { app: { name: "Linear" } } : undefined)
 }
 
 export async function openProjectPage(
@@ -44,13 +43,14 @@ export async function openProjectPage(
     console.error(
       "workspace is not set via command line, configuration file, or environment.",
     )
-    Deno.exit(1)
+    process.exit(1)
   }
 
   const url = `${LINEAR_WEB_BASE_URL}/${workspace}/project/${projectId}`
   const destination = options.app ? "Linear.app" : "web browser"
   console.log(`Opening ${url} in ${destination}`)
-  await open(url, options.app ? { app: { name: "Linear" } } : undefined)
+  const openMod = await import("open")
+  await openMod.default(url, options.app ? { app: { name: "Linear" } } : undefined)
 }
 
 export async function openTeamAssigneeView(options: { app?: boolean } = {}) {
@@ -59,7 +59,7 @@ export async function openTeamAssigneeView(options: { app?: boolean } = {}) {
     console.error(
       "Could not determine team id from configuration or directory name.",
     )
-    Deno.exit(1)
+    process.exit(1)
   }
 
   const workspace = getOption("workspace")
@@ -67,16 +67,20 @@ export async function openTeamAssigneeView(options: { app?: boolean } = {}) {
     console.error(
       "workspace is not set via command line, configuration file, or environment.",
     )
-    Deno.exit(1)
+    process.exit(1)
   }
 
   const filterObj = {
     "and": [{ "assignee": { "or": [{ "isMe": { "eq": true } }] } }],
   }
-  const filter = encodeBase64(JSON.stringify(filterObj)).replace(/=/g, "")
+  // Base64-encode without padding (matches Deno encodeBase64 + replace)
+  const filter = Buffer.from(JSON.stringify(filterObj))
+    .toString("base64")
+    .replace(/=/g, "")
   const url =
     `${LINEAR_WEB_BASE_URL}/${workspace}/team/${teamId}/active?filter=${filter}`
-  await open(url, options.app ? { app: { name: "Linear" } } : undefined)
+  const openMod = await import("open")
+  await openMod.default(url, options.app ? { app: { name: "Linear" } } : undefined)
 }
 
 export async function startWorkOnIssue(
@@ -99,7 +103,7 @@ export async function startWorkOnIssue(
     const state = await getStartedState(teamId)
     if (!issueId) {
       console.error("No issue ID resolved")
-      Deno.exit(1)
+      process.exit(1)
     }
     await updateIssueState(issueId, state.id)
     console.log(`✓ Issue state updated to '${state.name}'`)

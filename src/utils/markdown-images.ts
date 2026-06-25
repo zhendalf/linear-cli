@@ -1,6 +1,7 @@
-import { ensureDir } from "@std/fs"
-import { join } from "@std/path"
-import { encodeHex } from "@std/encoding/hex"
+import { mkdir, stat, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
+import { createHash } from "node:crypto"
 import sanitize from "sanitize-filename"
 import { unified } from "unified"
 import remarkParse from "remark-parse"
@@ -15,8 +16,7 @@ import {
 import { getResolvedApiKey } from "./graphql.ts"
 
 export const IMAGE_CACHE_DIR = join(
-  Deno.env.get("TMPDIR") || Deno.env.get("TMP") || Deno.env.get("TEMP") ||
-    "/tmp",
+  process.env["TMPDIR"] || process.env["TMP"] || process.env["TEMP"] || tmpdir(),
   "linear-cli-images",
 )
 
@@ -94,11 +94,9 @@ export async function replaceImageUrls(
 }
 
 export async function getUrlHash(url: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(url)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const hashArray = new Uint8Array(hashBuffer)
-  return encodeHex(hashArray).substring(0, 16)
+  // Use node:crypto synchronous hashing (no SubtleCrypto needed)
+  const hash = createHash("sha256").update(url, "utf8").digest("hex")
+  return hash.substring(0, 16)
 }
 
 export function getLinearUploadHost(url: string): string | null {
@@ -108,6 +106,10 @@ export function getLinearUploadHost(url: string): string | null {
   } catch {
     return null
   }
+}
+
+async function ensureDir(dirPath: string): Promise<void> {
+  await mkdir(dirPath, { recursive: true })
 }
 
 async function downloadImage(
@@ -122,8 +124,10 @@ async function downloadImage(
   const filepath = join(imageDir, filename)
 
   try {
-    await Deno.stat(filepath)
-    return filepath
+    const s = await stat(filepath)
+    if (s.isFile()) {
+      return filepath
+    }
   } catch {
     /* fall through to download */
   }
@@ -144,7 +148,7 @@ async function downloadImage(
   }
 
   const data = new Uint8Array(await response.arrayBuffer())
-  await Deno.writeFile(filepath, data)
+  await writeFile(filepath, data)
 
   return filepath
 }

@@ -5,7 +5,7 @@
  * in terminal emulators that support OSC-8.
  */
 
-import type { Extension, Node, Options } from "@littletof/charmd"
+import type { Extension, Node, Options } from "./charmd/mod.ts"
 import { formatPathHyperlink, resolveHyperlinkFormat } from "./hyperlink.ts"
 
 /**

@@ -1,4 +1,5 @@
 import { findIssueIdentifierInText } from "./issue-identifier.ts"
+import { runCommand } from "./runtime.ts"
 
 /**
  * Utilities for jj (Jujutsu) version control system
@@ -22,21 +23,31 @@ export function formatIssueDescription(
  */
 export async function isJjChangeEmpty(): Promise<boolean> {
   // Check if description is empty
-  const descProcess = await new Deno.Command("jj", {
-    args: ["log", "-r", "@", "-T", "description", "--no-graph"],
-  }).output()
+  const descResult = await runCommand("jj", [
+    "log",
+    "-r",
+    "@",
+    "-T",
+    "description",
+    "--no-graph",
+  ])
 
-  const description = new TextDecoder().decode(descProcess.stdout).trim()
+  const description = descResult.stdout.trim()
   if (description !== "") {
     return false
   }
 
   // Check if there are any file changes using log -p
-  const diffProcess = await new Deno.Command("jj", {
-    args: ["log", "-p", "-r", "@", "--git", "--no-graph"],
-  }).output()
+  const diffResult = await runCommand("jj", [
+    "log",
+    "-p",
+    "-r",
+    "@",
+    "--git",
+    "--no-graph",
+  ])
 
-  const diffOutput = new TextDecoder().decode(diffProcess.stdout)
+  const diffOutput = diffResult.stdout
   // If there are file changes, the output will contain "diff --git"
   return !diffOutput.includes("diff --git")
 }
@@ -48,11 +59,9 @@ export async function isJjChangeEmpty(): Promise<boolean> {
 export async function prepareJjWorkingState(): Promise<void> {
   const isEmpty = await isJjChangeEmpty()
   if (!isEmpty) {
-    const process = await new Deno.Command("jj", {
-      args: ["new"],
-    }).output()
-    if (!process.success) {
-      console.error(new TextDecoder().decode(process.stderr))
+    const result = await runCommand("jj", ["new"])
+    if (!result.success) {
+      console.error(result.stderr)
       throw new Error("Failed to create new jj change")
     }
   }
@@ -62,11 +71,9 @@ export async function prepareJjWorkingState(): Promise<void> {
  * Sets the jj change description
  */
 export async function setJjDescription(description: string): Promise<void> {
-  const process = await new Deno.Command("jj", {
-    args: ["describe", "-m", description],
-  }).output()
-  if (!process.success) {
-    console.error(new TextDecoder().decode(process.stderr))
+  const result = await runCommand("jj", ["describe", "-m", description])
+  if (!result.success) {
+    console.error(result.stderr)
     throw new Error("Failed to set jj description")
   }
 }
@@ -75,11 +82,9 @@ export async function setJjDescription(description: string): Promise<void> {
  * Creates a new empty jj change
  */
 export async function createJjNewChange(): Promise<void> {
-  const process = await new Deno.Command("jj", {
-    args: ["new"],
-  }).output()
-  if (!process.success) {
-    console.error(new TextDecoder().decode(process.stderr))
+  const result = await runCommand("jj", ["new"])
+  if (!result.success) {
+    console.error(result.stderr)
     throw new Error("Failed to create new jj change")
   }
 }
@@ -135,21 +140,18 @@ export function parseJjTrailersOutput(output: string): string | null {
 export async function getJjLinearIssue(): Promise<string | null> {
   // Use jj log with trailers template to extract Linear-issue trailer value
   // Search all ancestors starting from current change
-  const process = await new Deno.Command("jj", {
-    args: [
-      "log",
-      "-r",
-      "::@",
-      "-T",
-      'trailers.map(|t| if(t.key() == "Linear-issue", t.value(), ""))',
-      "--no-graph",
-    ],
-  }).output()
+  const result = await runCommand("jj", [
+    "log",
+    "-r",
+    "::@",
+    "-T",
+    'trailers.map(|t| if(t.key() == "Linear-issue", t.value(), ""))',
+    "--no-graph",
+  ])
 
-  if (!process.success) {
+  if (!result.success) {
     return null
   }
 
-  const output = new TextDecoder().decode(process.stdout)
-  return parseJjTrailersOutput(output)
+  return parseJjTrailersOutput(result.stdout)
 }
