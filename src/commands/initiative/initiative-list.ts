@@ -75,6 +75,7 @@ const STATUS_INPUT_MAP: Record<string, string> = {
 }
 
 export const listCommand = new Command("list")
+  .alias("ls")
   .description("List initiatives")
   .option(
     "-s, --status <status>",

@@ -90,6 +90,7 @@ const HEALTH_DISPLAY: Record<string, string> = {
 export const listCommand = new Command("list")
   .description("List status updates for an initiative")
   .alias("l")
+  .alias("ls")
   .argument("<initiativeId>")
   .option("-j, --json", "Output as JSON")
   .addOption(
