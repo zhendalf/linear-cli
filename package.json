@@ -22,16 +22,24 @@
     "generate-skill-docs": "bun skills/linear-cli/scripts/generate-docs.ts",
     "prepare": "lefthook install || true"
   },
-  "dependencies": {
+  "//": "All runtime libraries are bundled into dist/main.js by scripts/build.ts, so they are devDependencies (build-time only). The published package has NO runtime dependencies — installing it pulls only the self-contained bundle.",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/client-preset": "^4.6.1",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@inquirer/prompts": "^7.5.2",
     "@inquirer/search": "^3.0.10",
+    "@types/bun": "^1.3.14",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^22.15.29",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "dotenv": "^16.5.0",
     "env-paths": "^3.0.0",
     "graphql": "^16.10.0",
     "graphql-request": "^7.1.2",
+    "lefthook": "^1.11.13",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm-strikethrough": "^2.0.0",
     "micromark-extension-gfm-strikethrough": "^2.1.0",
@@ -43,19 +51,10 @@
     "sanitize-filename": "^1.6.4",
     "smol-toml": "^1.3.4",
     "string-width": "^7.2.0",
+    "typescript": "^5.8.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0",
     "valibot": "^1.1.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@graphql-codegen/cli": "^5.0.5",
-    "@graphql-codegen/client-preset": "^4.6.1",
-    "@types/bun": "^1.3.14",
-    "@types/mdast": "^4.0.4",
-    "@types/node": "^22.15.29",
-    "lefthook": "^1.11.13",
-    "typescript": "^5.8.3"
   },
   "trustedDependencies": ["@biomejs/biome"]
 }
