@@ -72,6 +72,14 @@ Conflicts between subsystem reports are resolved here to a **single choice**. No
 
 Phases A→C are mostly sequential foundations; **Phase D batches and Phase E are heavily file-parallelizable** once the shims and the commander shell exist. Phase F (tests) trails the code it verifies. Phase G is cleanup.
 
+### Process improvements (adopted after D1 reflection)
+After A/B/C + D1 shipped, three weaknesses were addressed to shift verification left:
+1. **Reorder: Phase E (rendering) runs BEFORE D2–D7.** Most list/view commands import `display.ts`/`styling.ts`/`charmd`; porting E first lets every later command batch compile, render, snapshot, and live-smoke as it lands (and front-loads the S1 charmd risk).
+2. **Incremental green gate — `tsconfig.ported.json`.** An explicit include-list of ported files (grows each phase) that MUST typecheck with 0 errors (`bun x tsc -p tsconfig.ported.json`). Replaces eyeballing grep'd global tsc output; catches regressions in already-ported code. Converges to the full tree by D7.
+3. **Test harness online early (after E), per-batch verification.** Build the `bun:test` in-process commander snapshot harness + `node:http` mock server (the Phase F infra) right after E, then each D batch ships WITH snapshot tests + a read-only live smoke against the test workspace. Phase F becomes "finalize + parity-diff + per-folder-key tests" rather than "build the harness from scratch at the end".
+
+**Revised order:** E → test-infra → D2 → D3 → D4 → D5 → D6 → D7 → F(finalize) → G.
+
 ### Phase A — Scaffold & tooling
 **Entry:** clean tree on a feature branch.
 **Work:** Author `package.json` (name `@zhendalf/linear-cli`, `version` `2.0.0`, `bin: { "linear": "./dist/main.js" }`, `type:module`, `engines`, `files`, scripts), `tsconfig.json` (`bundler` resolution, `allowImportingTsExtensions`, `noEmit`), `tsup.config.ts`, `biome.json`, `vitest.config.ts`. Add all deps from §2. Wire `codegen` script (`graphql-codegen --config codegen.ts` via tsx) and run it so `src/__codegen__/` exists. Update `mise.toml` (deno→node 20 + optional bun). Repoint the 3 `deno.json` version imports to `package.json`. DELETE `deno.json`, `deno.lock`, `dist-workspace.toml`, `.github/build-setup.yml`. Port `skills/linear-cli/scripts/generate-docs.ts` shebang + `@std/path`.
