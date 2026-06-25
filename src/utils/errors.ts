@@ -9,13 +9,14 @@
  */
 
 import { ClientError } from "graphql-request"
-import { gray, red, setColorEnabled } from "@std/fmt/colors"
+import chalk from "chalk"
+import { isStderrTTY } from "./runtime.ts"
 
 /**
  * Check if debug mode is enabled via LINEAR_DEBUG environment variable.
  */
 export function isDebugMode(): boolean {
-  const debug = Deno.env.get("LINEAR_DEBUG")
+  const debug = process.env["LINEAR_DEBUG"]
   return debug === "1" || debug === "true"
 }
 
@@ -132,7 +133,10 @@ export function isClientError(error: unknown): error is ClientError {
  * In debug mode (LINEAR_DEBUG=1): Also shows the full error details
  */
 export function handleError(error: unknown, context?: string): never {
-  setColorEnabled(Deno.stderr.isTerminal())
+  // Mirror the Deno behavior: only enable chalk color when stderr is a TTY
+  if (!isStderrTTY()) {
+    chalk.level = 0
+  }
 
   if (error instanceof CliError) {
     printCliError(error, context)
@@ -144,15 +148,15 @@ export function handleError(error: unknown, context?: string): never {
     printUnknownError(error, context)
   }
 
-  Deno.exit(1)
+  process.exit(1)
 }
 
 function printCliError(error: CliError, context?: string): void {
   const prefix = context ? `${context}: ` : ""
-  console.error(red(`✗ ${prefix}${error.userMessage}`))
+  console.error(chalk.red(`✗ ${prefix}${error.userMessage}`))
 
   if (error.suggestion) {
-    console.error(gray(`  ${error.suggestion}`))
+    console.error(chalk.gray(`  ${error.suggestion}`))
   }
 
   if (isDebugMode() && error.cause) {
@@ -166,9 +170,9 @@ function printGraphQLError(error: ClientError, context?: string): void {
 
   // Check for common error patterns and provide helpful messages
   if (isNotFoundError(error)) {
-    console.error(red(`✗ ${prefix}${message}`))
+    console.error(chalk.red(`✗ ${prefix}${message}`))
   } else {
-    console.error(red(`✗ ${prefix}${message}`))
+    console.error(chalk.red(`✗ ${prefix}${message}`))
   }
 
   if (isDebugMode()) {
@@ -176,19 +180,19 @@ function printGraphQLError(error: ClientError, context?: string): void {
     const query = error.request?.query
     const vars = error.request?.variables
     if (query) {
-      console.error(gray("\nQuery:"))
-      console.error(gray(String(query).trim()))
+      console.error(chalk.gray("\nQuery:"))
+      console.error(chalk.gray(String(query).trim()))
     }
     if (vars) {
-      console.error(gray("\nVariables:"))
-      console.error(gray(JSON.stringify(vars, null, 2)))
+      console.error(chalk.gray("\nVariables:"))
+      console.error(chalk.gray(JSON.stringify(vars, null, 2)))
     }
   }
 }
 
 function printGenericError(error: Error, context?: string): void {
   const prefix = context ? `${context}: ` : ""
-  console.error(red(`✗ ${prefix}${error.message}`))
+  console.error(chalk.red(`✗ ${prefix}${error.message}`))
 
   if (isDebugMode()) {
     printDebugInfo(error)
@@ -197,18 +201,18 @@ function printGenericError(error: Error, context?: string): void {
 
 function printUnknownError(error: unknown, context?: string): void {
   const prefix = context ? `${context}: ` : ""
-  console.error(red(`✗ ${prefix}${String(error)}`))
+  console.error(chalk.red(`✗ ${prefix}${String(error)}`))
 
   if (isDebugMode()) {
-    console.error(gray("\nDebug info:"))
-    console.error(gray(JSON.stringify(error, null, 2)))
+    console.error(chalk.gray("\nDebug info:"))
+    console.error(chalk.gray(JSON.stringify(error, null, 2)))
   }
 }
 
 function printDebugInfo(error: unknown): void {
-  console.error(gray("\nStack trace (LINEAR_DEBUG=1):"))
+  console.error(chalk.gray("\nStack trace (LINEAR_DEBUG=1):"))
   if (error instanceof Error && error.stack) {
-    console.error(gray(error.stack))
+    console.error(chalk.gray(error.stack))
   }
 }
 

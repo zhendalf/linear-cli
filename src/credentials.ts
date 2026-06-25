@@ -1,66 +1,57 @@
-import { parse, stringify } from "@std/toml"
-import { dirname, join } from "@std/path"
-import { ensureDir } from "@std/fs"
-import { yellow } from "@std/fmt/colors"
-import { deletePassword, getPassword, setPassword } from "./keyring/index.ts"
+/**
+ * Credentials store — JSON-backed, 0600 permissions.
+ *
+ * File format: { "default": "<workspace>", "<workspace>": "lin_api_...", ... }
+ *
+ * All keyring/migration code has been removed (PORT_PLAN.md §7, locked decision).
+ * Users must re-run `linear auth login` after upgrading from the Deno release.
+ */
 
-function errorDetail(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
+import { readFile, writeFile, mkdir, chmod } from "node:fs/promises"
+import { existsSync } from "node:fs"
+import { dirname } from "node:path"
+import { credentialsFilePath } from "./utils/paths.ts"
+import { isWindows } from "./utils/runtime.ts"
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface Credentials {
   default?: string
   workspaces: string[]
 }
 
-let credentials: Credentials = { workspaces: [] }
-let isInlineFormat = false
-
-const apiKeyCache = new Map<string, string>()
-
-/**
- * Get the path to the credentials file.
- * Follows XDG Base Directory Specification on Unix-like systems,
- * and uses APPDATA on Windows.
- */
-export function getCredentialsPath(): string | null {
-  if (Deno.build.os === "windows") {
-    const appData = Deno.env.get("APPDATA")
-    if (appData) {
-      return join(appData, "linear", "credentials.toml")
-    }
-  } else {
-    const xdgConfigHome = Deno.env.get("XDG_CONFIG_HOME")
-    const homeDir = Deno.env.get("HOME")
-    if (xdgConfigHome) {
-      return join(xdgConfigHome, "linear", "credentials.toml")
-    } else if (homeDir) {
-      return join(homeDir, ".config", "linear", "credentials.toml")
-    }
-  }
-  return null
-}
-
-interface InlineCredentials {
+/** Serialized shape of the credentials JSON file. */
+interface CredentialsJson {
   default?: string
   [workspace: string]: string | undefined
 }
 
-// The inline format stores API keys directly in the TOML file as
-// `workspace-name = "lin_api_..."`. The keyring format uses a `workspaces`
-// array and stores keys in the OS keyring instead.
-function hasInlineKeys(
-  parsed: Record<string, unknown>,
-): parsed is InlineCredentials {
-  for (const [key, value] of Object.entries(parsed)) {
-    if (key === "default") continue
-    if (key === "workspaces") return false
-    if (typeof value === "string") return true
-  }
-  return false
+// ---------------------------------------------------------------------------
+// Module-level state
+// ---------------------------------------------------------------------------
+
+let credentials: Credentials = { workspaces: [] }
+const apiKeyCache = new Map<string, string>()
+
+// ---------------------------------------------------------------------------
+// Paths
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the path to the credentials file.
+ * Returns null only when the OS provides no usable directory (extremely rare).
+ */
+export function getCredentialsPath(): string | null {
+  return credentialsFilePath()
 }
 
-function parseInlineCredentials(parsed: InlineCredentials): Credentials {
+// ---------------------------------------------------------------------------
+// Serialization helpers
+// ---------------------------------------------------------------------------
+
+function parseCredentialsJson(parsed: CredentialsJson): Credentials {
   const workspaces: string[] = []
   for (const [key, value] of Object.entries(parsed)) {
     if (key === "default") continue
@@ -75,62 +66,13 @@ function parseInlineCredentials(parsed: InlineCredentials): Credentials {
   }
 }
 
-function parseKeyringCredentials(parsed: Record<string, unknown>): Credentials {
-  const workspaces = Array.isArray(parsed.workspaces)
-    ? [
-      ...new Set((parsed.workspaces as unknown[]).filter((v): v is string =>
-        typeof v === "string"
-      )),
-    ]
-    : []
-
-  const defaultWs = typeof parsed.default === "string"
-    ? parsed.default
-    : undefined
-  const defaultIsValid = defaultWs != null && workspaces.includes(defaultWs)
-
-  if (defaultWs != null && !defaultIsValid) {
-    console.error(
-      yellow(
-        `Warning: Default workspace "${defaultWs}" is not in the workspaces list. ` +
-          `Run \`linear auth default <workspace>\` to set a valid default.`,
-      ),
-    )
-  }
-
-  return {
-    default: defaultIsValid ? defaultWs : undefined,
-    workspaces,
-  }
-}
-
-async function populateKeyringCache(workspaces: string[]): Promise<void> {
-  await Promise.all(workspaces.map(async (ws) => {
-    try {
-      const key = await getPassword(ws)
-      if (key != null) {
-        apiKeyCache.set(ws, key)
-      } else {
-        console.error(
-          yellow(
-            `Warning: No keyring entry for workspace "${ws}". Run \`linear auth login\` to re-authenticate.`,
-          ),
-        )
-      }
-    } catch (error) {
-      console.error(
-        yellow(
-          `Warning: Failed to read keyring for workspace "${ws}": ${
-            errorDetail(error)
-          }`,
-        ),
-      )
-    }
-  }))
-}
+// ---------------------------------------------------------------------------
+// Load / save
+// ---------------------------------------------------------------------------
 
 /**
- * Load credentials from the credentials file.
+ * Load credentials from disk.
+ * Safe to call multiple times; each call resets in-memory state from disk.
  */
 export async function loadCredentials(): Promise<Credentials> {
   const path = getCredentialsPath()
@@ -138,116 +80,51 @@ export async function loadCredentials(): Promise<Credentials> {
     return { workspaces: [] }
   }
 
-  let file: string
+  let raw: string
   try {
-    file = await Deno.readTextFile(path)
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      return { workspaces: [] }
+    raw = await readFile(path, "utf8")
+  } catch (err) {
+    const e = err as NodeJS.ErrnoException
+    if (e.code === "ENOENT") {
+      credentials = { workspaces: [] }
+      apiKeyCache.clear()
+      return credentials
     }
     throw new Error(
-      `Failed to read credentials file at ${path}: ${errorDetail(error)}`,
+      `Failed to read credentials file at ${path}: ${e.message}`,
     )
   }
 
-  let parsed: Record<string, unknown>
+  let parsed: CredentialsJson
   try {
-    parsed = parse(file) as Record<string, unknown>
-  } catch (error) {
+    parsed = JSON.parse(raw) as CredentialsJson
+  } catch (err) {
     throw new Error(
       `Failed to parse credentials file at ${path}. The file may be corrupted.\n` +
         `You can delete it and re-authenticate with \`linear auth login\`.\n` +
-        `Parse error: ${errorDetail(error)}`,
+        `Parse error: ${(err as Error).message}`,
     )
   }
 
   apiKeyCache.clear()
-
-  if (hasInlineKeys(parsed)) {
-    isInlineFormat = true
-    credentials = parseInlineCredentials(parsed)
-    return credentials
-  }
-
-  isInlineFormat = false
-
-  credentials = parseKeyringCredentials(parsed)
-  await populateKeyringCache(credentials.workspaces)
-
+  credentials = parseCredentialsJson(parsed)
   return credentials
 }
 
 /**
- * Save credentials to the credentials file.
+ * Persist the current in-memory credentials to disk with mode 0600.
  */
-async function saveCredentials(): Promise<void> {
+async function save(): Promise<void> {
   const path = getCredentialsPath()
   if (!path) {
     throw new Error("Could not determine credentials path")
   }
 
   // Ensure the directory exists
-  const dir = dirname(path)
-  await ensureDir(dir)
+  await mkdir(dirname(path), { recursive: true })
 
-  // Build a clean object for serialization
-  // Put default first, then workspaces in alphabetical order
-  const ordered: Record<string, unknown> = {}
-  if (credentials.default != null) {
-    ordered.default = credentials.default
-  }
-  ordered.workspaces = [...credentials.workspaces].sort()
-
-  await Deno.writeTextFile(path, stringify(ordered))
-}
-
-/**
- * Save credentials in inline (plaintext) format, storing the API key
- * directly in the TOML file rather than in the system keyring.
- */
-async function saveInlineCredentials(
-  workspace: string,
-  apiKey: string,
-): Promise<void> {
-  const path = getCredentialsPath()
-  if (!path) {
-    throw new Error("Could not determine credentials path")
-  }
-
-  const dir = dirname(path)
-  await ensureDir(dir)
-
-  const ordered: Record<string, string> = {}
-  if (credentials.default != null) {
-    ordered.default = credentials.default
-  }
-  for (const ws of [...credentials.workspaces].sort()) {
-    const key = ws === workspace ? apiKey : apiKeyCache.get(ws)
-    if (key == null) {
-      throw new Error(
-        `Cannot save inline credentials: API key for workspace "${ws}" is missing from cache`,
-      )
-    }
-    ordered[ws] = key
-  }
-
-  await Deno.writeTextFile(path, stringify(ordered))
-}
-
-/**
- * Save all current inline credentials from cache.
- * Used when modifying the workspace list (remove, set default) in inline mode.
- */
-async function saveAllInlineCredentials(): Promise<void> {
-  const path = getCredentialsPath()
-  if (!path) {
-    throw new Error("Could not determine credentials path")
-  }
-
-  const dir = dirname(path)
-  await ensureDir(dir)
-
-  const ordered: Record<string, string> = {}
+  // Build ordered JSON object: default first, then workspaces alphabetically
+  const ordered: CredentialsJson = {}
   if (credentials.default != null) {
     ordered.default = credentials.default
   }
@@ -255,117 +132,39 @@ async function saveAllInlineCredentials(): Promise<void> {
     const key = apiKeyCache.get(ws)
     if (key == null) {
       throw new Error(
-        `Cannot save inline credentials: API key for workspace "${ws}" is missing from cache`,
+        `Cannot save credentials: API key for workspace "${ws}" is missing from cache`,
       )
     }
     ordered[ws] = key
   }
 
-  await Deno.writeTextFile(path, stringify(ordered))
-}
+  const content = JSON.stringify(ordered, null, 2) + "\n"
+  await writeFile(path, content, { mode: 0o600 })
 
-/**
- * Migrate all inline (plaintext) credentials to the system keyring.
- * Returns the list of workspaces that were migrated.
- */
-export async function migrateToKeyring(): Promise<string[]> {
-  if (!isInlineFormat) {
-    return []
-  }
-
-  const migrated: string[] = []
-  for (const ws of credentials.workspaces) {
-    const key = apiKeyCache.get(ws)
-    if (key == null) continue
+  // Explicit chmod to ensure mode even if umask was restrictive
+  if (!isWindows) {
     try {
-      await setPassword(ws, key)
-      migrated.push(ws)
-    } catch (error) {
-      // Roll back already-written keyring entries (best effort)
-      for (const written of migrated) {
-        try {
-          await deletePassword(written)
-        } catch {
-          // best effort cleanup
-        }
-      }
-      throw new Error(
-        `Failed to store API key in system keyring for workspace "${ws}": ${
-          errorDetail(error)
-        }. Rolled back ${migrated.length} already-written entries.`,
-      )
+      await chmod(path, 0o600)
+    } catch {
+      // Non-fatal: best effort on unusual filesystems
     }
   }
-
-  isInlineFormat = false
-  await saveCredentials()
-  return migrated
 }
 
-/**
- * Check whether the current credentials file uses inline (plaintext) format.
- */
-export function isUsingInlineFormat(): boolean {
-  return isInlineFormat
-}
+// ---------------------------------------------------------------------------
+// Public API — matches the exported surface expected by all callers
+// ---------------------------------------------------------------------------
 
 /**
  * Add or update a credential.
  * If this is the first workspace, it becomes the default.
- * When `plaintext` is true, the key is stored directly in the TOML file.
- * When not specified, preserves the current credential format.
  */
 export async function addCredential(
   workspace: string,
   apiKey: string,
-  options?: { plaintext?: boolean },
+  // options param kept for API compatibility with callers that pass { plaintext }
+  _options?: { plaintext?: boolean },
 ): Promise<void> {
-  const useInline = options?.plaintext ?? isInlineFormat
-
-  // When explicitly requesting keyring storage while currently in inline format,
-  // migrate all existing keys to keyring first to avoid data loss.
-  if (options?.plaintext === false && isInlineFormat) {
-    apiKeyCache.set(workspace, apiKey)
-    const isNew = !credentials.workspaces.includes(workspace)
-    if (isNew) {
-      credentials.workspaces.push(workspace)
-    }
-    if (isNew && credentials.workspaces.length === 1) {
-      credentials.default = workspace
-    }
-
-    // Migrate all keys (including the new one) to keyring
-    for (const ws of credentials.workspaces) {
-      const key = apiKeyCache.get(ws)
-      if (key == null) continue
-      try {
-        await setPassword(ws, key)
-      } catch (error) {
-        throw new Error(
-          `Failed to store API key in system keyring for workspace "${ws}": ${
-            errorDetail(error)
-          }`,
-        )
-      }
-    }
-
-    isInlineFormat = false
-    await saveCredentials()
-    return
-  }
-
-  if (!useInline) {
-    try {
-      await setPassword(workspace, apiKey)
-    } catch (error) {
-      throw new Error(
-        `Failed to store API key in system keyring for workspace "${workspace}": ${
-          errorDetail(error)
-        }`,
-      )
-    }
-  }
-
   apiKeyCache.set(workspace, apiKey)
 
   const isNew = !credentials.workspaces.includes(workspace)
@@ -378,31 +177,15 @@ export async function addCredential(
     credentials.default = workspace
   }
 
-  if (useInline) {
-    await saveInlineCredentials(workspace, apiKey)
-  } else {
-    await saveCredentials()
-  }
+  await save()
 }
 
 /**
  * Remove a credential.
- * If removing the default, reassign to another workspace or clear.
+ * If removing the default, reassigns to the next available workspace.
  */
 export async function removeCredential(workspace: string): Promise<void> {
-  if (!isInlineFormat) {
-    try {
-      await deletePassword(workspace)
-    } catch (error) {
-      throw new Error(
-        `Failed to remove API key from system keyring for workspace "${workspace}": ${
-          errorDetail(error)
-        }`,
-      )
-    }
-  }
   apiKeyCache.delete(workspace)
-
   credentials.workspaces = credentials.workspaces.filter((w) => w !== workspace)
 
   // If we removed the default, reassign it
@@ -410,11 +193,7 @@ export async function removeCredential(workspace: string): Promise<void> {
     credentials.default = credentials.workspaces[0]
   }
 
-  if (isInlineFormat) {
-    await saveAllInlineCredentials()
-  } else {
-    await saveCredentials()
-  }
+  await save()
 }
 
 /**
@@ -425,16 +204,11 @@ export async function setDefaultWorkspace(workspace: string): Promise<void> {
     throw new Error(`Workspace "${workspace}" not found in credentials`)
   }
   credentials.default = workspace
-
-  if (isInlineFormat) {
-    await saveAllInlineCredentials()
-  } else {
-    await saveCredentials()
-  }
+  await save()
 }
 
 /**
- * Get the API key for a workspace, or the default if not specified.
+ * Get the API key for a workspace (or the default workspace if not specified).
  */
 export function getCredentialApiKey(workspace?: string): string | undefined {
   if (workspace != null) {
@@ -467,5 +241,25 @@ export function hasWorkspace(workspace: string): boolean {
   return credentials.workspaces.includes(workspace)
 }
 
-// Load credentials at startup
+// ---------------------------------------------------------------------------
+// Deprecated stubs kept so auth-migrate / auth-status still compile in Phase D
+// ---------------------------------------------------------------------------
+
+/**
+ * @deprecated Inline format is now the only format. Always returns true.
+ */
+export function isUsingInlineFormat(): boolean {
+  return true
+}
+
+/**
+ * @deprecated Keyring is gone. No-op; returns [].
+ */
+export async function migrateToKeyring(): Promise<string[]> {
+  return []
+}
+
+// ---------------------------------------------------------------------------
+// Module initialisation: load credentials at import time (top-level await)
+// ---------------------------------------------------------------------------
 await loadCredentials()

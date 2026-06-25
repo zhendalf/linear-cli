@@ -1,34 +1,54 @@
-import { parse } from "@std/toml"
-import { join } from "@std/path"
-import { load } from "@std/dotenv"
+/**
+ * Config loader: reads `.linear.toml` (global + project + git-root) and
+ * `.env` files, then exposes a typed `getOption()` accessor.
+ *
+ * Ported from Deno: @std/toml → smol-toml, @std/path → node:path,
+ * @std/dotenv → dotenv (programmatic parse), Deno.Command → runCommand,
+ * Deno.env → process.env, Deno.build.os → isWindows.
+ *
+ * Module-top `await` replaced with an explicit `init()` for testability, but
+ * the module still calls `init()` at import time to preserve the existing
+ * behaviour (config is ready by the time any command runs).
+ */
+
+import { parse as parseToml } from "smol-toml"
+import { join } from "node:path"
+import { readFileSync } from "node:fs"
+import { readFile, stat } from "node:fs/promises"
+import { parse as parseDotenv } from "dotenv"
 import * as v from "valibot"
+import { runCommand, isWindows } from "./utils/runtime.ts"
 
 let config: Record<string, unknown> = {}
+
+// ---------------------------------------------------------------------------
+// TOML file loading
+// ---------------------------------------------------------------------------
 
 async function loadConfigFromPath(
   path: string,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const file = await Deno.readTextFile(path)
-    return parse(file) as Record<string, unknown>
+    const file = await readFile(path, "utf8")
+    return parseToml(file) as Record<string, unknown>
   } catch {
     return null
   }
 }
 
-async function loadConfig() {
+async function loadConfig(): Promise<void> {
   // Build list of global config paths (lowest priority)
   const globalConfigPaths: string[] = []
-  if (Deno.build.os === "windows") {
+  if (isWindows) {
     // Windows: use APPDATA (Roaming) for user config
-    const appData = Deno.env.get("APPDATA")
+    const appData = process.env["APPDATA"]
     if (appData) {
       globalConfigPaths.push(join(appData, "linear", "linear.toml"))
     }
   } else {
     // Unix-like: follow XDG Base Directory Specification
-    const xdgConfigHome = Deno.env.get("XDG_CONFIG_HOME")
-    const homeDir = Deno.env.get("HOME")
+    const xdgConfigHome = process.env["XDG_CONFIG_HOME"]
+    const homeDir = process.env["HOME"]
     if (xdgConfigHome) {
       globalConfigPaths.push(join(xdgConfigHome, "linear", "linear.toml"))
     } else if (homeDir) {
@@ -41,16 +61,12 @@ async function loadConfig() {
     "./linear.toml",
     "./.linear.toml",
   ]
-  try {
-    const gitProcess = await new Deno.Command("git", {
-      args: ["rev-parse", "--show-toplevel"],
-    }).output()
-    const gitRoot = new TextDecoder().decode(gitProcess.stdout).trim()
+  const gitResult = await runCommand("git", ["rev-parse", "--show-toplevel"])
+  if (gitResult.success) {
+    const gitRoot = gitResult.stdout.trim()
     projectConfigPaths.push(join(gitRoot, "linear.toml"))
     projectConfigPaths.push(join(gitRoot, ".linear.toml"))
     projectConfigPaths.push(join(gitRoot, ".config", "linear.toml"))
-  } catch {
-    // Not in a git repository; ignore additional paths.
   }
 
   // Load global config first (lowest priority)
@@ -72,45 +88,75 @@ async function loadConfig() {
   }
 }
 
-// Load .env files
-async function loadEnvFiles() {
-  let envVars: Record<string, string> = {}
-  if (await Deno.stat(".env").catch(() => null)) {
-    envVars = await load()
-  } else {
-    try {
-      const gitRoot = new TextDecoder()
-        .decode(
-          await new Deno.Command("git", {
-            args: ["rev-parse", "--show-toplevel"],
-          })
-            .output()
-            .then((output) => output.stdout),
-        )
-        .trim()
+// ---------------------------------------------------------------------------
+// .env file loading
+// ---------------------------------------------------------------------------
 
+/** Parse a .env file at `path` and return key-value pairs. */
+function parseDotenvFile(path: string): Record<string, string> {
+  try {
+    const content = readFileSync(path, "utf8")
+    return parseDotenv(content)
+  } catch {
+    return {}
+  }
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    const s = await stat(path)
+    return s.isFile()
+  } catch {
+    return false
+  }
+}
+
+async function loadEnvFiles(): Promise<void> {
+  let envVars: Record<string, string> = {}
+
+  if (await fileExists(".env")) {
+    envVars = parseDotenvFile(".env")
+  } else {
+    const gitResult = await runCommand("git", ["rev-parse", "--show-toplevel"])
+    if (gitResult.success) {
+      const gitRoot = gitResult.stdout.trim()
       const gitRootEnvPath = join(gitRoot, ".env")
-      if (await Deno.stat(gitRootEnvPath).catch(() => null)) {
-        envVars = await load({ envPath: gitRootEnvPath })
+      if (await fileExists(gitRootEnvPath)) {
+        envVars = parseDotenvFile(gitRootEnvPath)
       }
-    } catch {
-      // Silently continue if not in a git repo
     }
   }
 
-  // Apply known environment variables from .env
+  // Apply known environment variables from .env (same precedence as dotenv)
   const ALLOWED_ENV_VAR_PREFIXES = ["LINEAR_", "GH_", "GITHUB_"]
   for (const [key, value] of Object.entries(envVars)) {
     if (ALLOWED_ENV_VAR_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-      // Use same precedence as dotenv
-      if (Deno.env.get(key) !== undefined) continue
-      Deno.env.set(key, value)
+      // dotenv precedence: don't override an already-set env var
+      if (process.env[key] !== undefined) continue
+      process.env[key] = value
     }
   }
 }
 
-await loadEnvFiles()
-await loadConfig()
+// ---------------------------------------------------------------------------
+// Public init — called at module load (top-level await preserved for compat)
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialise config + env-file loading.
+ * Exported so tests can call it explicitly in a controlled environment.
+ * The module itself calls it at import time via top-level await.
+ */
+export async function init(): Promise<void> {
+  await loadEnvFiles()
+  await loadConfig()
+}
+
+await init()
+
+// ---------------------------------------------------------------------------
+// Schema + option accessor
+// ---------------------------------------------------------------------------
 
 // Boolean coercion following Python's distutils.util.strtobool standard
 const TRUTHY = ["true", "yes", "y", "on", "1", "t"]
@@ -148,9 +194,11 @@ export type Options = v.InferOutput<typeof OptionsSchema>
 export type OptionName = keyof Options
 
 function getRawOption(optionName: OptionName, cliValue?: string): unknown {
-  return cliValue ??
-    Deno.env.get("LINEAR_" + optionName.toUpperCase()) ??
+  return (
+    cliValue ??
+    process.env["LINEAR_" + optionName.toUpperCase()] ??
     config[optionName]
+  )
 }
 
 export function getOption<T extends OptionName>(
@@ -165,10 +213,13 @@ export function getOption<T extends OptionName>(
   return undefined as Options[T]
 }
 
-// CLI workspace set via --workspace flag
+// ---------------------------------------------------------------------------
+// CLI workspace (--workspace flag)
+// ---------------------------------------------------------------------------
+
 let cliWorkspace: string | undefined
 
-export function setCliWorkspace(workspace: string | undefined) {
+export function setCliWorkspace(workspace: string | undefined): void {
   cliWorkspace = workspace
 }
 
