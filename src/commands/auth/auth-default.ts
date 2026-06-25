@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import {
   getDefaultWorkspace,
   getWorkspaces,
@@ -7,12 +6,12 @@ import {
   setDefaultWorkspace,
 } from "../../credentials.ts"
 import { AuthError, handleError, NotFoundError } from "../../utils/errors.ts"
+import { select } from "../../utils/prompt.ts"
 
-export const defaultCommand = new Command()
-  .name("default")
+export const defaultCommand = new Command("default")
   .description("Set the default workspace")
-  .arguments("[workspace:string]")
-  .action(async (_options, workspace?: string) => {
+  .argument("[workspace]", "Workspace slug to set as default")
+  .action(async (workspace: string | undefined) => {
     try {
       const workspaces = getWorkspaces()
 
@@ -31,9 +30,9 @@ export const defaultCommand = new Command()
 
       // If no workspace specified, prompt to select one
       if (!workspace) {
-        workspace = await Select.prompt({
+        workspace = await select({
           message: "Select default workspace",
-          options: workspaces.map((ws) => ({
+          choices: workspaces.map((ws) => ({
             name: ws === currentDefault ? `${ws} (current)` : ws,
             value: ws,
           })),

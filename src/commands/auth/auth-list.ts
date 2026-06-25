@@ -1,5 +1,5 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
+import { Command } from "commander"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import {
   getCredentialApiKey,
@@ -68,8 +68,7 @@ async function fetchWorkspaceInfo(
   }
 }
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List configured workspaces")
   .action(async () => {
     try {
@@ -99,11 +98,11 @@ export const listCommand = new Command()
       // Calculate column widths
       const workspaceWidth = Math.max(
         9, // "WORKSPACE" header
-        ...infos.map((i) => unicodeWidth(i.workspace)),
+        ...infos.map((i) => stringWidth(i.workspace)),
       )
       const orgWidth = Math.max(
         8, // "ORG NAME" header
-        ...infos.map((i) => unicodeWidth(i.orgName ?? i.error ?? "")),
+        ...infos.map((i) => stringWidth(i.orgName ?? i.error ?? "")),
       )
 
       // Print header

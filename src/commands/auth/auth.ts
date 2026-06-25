@@ -1,22 +1,23 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 
 import { defaultCommand } from "./auth-default.ts"
 import { listCommand } from "./auth-list.ts"
 import { loginCommand } from "./auth-login.ts"
 import { logoutCommand } from "./auth-logout.ts"
-import { migrateCommand } from "./auth-migrate.ts"
+import { statusCommand } from "./auth-status.ts"
 import { tokenCommand } from "./auth-token.ts"
 import { whoamiCommand } from "./auth-whoami.ts"
 
-export const authCommand = new Command()
+export const authCommand = new Command("auth")
   .description("Manage Linear authentication")
-  .action(function () {
-    this.showHelp()
+  .passThroughOptions()
+  .action((_opts, cmd) => {
+    cmd.help()
   })
-  .command("login", loginCommand)
-  .command("logout", logoutCommand)
-  .command("list", listCommand)
-  .command("default", defaultCommand)
-  .command("token", tokenCommand)
-  .command("whoami", whoamiCommand)
-  .command("migrate", migrateCommand)
+  .addCommand(loginCommand)
+  .addCommand(logoutCommand)
+  .addCommand(listCommand)
+  .addCommand(defaultCommand)
+  .addCommand(tokenCommand)
+  .addCommand(whoamiCommand)
+  .addCommand(statusCommand)

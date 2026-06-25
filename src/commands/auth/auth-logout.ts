@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Confirm, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import {
   getDefaultWorkspace,
   getWorkspaces,
@@ -7,13 +6,13 @@ import {
   removeCredential,
 } from "../../credentials.ts"
 import { AuthError, handleError, NotFoundError } from "../../utils/errors.ts"
+import { select, confirm } from "../../utils/prompt.ts"
 
-export const logoutCommand = new Command()
-  .name("logout")
+export const logoutCommand = new Command("logout")
   .description("Remove a workspace credential")
-  .arguments("[workspace:string]")
+  .argument("[workspace]", "Workspace slug to remove")
   .option("-f, --force", "Skip confirmation prompt")
-  .action(async (options, workspace?: string) => {
+  .action(async (workspace: string | undefined, options) => {
     try {
       const workspaces = getWorkspaces()
 
@@ -27,9 +26,9 @@ export const logoutCommand = new Command()
           workspace = workspaces[0]
         } else {
           const defaultWorkspace = getDefaultWorkspace()
-          workspace = await Select.prompt({
+          workspace = await select({
             message: "Select workspace to remove",
-            options: workspaces.map((ws) => ({
+            choices: workspaces.map((ws) => ({
               name: ws === defaultWorkspace ? `${ws} (default)` : ws,
               value: ws,
             })),
@@ -43,7 +42,7 @@ export const logoutCommand = new Command()
 
       // Confirm removal unless --force is specified
       if (!options.force) {
-        const confirmed = await Confirm.prompt({
+        const confirmed = await confirm({
           message: `Remove credentials for workspace "${workspace}"?`,
           default: false,
         })

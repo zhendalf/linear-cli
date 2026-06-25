@@ -92,7 +92,6 @@ Environment Variables:
 //   label          → "l"
 // ---------------------------------------------------------------------------
 
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(authCommand)
 // @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(issueCommand)

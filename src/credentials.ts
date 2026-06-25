@@ -242,24 +242,6 @@ export function hasWorkspace(workspace: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Deprecated stubs kept so auth-migrate / auth-status still compile in Phase D
-// ---------------------------------------------------------------------------
-
-/**
- * @deprecated Inline format is now the only format. Always returns true.
- */
-export function isUsingInlineFormat(): boolean {
-  return true
-}
-
-/**
- * @deprecated Keyring is gone. No-op; returns [].
- */
-export async function migrateToKeyring(): Promise<string[]> {
-  return []
-}
-
-// ---------------------------------------------------------------------------
 // Module initialisation: load credentials at import time (top-level await)
 // ---------------------------------------------------------------------------
 await loadCredentials()

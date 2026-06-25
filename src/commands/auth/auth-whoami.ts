@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
@@ -22,8 +22,7 @@ const viewerQuery = gql(`
   }
 `)
 
-export const whoamiCommand = new Command()
-  .name("whoami")
+export const whoamiCommand = new Command("whoami")
   .description("Print information about the authenticated user")
   .action(async () => {
     try {

@@ -1,15 +1,11 @@
-import { Command } from "@cliffy/command"
-import { Confirm, Secret } from "@cliffy/prompt"
-import { yellow } from "@std/fmt/colors"
+import { Command } from "commander"
+import chalk from "chalk"
 import { gql } from "../../__codegen__/gql.ts"
 import {
   addCredential,
   getWorkspaces,
   hasWorkspace,
-  isUsingInlineFormat,
-  migrateToKeyring,
 } from "../../credentials.ts"
-import * as keyring from "../../keyring/index.ts"
 import {
   AuthError,
   CliError,
@@ -17,6 +13,7 @@ import {
   ValidationError,
 } from "../../utils/errors.ts"
 import { createGraphQLClient } from "../../utils/graphql.ts"
+import { password } from "../../utils/prompt.ts"
 
 const viewerQuery = gql(`
   query AuthLoginViewer {
@@ -31,23 +28,20 @@ const viewerQuery = gql(`
   }
 `)
 
-export const loginCommand = new Command()
-  .name("login")
+export const loginCommand = new Command("login")
   .description("Add a workspace credential")
-  .option("-k, --key <key:string>", "API key (prompted if not provided)")
-  .option(
-    "--plaintext",
-    "Store API key in credentials file instead of system keyring",
-  )
+  .option("-k, --key <key>", "API key (prompted if not provided)")
   .action(async (options) => {
     try {
       let apiKey = options.key?.trim()
 
       if (!apiKey) {
-        apiKey = (await Secret.prompt({
-          message: "Enter your Linear API key",
-          hint: "Create one at https://linear.app/settings/account/security",
-        }))?.trim()
+        apiKey = (
+          await password({
+            message:
+              "Linear API key (create one at https://linear.app/settings/account/security): ",
+          })
+        )?.trim()
       }
 
       if (!apiKey) {
@@ -69,20 +63,8 @@ export const loginCommand = new Command()
         const org = viewer.organization
         const workspace = org.urlKey
 
-        // Require keyring when not using plaintext and not already in inline format
-        if (!options.plaintext && !isUsingInlineFormat()) {
-          const keyringOk = await keyring.isAvailable()
-          if (!keyringOk) {
-            throw new CliError(
-              "No system keyring found. Use `--plaintext` to store credentials in the config file, or set `LINEAR_API_KEY`.",
-            )
-          }
-        }
-
         const alreadyExists = hasWorkspace(workspace)
-        await addCredential(workspace, apiKey, {
-          plaintext: options.plaintext,
-        })
+        await addCredential(workspace, apiKey)
 
         const existingCount = getWorkspaces().length
 
@@ -99,54 +81,23 @@ export const loginCommand = new Command()
           console.log(`  Set as default workspace`)
         }
 
-        if (!options.plaintext && isUsingInlineFormat()) {
-          console.log(
-            yellow(
-              "Note: Credential stored as plaintext to match existing format.",
-            ),
-          )
-        }
-
-        // Prompt to migrate inline credentials to keyring
-        if (isUsingInlineFormat()) {
-          const keyringOk = await keyring.isAvailable()
-          if (keyringOk) {
-            console.log()
-            console.log(
-              yellow(
-                "Your credentials are stored as plaintext in the credentials file.",
-              ),
-            )
-            const migrate = await Confirm.prompt({
-              message:
-                "Migrate all credentials to the system keyring for better security?",
-              default: true,
-            })
-            if (migrate) {
-              const migrated = await migrateToKeyring()
-              console.log(
-                `Migrated ${migrated.length} workspace(s) to system keyring.`,
-              )
-            }
-          }
-        }
-
         // Warn if LINEAR_API_KEY is set
-        if (Deno.env.get("LINEAR_API_KEY")) {
+        if (process.env["LINEAR_API_KEY"]) {
           console.log()
           console.log(
-            yellow("Warning: LINEAR_API_KEY environment variable is set."),
+            chalk.yellow("Warning: LINEAR_API_KEY environment variable is set."),
           )
-          console.log(yellow("It takes precedence over stored credentials."))
+          console.log(chalk.yellow("It takes precedence over stored credentials."))
           console.log(
-            yellow(
+            chalk.yellow(
               "Remove it from your shell config to use multi-workspace auth.",
             ),
           )
         }
       } catch (error) {
         if (
-          error instanceof CliError || error instanceof AuthError ||
+          error instanceof CliError ||
+          error instanceof AuthError ||
           error instanceof ValidationError
         ) {
           throw error

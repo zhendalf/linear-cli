@@ -1,9 +1,8 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { AuthError, handleError } from "../../utils/errors.ts"
 import { getResolvedApiKey } from "../../utils/graphql.ts"
 
-export const tokenCommand = new Command()
-  .name("token")
+export const tokenCommand = new Command("token")
   .description("Print the configured API token")
   .action(() => {
     try {
