@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert"
+import { expect, test } from "bun:test"
 import {
   findIssueIdentifierInText,
   getTeamKeyFromIssueIdentifier,
@@ -8,111 +8,111 @@ import {
 
 // parseIssueIdentifier
 
-Deno.test("parseIssueIdentifier - parses standard identifier", () => {
+test("parseIssueIdentifier - parses standard identifier", () => {
   const result = parseIssueIdentifier("ABC-123")
-  assertEquals(result, {
+  expect(result).toEqual({
     identifier: "ABC-123",
     teamKey: "ABC",
     issueNumber: "123",
   })
 })
 
-Deno.test("parseIssueIdentifier - parses alphanumeric team key", () => {
+test("parseIssueIdentifier - parses alphanumeric team key", () => {
   const result = parseIssueIdentifier("PLA4-16916")
-  assertEquals(result, {
+  expect(result).toEqual({
     identifier: "PLA4-16916",
     teamKey: "PLA4",
     issueNumber: "16916",
   })
 })
 
-Deno.test("parseIssueIdentifier - normalizes team key to uppercase", () => {
+test("parseIssueIdentifier - normalizes team key to uppercase", () => {
   const result = parseIssueIdentifier("abc-123")
-  assertEquals(result, {
+  expect(result).toEqual({
     identifier: "ABC-123",
     teamKey: "ABC",
     issueNumber: "123",
   })
 })
 
-Deno.test("parseIssueIdentifier - returns undefined for number starting with zero", () => {
-  assertEquals(parseIssueIdentifier("ABC-0123"), undefined)
+test("parseIssueIdentifier - returns undefined for number starting with zero", () => {
+  expect(parseIssueIdentifier("ABC-0123")).toBeUndefined()
 })
 
-Deno.test("parseIssueIdentifier - returns undefined for bare number", () => {
-  assertEquals(parseIssueIdentifier("123"), undefined)
+test("parseIssueIdentifier - returns undefined for bare number", () => {
+  expect(parseIssueIdentifier("123")).toBeUndefined()
 })
 
-Deno.test("parseIssueIdentifier - returns undefined for empty string", () => {
-  assertEquals(parseIssueIdentifier(""), undefined)
+test("parseIssueIdentifier - returns undefined for empty string", () => {
+  expect(parseIssueIdentifier("")).toBeUndefined()
 })
 
-Deno.test("parseIssueIdentifier - returns undefined for text with identifier embedded", () => {
+test("parseIssueIdentifier - returns undefined for text with identifier embedded", () => {
   // parseIssueIdentifier requires exact match, not search
-  assertEquals(parseIssueIdentifier("Fixes ABC-123"), undefined)
+  expect(parseIssueIdentifier("Fixes ABC-123")).toBeUndefined()
 })
 
 // findIssueIdentifierInText
 
-Deno.test("findIssueIdentifierInText - finds identifier in bracket+url format", () => {
+test("findIssueIdentifierInText - finds identifier in bracket+url format", () => {
   const result = findIssueIdentifierInText(
     "[ABC-123](https://linear.app/workspace/issue/ABC-123/some-title)",
   )
-  assertEquals(result?.identifier, "ABC-123")
+  expect(result?.identifier).toBe("ABC-123")
 })
 
-Deno.test("findIssueIdentifierInText - finds alphanumeric team key in bracket format", () => {
+test("findIssueIdentifierInText - finds alphanumeric team key in bracket format", () => {
   const result = findIssueIdentifierInText(
     "[PLA4-16916](https://linear.app/workspace/issue/PLA4-16916/some-title)",
   )
-  assertEquals(result?.identifier, "PLA4-16916")
+  expect(result?.identifier).toBe("PLA4-16916")
 })
 
-Deno.test("findIssueIdentifierInText - finds identifier in plain text", () => {
+test("findIssueIdentifierInText - finds identifier in plain text", () => {
   const result = findIssueIdentifierInText("Fixes ABC-123")
-  assertEquals(result?.identifier, "ABC-123")
+  expect(result?.identifier).toBe("ABC-123")
 })
 
-Deno.test("findIssueIdentifierInText - finds identifier in branch name", () => {
+test("findIssueIdentifierInText - finds identifier in branch name", () => {
   const result = findIssueIdentifierInText("feature/ABC-123-my-feature")
-  assertEquals(result?.identifier, "ABC-123")
+  expect(result?.identifier).toBe("ABC-123")
 })
 
-Deno.test("findIssueIdentifierInText - normalizes to uppercase", () => {
+test("findIssueIdentifierInText - normalizes to uppercase", () => {
   const result = findIssueIdentifierInText("[abc-456](https://linear.app/...)")
-  assertEquals(result?.identifier, "ABC-456")
+  expect(result?.identifier).toBe("ABC-456")
 })
 
-Deno.test("findIssueIdentifierInText - returns undefined for empty string", () => {
-  assertEquals(findIssueIdentifierInText(""), undefined)
+test("findIssueIdentifierInText - returns undefined for empty string", () => {
+  expect(findIssueIdentifierInText("")).toBeUndefined()
 })
 
-Deno.test("findIssueIdentifierInText - returns undefined when no identifier present", () => {
-  assertEquals(findIssueIdentifierInText("no issue here"), undefined)
+test("findIssueIdentifierInText - returns undefined when no identifier present", () => {
+  expect(findIssueIdentifierInText("no issue here")).toBeUndefined()
 })
 
 // getTeamKeyFromIssueIdentifier
 
-Deno.test("getTeamKeyFromIssueIdentifier - extracts team key", () => {
-  assertEquals(getTeamKeyFromIssueIdentifier("ENG-42"), "ENG")
+test("getTeamKeyFromIssueIdentifier - extracts team key", () => {
+  expect(getTeamKeyFromIssueIdentifier("ENG-42")).toBe("ENG")
 })
 
-Deno.test("getTeamKeyFromIssueIdentifier - extracts alphanumeric team key", () => {
-  assertEquals(getTeamKeyFromIssueIdentifier("PLA4-16916"), "PLA4")
+test("getTeamKeyFromIssueIdentifier - extracts alphanumeric team key", () => {
+  expect(getTeamKeyFromIssueIdentifier("PLA4-16916")).toBe("PLA4")
 })
 
-Deno.test("getTeamKeyFromIssueIdentifier - returns undefined for invalid input", () => {
-  assertEquals(getTeamKeyFromIssueIdentifier("not-an-issue"), undefined)
-  assertEquals(getTeamKeyFromIssueIdentifier("ABC-0123"), undefined)
+test("getTeamKeyFromIssueIdentifier - returns undefined for invalid input", () => {
+  expect(getTeamKeyFromIssueIdentifier("not-an-issue")).toBeUndefined()
+  expect(getTeamKeyFromIssueIdentifier("ABC-0123")).toBeUndefined()
 })
 
 // normalizeIssueIdentifier
 
-Deno.test("normalizeIssueIdentifier - uppercases team key", () => {
-  assertEquals(normalizeIssueIdentifier("abc-123"), "ABC-123")
+test("normalizeIssueIdentifier - uppercases team key", () => {
+  expect(normalizeIssueIdentifier("abc-123")).toBe("ABC-123")
 })
 
-Deno.test("normalizeIssueIdentifier - returns undefined for invalid input", () => {
-  assertEquals(normalizeIssueIdentifier("not-valid"), undefined)
-  assertEquals(normalizeIssueIdentifier("ABC-0"), undefined)
+test("normalizeIssueIdentifier - returns undefined for invalid input", () => {
+  expect(normalizeIssueIdentifier("not-valid")).toBeUndefined()
+  expect(normalizeIssueIdentifier("ABC-0")).toBeUndefined()
 })

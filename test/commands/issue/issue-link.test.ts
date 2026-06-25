@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { linkCommand } from "../../../src/commands/issue/issue-link.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
 await snapshotTest({
@@ -11,9 +8,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await linkCommand.parse()
+    await linkCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -23,7 +19,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["ENG-123", "https://github.com/org/repo/pull/42"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -51,7 +46,7 @@ await snapshotTest({
     ])
 
     try {
-      await linkCommand.parse()
+      await linkCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -69,7 +64,6 @@ await snapshotTest({
     "--title",
     "Design document",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -97,7 +91,7 @@ await snapshotTest({
     ])
 
     try {
-      await linkCommand.parse()
+      await linkCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -111,9 +105,8 @@ await snapshotTest({
   colors: false,
   canFail: true,
   args: ["not-a-url"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await linkCommand.parse()
+    await linkCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -124,7 +117,6 @@ await snapshotTest({
   colors: false,
   canFail: true,
   args: ["ENG-999", "https://example.com"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -143,7 +135,7 @@ await snapshotTest({
     ])
 
     try {
-      await linkCommand.parse()
+      await linkCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { createCommand } from "../../../src/commands/issue/issue-create.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
 await snapshotTest({
@@ -11,9 +8,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await createCommand.parse()
+    await createCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -37,7 +33,6 @@ await snapshotTest({
     "ENG",
     "--no-interactive",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey() - converting team key to ID
@@ -87,7 +82,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await createCommand.parse()
+      await createCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -110,7 +105,6 @@ await snapshotTest({
     "Phase 1",
     "--no-interactive",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey()
@@ -177,7 +171,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await createCommand.parse()
+      await createCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -200,7 +194,6 @@ await snapshotTest({
     "ENG",
     "--no-interactive",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey() - converting team key to ID
@@ -253,7 +246,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await createCommand.parse()
+      await createCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -276,7 +269,6 @@ await snapshotTest({
     "ENG-220",
     "--no-interactive",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey()
@@ -340,7 +332,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await createCommand.parse()
+      await createCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -361,7 +353,6 @@ await snapshotTest({
     "active",
     "--no-interactive",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey()
@@ -417,7 +408,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await createCommand.parse()
+      await createCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

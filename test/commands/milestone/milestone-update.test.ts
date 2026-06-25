@@ -1,22 +1,20 @@
-import { snapshotTest as cliffySnapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { updateCommand } from "../../../src/commands/milestone/milestone-update.ts"
-import { commonDenoArgs } from "../../utils/test-helpers.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
 
 // Test help output
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Milestone Update Command - Help Text",
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await updateCommand.parse()
+    await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
 // Test successful milestone update - name only
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Milestone Update Command - Update Name",
   meta: import.meta,
   colors: false,
@@ -25,7 +23,6 @@ await cliffySnapshotTest({
     "--name",
     "Updated Milestone Name",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -52,20 +49,20 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
 // Test milestone update - multiple fields
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Milestone Update Command - Update Multiple Fields",
   meta: import.meta,
   colors: false,
@@ -78,7 +75,6 @@ await cliffySnapshotTest({
     "--target-date",
     "2026-06-30",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -105,20 +101,20 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
 // Test milestone update - sort order only
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Milestone Update Command - Update Sort Order",
   meta: import.meta,
   colors: false,
@@ -127,7 +123,6 @@ await cliffySnapshotTest({
     "--sort-order",
     "5",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -154,20 +149,20 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
 // Test milestone update - sort order zero (guards against truthiness-check regression)
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Milestone Update Command - Update Sort Order Zero",
   meta: import.meta,
   colors: false,
@@ -176,7 +171,6 @@ await cliffySnapshotTest({
     "--sort-order",
     "0",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -203,20 +197,20 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
 // Test milestone update - target date only
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Milestone Update Command - Update Target Date",
   meta: import.meta,
   colors: false,
@@ -225,7 +219,6 @@ await cliffySnapshotTest({
     "--target-date",
     "2026-12-31",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -252,14 +245,14 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })

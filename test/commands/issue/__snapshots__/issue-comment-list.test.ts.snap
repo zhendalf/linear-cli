@@ -1,7 +1,7 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Issue Comment List Command - Basic 1`] = `
-stdout:
+exports[`Issue Comment List Command - Basic 1`] = `
+"stdout:
 "@Test User commented 1/15/2024 [comment-uuid-101]
 This is the second root comment
 
@@ -13,12 +13,12 @@ This is the first comment
 
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Comment List Command - JSON Output 1`] = `
-stdout:
-'{
+exports[`Issue Comment List Command - JSON Output 1`] = `
+"stdout:
+"{
   "nodes": [
     {
       "id": "comment-uuid-456",
@@ -39,15 +39,15 @@ stdout:
     "endCursor": null
   }
 }
-'
+"
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Comment List Command - No Comments 1`] = `
-stdout:
+exports[`Issue Comment List Command - No Comments 1`] = `
+"stdout:
 "No comments found for this issue
 "
 stderr:
-""
+"""
 `;

@@ -1,12 +1,9 @@
 import { MockLinearServer } from "./mock_linear_server.ts"
 
-// Common Deno args for permissions used across all tests
-export const commonDenoArgs = ["--allow-all", "--quiet"]
-
-// Helper function to set up mock Linear server with common environment
 export async function setupMockLinearServer(
   mockResponses: Array<{
     queryName: string
+    queryIncludes?: string
     variables?: Record<string, unknown>
     response: Record<string, unknown>
   }>,
@@ -15,25 +12,22 @@ export async function setupMockLinearServer(
   const server = new MockLinearServer(mockResponses)
   await server.start()
 
-  Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-  Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+  // start() already sets LINEAR_GRAPHQL_ENDPOINT
+  process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-  // Set any additional environment variables
   if (envVars) {
     for (const [key, value] of Object.entries(envVars)) {
-      Deno.env.set(key, value)
+      process.env[key] = value
     }
   }
 
   const cleanup = async () => {
+    // server.stop() restores LINEAR_GRAPHQL_ENDPOINT to its pre-start() value.
     await server.stop()
-    Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-    Deno.env.delete("LINEAR_API_KEY")
-
-    // Clean up additional environment variables
+    delete process.env["LINEAR_API_KEY"]
     if (envVars) {
       for (const key of Object.keys(envVars)) {
-        Deno.env.delete(key)
+        delete process.env[key]
       }
     }
   }

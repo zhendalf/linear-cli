@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert"
+import { expect, test } from "bun:test"
 import {
   extractImageInfo,
   extractLinearLinkInfo,
@@ -12,75 +12,75 @@ import {
   shouldEnableHyperlinks,
 } from "../../../src/utils/hyperlink.ts"
 
-Deno.test("extractImageInfo - extracts markdown images", () => {
+test("extractImageInfo - extracts markdown images", () => {
   const markdown = "Check this ![screenshot](https://example.com/img.png)"
   const images = extractImageInfo(markdown)
-  assertEquals(images, [{
+  expect(images).toEqual([{
     url: "https://example.com/img.png",
     alt: "screenshot",
   }])
 })
 
-Deno.test("extractImageInfo - extracts multiple images", () => {
+test("extractImageInfo - extracts multiple images", () => {
   const markdown = `
 Here is ![first](https://example.com/1.png) and ![second](https://example.com/2.png)
 `
   const images = extractImageInfo(markdown)
-  assertEquals(images.length, 2)
-  assertEquals(images[0], { url: "https://example.com/1.png", alt: "first" })
-  assertEquals(images[1], { url: "https://example.com/2.png", alt: "second" })
+  expect(images.length).toBe(2)
+  expect(images[0]).toEqual({ url: "https://example.com/1.png", alt: "first" })
+  expect(images[1]).toEqual({ url: "https://example.com/2.png", alt: "second" })
 })
 
-Deno.test("extractImageInfo - handles image without alt text", () => {
+test("extractImageInfo - handles image without alt text", () => {
   const markdown = "![](https://example.com/img.png)"
   const images = extractImageInfo(markdown)
-  assertEquals(images, [{
+  expect(images).toEqual([{
     url: "https://example.com/img.png",
     alt: null,
   }])
 })
 
-Deno.test("extractImageInfo - handles empty content", () => {
-  assertEquals(extractImageInfo(null), [])
-  assertEquals(extractImageInfo(undefined), [])
-  assertEquals(extractImageInfo(""), [])
+test("extractImageInfo - handles empty content", () => {
+  expect(extractImageInfo(null)).toEqual([])
+  expect(extractImageInfo(undefined)).toEqual([])
+  expect(extractImageInfo("")).toEqual([])
 })
 
-Deno.test("extractImageInfo - handles markdown with no images", () => {
+test("extractImageInfo - handles markdown with no images", () => {
   const markdown = "# Hello\n\nThis is just text with no images."
   const images = extractImageInfo(markdown)
-  assertEquals(images, [])
+  expect(images).toEqual([])
 })
 
-Deno.test("getUrlHash - generates consistent hash", async () => {
+test("getUrlHash - generates consistent hash", async () => {
   const hash1 = await getUrlHash("https://example.com/img.png")
   const hash2 = await getUrlHash("https://example.com/img.png")
-  assertEquals(hash1, hash2)
-  assertEquals(hash1.length, 16)
+  expect(hash1).toBe(hash2)
+  expect(hash1.length).toBe(16)
 })
 
-Deno.test("getUrlHash - different URLs produce different hashes", async () => {
+test("getUrlHash - different URLs produce different hashes", async () => {
   const hash1 = await getUrlHash("https://example.com/img1.png")
   const hash2 = await getUrlHash("https://example.com/img2.png")
-  assertEquals(hash1 !== hash2, true)
+  expect(hash1 !== hash2).toBe(true)
 })
 
-Deno.test("getUrlHash - hash is valid hex string", async () => {
+test("getUrlHash - hash is valid hex string", async () => {
   const hash = await getUrlHash("https://example.com/img.png")
-  assertEquals(/^[0-9a-f]{16}$/.test(hash), true)
+  expect(/^[0-9a-f]{16}$/.test(hash)).toBe(true)
 })
 
-Deno.test("replaceImageUrls - replaces URLs with local paths", async () => {
+test("replaceImageUrls - replaces URLs with local paths", async () => {
   const markdown = "![alt](https://example.com/img.png)"
   const urlToPath = new Map([
     ["https://example.com/img.png", "/tmp/cached/img.png"],
   ])
   const result = await replaceImageUrls(markdown, urlToPath)
-  assertEquals(result.includes("/tmp/cached/img.png"), true)
-  assertEquals(result.includes("https://example.com/img.png"), false)
+  expect(result.includes("/tmp/cached/img.png")).toBe(true)
+  expect(result.includes("https://example.com/img.png")).toBe(false)
 })
 
-Deno.test("replaceImageUrls - replaces multiple URLs", async () => {
+test("replaceImageUrls - replaces multiple URLs", async () => {
   const markdown = `
 ![first](https://example.com/1.png)
 ![second](https://example.com/2.png)
@@ -90,141 +90,138 @@ Deno.test("replaceImageUrls - replaces multiple URLs", async () => {
     ["https://example.com/2.png", "/tmp/cached/2.png"],
   ])
   const result = await replaceImageUrls(markdown, urlToPath)
-  assertEquals(result.includes("/tmp/cached/1.png"), true)
-  assertEquals(result.includes("/tmp/cached/2.png"), true)
+  expect(result.includes("/tmp/cached/1.png")).toBe(true)
+  expect(result.includes("/tmp/cached/2.png")).toBe(true)
 })
 
-Deno.test("replaceImageUrls - leaves unmatched URLs unchanged", async () => {
+test("replaceImageUrls - leaves unmatched URLs unchanged", async () => {
   const markdown = "![alt](https://example.com/img.png)"
   const urlToPath = new Map([
     ["https://other.com/img.png", "/tmp/cached/img.png"],
   ])
   const result = await replaceImageUrls(markdown, urlToPath)
-  assertEquals(result.includes("https://example.com/img.png"), true)
+  expect(result.includes("https://example.com/img.png")).toBe(true)
 })
 
-Deno.test("replaceImageUrls - preserves GFM task lists", async () => {
+test("replaceImageUrls - preserves GFM task lists", async () => {
   const markdown =
     "- [ ] todo\n- [x] done\n\n![alt](https://example.com/img.png)\n"
   const urlToPath = new Map([
     ["https://example.com/img.png", "/tmp/cached/img.png"],
   ])
   const result = await replaceImageUrls(markdown, urlToPath)
-  assertEquals(result.includes("- [ ] todo"), true)
-  assertEquals(result.includes("- [x] done"), true)
-  assertEquals(result.includes("/tmp/cached/img.png"), true)
+  expect(result.includes("- [ ] todo")).toBe(true)
+  expect(result.includes("- [x] done")).toBe(true)
+  expect(result.includes("/tmp/cached/img.png")).toBe(true)
 })
 
-Deno.test("replaceImageUrls - preserves GFM tables", async () => {
+test("replaceImageUrls - preserves GFM tables", async () => {
   const markdown =
     "| a | b |\n| - | - |\n| 1 | 2 |\n\n![alt](https://example.com/img.png)\n"
   const urlToPath = new Map([
     ["https://example.com/img.png", "/tmp/cached/img.png"],
   ])
   const result = await replaceImageUrls(markdown, urlToPath)
-  assertEquals(result.includes("| a | b |"), true)
-  assertEquals(result.includes("/tmp/cached/img.png"), true)
+  expect(result.includes("| a | b |")).toBe(true)
+  expect(result.includes("/tmp/cached/img.png")).toBe(true)
 })
 
-Deno.test("replaceImageUrls - handles empty map", async () => {
+test("replaceImageUrls - handles empty map", async () => {
   const markdown = "![alt](https://example.com/img.png)"
   const urlToPath = new Map<string, string>()
   const result = await replaceImageUrls(markdown, urlToPath)
-  assertEquals(result.includes("https://example.com/img.png"), true)
+  expect(result.includes("https://example.com/img.png")).toBe(true)
 })
 
-Deno.test("extractLinearLinkInfo - extracts Linear upload links", () => {
+test("extractLinearLinkInfo - extracts Linear upload links", () => {
   const md = "See [file](https://uploads.linear.app/abc/doc.pdf)"
   const links = extractLinearLinkInfo(md)
-  assertEquals(links.length, 1)
-  assertEquals(links[0].url, "https://uploads.linear.app/abc/doc.pdf")
+  expect(links.length).toBe(1)
+  expect(links[0].url).toBe("https://uploads.linear.app/abc/doc.pdf")
 })
 
-Deno.test("extractLinearLinkInfo - ignores spoofed domain in path", () => {
+test("extractLinearLinkInfo - ignores spoofed domain in path", () => {
   const md = "See [file](https://example.com/uploads.linear.app/doc.pdf)"
   const links = extractLinearLinkInfo(md)
-  assertEquals(links.length, 0)
+  expect(links.length).toBe(0)
 })
 
-Deno.test("extractLinearLinkInfo - ignores spoofed subdomain", () => {
+test("extractLinearLinkInfo - ignores spoofed subdomain", () => {
   const md = "See [file](https://uploads.linear.app.example.com/doc.pdf)"
   const links = extractLinearLinkInfo(md)
-  assertEquals(links.length, 0)
+  expect(links.length).toBe(0)
 })
 
 // Hyperlink utility tests
 
-Deno.test("hyperlink - creates OSC-8 escape sequence", () => {
+test("hyperlink - creates OSC-8 escape sequence", () => {
   const result = hyperlink("click me", "https://example.com")
-  assertEquals(
-    result,
+  expect(result).toBe(
     "\x1b]8;;https://example.com\x1b\\click me\x1b]8;;\x1b\\",
   )
 })
 
-Deno.test("hyperlink - handles empty text", () => {
+test("hyperlink - handles empty text", () => {
   const result = hyperlink("", "https://example.com")
-  assertEquals(result, "\x1b]8;;https://example.com\x1b\\\x1b]8;;\x1b\\")
+  expect(result).toBe("\x1b]8;;https://example.com\x1b\\\x1b]8;;\x1b\\")
 })
 
-Deno.test("resolveHyperlinkFormat - resolves default to file URL format", () => {
-  assertEquals(resolveHyperlinkFormat("default"), "file://{host}{path}")
+test("resolveHyperlinkFormat - resolves default to file URL format", () => {
+  expect(resolveHyperlinkFormat("default")).toBe("file://{host}{path}")
 })
 
-Deno.test("resolveHyperlinkFormat - passes through custom format", () => {
-  assertEquals(resolveHyperlinkFormat("custom://{path}"), "custom://{path}")
+test("resolveHyperlinkFormat - passes through custom format", () => {
+  expect(resolveHyperlinkFormat("custom://{path}")).toBe("custom://{path}")
 })
 
-Deno.test("formatPathHyperlink - wraps remote URL in hyperlink", () => {
+test("formatPathHyperlink - wraps remote URL in hyperlink", () => {
   const result = formatPathHyperlink(
     "https://example.com/img.png",
     "https://example.com/img.png",
     "default",
   )
   // Remote URLs link directly to themselves
-  assertEquals(
+  expect(
     result.includes("\x1b]8;;https://example.com/img.png\x1b\\"),
-    true,
-  )
-  assertEquals(
+  ).toBe(true)
+  expect(
     result.includes("https://example.com/img.png\x1b]8;;\x1b\\"),
-    true,
-  )
+  ).toBe(true)
 })
 
-Deno.test("formatPathHyperlink - wraps local path with file URL format", () => {
+test("formatPathHyperlink - wraps local path with file URL format", () => {
   const result = formatPathHyperlink(
     "/tmp/test/image.png",
     "/tmp/test/image.png",
     "default",
   )
   // Local paths get file:// URL format
-  assertEquals(result.includes("\x1b]8;;file://"), true)
-  assertEquals(result.includes("/tmp/test/image.png"), true)
+  expect(result.includes("\x1b]8;;file://")).toBe(true)
+  expect(result.includes("/tmp/test/image.png")).toBe(true)
 })
 
-Deno.test("formatPathHyperlink - encodes special characters in path", () => {
+test("formatPathHyperlink - encodes special characters in path", () => {
   const result = formatPathHyperlink(
     "/tmp/test/my image#1.png",
     "/tmp/test/my image#1.png",
     "default",
   )
   // # should be percent-encoded
-  assertEquals(result.includes("%23"), true)
+  expect(result.includes("%23")).toBe(true)
   // Spaces should be percent-encoded
-  assertEquals(result.includes("%20"), true)
+  expect(result.includes("%20")).toBe(true)
 })
 
-Deno.test("shouldEnableHyperlinks - returns false when NO_COLOR is set", () => {
-  const originalNoColor = Deno.env.get("NO_COLOR")
+test("shouldEnableHyperlinks - returns false when NO_COLOR is set", () => {
+  const originalNoColor = process.env["NO_COLOR"]
   try {
-    Deno.env.set("NO_COLOR", "1")
-    assertEquals(shouldEnableHyperlinks(), false)
+    process.env["NO_COLOR"] = "1"
+    expect(shouldEnableHyperlinks()).toBe(false)
   } finally {
     if (originalNoColor === undefined) {
-      Deno.env.delete("NO_COLOR")
+      delete process.env["NO_COLOR"]
     } else {
-      Deno.env.set("NO_COLOR", originalNoColor)
+      process.env["NO_COLOR"] = originalNoColor
     }
   }
 })

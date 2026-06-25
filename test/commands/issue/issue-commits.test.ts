@@ -1,8 +1,5 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commitsCommand } from "../../../src/commands/issue/issue-commits.ts"
-
-// Common Deno args for permissions
-const denoArgs = ["--allow-all", "--quiet"]
 
 // Test help output
 await snapshotTest({
@@ -10,8 +7,7 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs,
   async fn() {
-    await commitsCommand.parse()
+    await commitsCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })

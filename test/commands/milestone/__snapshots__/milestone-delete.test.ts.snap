@@ -1,28 +1,26 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Milestone Delete Command - Help Text 1`] = `
-stdout:
-"
-Usage: delete <id>
+exports[`Milestone Delete Command - Help Text 1`] = `
+"stdout:
+"Usage: delete [options] <id>
 
-Description:
+Delete a project milestone
 
-  Delete a project milestone
+Arguments:
+  id           Milestone ID
 
 Options:
-
-  -h, --help   - Show this help.           
-  -f, --force  - Skip confirmation prompt  
-
+  -f, --force  Skip confirmation prompt
+  -h, --help   display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Delete Command - With Force Flag 1`] = `
-stdout:
+exports[`Milestone Delete Command - With Force Flag 1`] = `
+"stdout:
 "✓ Deleted milestone milestone-123
 "
 stderr:
-""
+"""
 `;

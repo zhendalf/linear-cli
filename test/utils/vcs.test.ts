@@ -1,187 +1,142 @@
-import { assertEquals, assertRejects } from "@std/assert"
+import { expect, test } from "bun:test"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { execFileSync } from "node:child_process"
 import { getCurrentIssueFromVcs, startVcsWork } from "../../src/utils/vcs.ts"
 import { CliError } from "../../src/utils/errors.ts"
 
-Deno.test("getCurrentIssueFromVcs - handles git errors gracefully", async () => {
-  // Create a temporary directory that's not a git repo
-  const tempDir = await Deno.makeTempDir()
-  const originalCwd = Deno.cwd()
-  const originalVcs = Deno.env.get("LINEAR_VCS")
+test("getCurrentIssueFromVcs - handles git errors gracefully", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-vcs-test-"))
+  const originalCwd = process.cwd()
+  const originalVcs = process.env["LINEAR_VCS"]
 
   try {
-    // Explicitly set VCS to git for this test
-    Deno.env.set("LINEAR_VCS", "git")
-    Deno.chdir(tempDir)
-    await assertRejects(
-      async () => await getCurrentIssueFromVcs(),
-      CliError,
-      "Failed to get current branch",
-    )
+    process.env["LINEAR_VCS"] = "git"
+    process.chdir(tempDir)
+    await expect(getCurrentIssueFromVcs()).rejects.toThrow("Failed to get current branch")
   } finally {
-    Deno.chdir(originalCwd)
+    process.chdir(originalCwd)
     if (originalVcs !== undefined) {
-      Deno.env.set("LINEAR_VCS", originalVcs)
+      process.env["LINEAR_VCS"] = originalVcs
     } else {
-      Deno.env.delete("LINEAR_VCS")
+      delete process.env["LINEAR_VCS"]
     }
-    await Deno.remove(tempDir, { recursive: true })
+    await rm(tempDir, { recursive: true, force: true })
   }
 })
 
-Deno.test("getCurrentIssueFromVcs - extracts issue ID from git branch", async () => {
-  // Create a temporary git repository
-  const tempDir = await Deno.makeTempDir()
-  const originalCwd = Deno.cwd()
-  const originalVcs = Deno.env.get("LINEAR_VCS")
+test("getCurrentIssueFromVcs - extracts issue ID from git branch", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-vcs-test-"))
+  const originalCwd = process.cwd()
+  const originalVcs = process.env["LINEAR_VCS"]
 
   try {
-    // Explicitly set VCS to git for this test
-    Deno.env.set("LINEAR_VCS", "git")
-    Deno.chdir(tempDir)
+    process.env["LINEAR_VCS"] = "git"
+    process.chdir(tempDir)
 
-    // Initialize git repo
-    await new Deno.Command("git", { args: ["init"] }).output()
-    await new Deno.Command("git", {
-      args: ["config", "user.email", "test@example.com"],
-    }).output()
-    await new Deno.Command("git", {
-      args: ["config", "user.name", "Test User"],
-    }).output()
+    execFileSync("git", ["init"], { cwd: tempDir })
+    execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: tempDir })
+    execFileSync("git", ["config", "user.name", "Test User"], { cwd: tempDir })
 
-    // Create initial commit
-    await Deno.writeTextFile("test.txt", "test")
-    await new Deno.Command("git", { args: ["add", "test.txt"] }).output()
-    await new Deno.Command("git", {
-      args: ["commit", "-m", "initial commit"],
-    }).output()
+    await writeFile(join(tempDir, "test.txt"), "test")
+    execFileSync("git", ["add", "test.txt"], { cwd: tempDir })
+    execFileSync("git", ["commit", "-m", "initial commit"], { cwd: tempDir })
 
-    // Create a branch with an issue ID
-    await new Deno.Command("git", {
-      args: ["checkout", "-b", "feature/ABC-123-test-feature"],
-    }).output()
+    execFileSync("git", ["checkout", "-b", "feature/ABC-123-test-feature"], { cwd: tempDir })
 
     const issueId = await getCurrentIssueFromVcs()
-    assertEquals(issueId, "ABC-123")
+    expect(issueId).toBe("ABC-123")
   } finally {
-    Deno.chdir(originalCwd)
+    process.chdir(originalCwd)
     if (originalVcs !== undefined) {
-      Deno.env.set("LINEAR_VCS", originalVcs)
+      process.env["LINEAR_VCS"] = originalVcs
     } else {
-      Deno.env.delete("LINEAR_VCS")
+      delete process.env["LINEAR_VCS"]
     }
-    await Deno.remove(tempDir, { recursive: true })
+    await rm(tempDir, { recursive: true, force: true })
   }
 })
 
-Deno.test("getCurrentIssueFromVcs - returns null for branch without issue ID", async () => {
-  // Create a temporary git repository
-  const tempDir = await Deno.makeTempDir()
-  const originalCwd = Deno.cwd()
-  const originalVcs = Deno.env.get("LINEAR_VCS")
+test("getCurrentIssueFromVcs - returns null for branch without issue ID", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-vcs-test-"))
+  const originalCwd = process.cwd()
+  const originalVcs = process.env["LINEAR_VCS"]
 
   try {
-    // Explicitly set VCS to git for this test
-    Deno.env.set("LINEAR_VCS", "git")
-    Deno.chdir(tempDir)
+    process.env["LINEAR_VCS"] = "git"
+    process.chdir(tempDir)
 
-    // Initialize git repo
-    await new Deno.Command("git", { args: ["init"] }).output()
-    await new Deno.Command("git", {
-      args: ["config", "user.email", "test@example.com"],
-    }).output()
-    await new Deno.Command("git", {
-      args: ["config", "user.name", "Test User"],
-    }).output()
+    execFileSync("git", ["init"], { cwd: tempDir })
+    execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: tempDir })
+    execFileSync("git", ["config", "user.name", "Test User"], { cwd: tempDir })
 
-    // Create initial commit
-    await Deno.writeTextFile("test.txt", "test")
-    await new Deno.Command("git", { args: ["add", "test.txt"] }).output()
-    await new Deno.Command("git", {
-      args: ["commit", "-m", "initial commit"],
-    }).output()
+    await writeFile(join(tempDir, "test.txt"), "test")
+    execFileSync("git", ["add", "test.txt"], { cwd: tempDir })
+    execFileSync("git", ["commit", "-m", "initial commit"], { cwd: tempDir })
 
-    // Create a branch without an issue ID
-    await new Deno.Command("git", {
-      args: ["checkout", "-b", "main"],
-    }).output()
+    execFileSync("git", ["checkout", "-b", "no-issue-branch"], { cwd: tempDir })
 
     const issueId = await getCurrentIssueFromVcs()
-    assertEquals(issueId, null)
+    expect(issueId).toBeNull()
   } finally {
-    Deno.chdir(originalCwd)
+    process.chdir(originalCwd)
     if (originalVcs !== undefined) {
-      Deno.env.set("LINEAR_VCS", originalVcs)
+      process.env["LINEAR_VCS"] = originalVcs
     } else {
-      Deno.env.delete("LINEAR_VCS")
+      delete process.env["LINEAR_VCS"]
     }
-    await Deno.remove(tempDir, { recursive: true })
+    await rm(tempDir, { recursive: true, force: true })
   }
 })
 
-Deno.test("startVcsWork - propagates git checkout errors when not in a git repo", async () => {
-  const tempDir = await Deno.makeTempDir()
-  const originalCwd = Deno.cwd()
-  const originalVcs = Deno.env.get("LINEAR_VCS")
+test("startVcsWork - propagates git checkout errors when not in a git repo", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-vcs-test-"))
+  const originalCwd = process.cwd()
+  const originalVcs = process.env["LINEAR_VCS"]
 
   try {
-    Deno.env.set("LINEAR_VCS", "git")
-    Deno.chdir(tempDir)
+    process.env["LINEAR_VCS"] = "git"
+    process.chdir(tempDir)
 
-    await assertRejects(
-      async () => await startVcsWork("ABC-123", "feature/ABC-123-test"),
-      CliError,
-      "Failed to create branch",
-    )
+    await expect(startVcsWork("ABC-123", "feature/ABC-123-test")).rejects.toThrow("Failed to create branch")
   } finally {
-    Deno.chdir(originalCwd)
+    process.chdir(originalCwd)
     if (originalVcs !== undefined) {
-      Deno.env.set("LINEAR_VCS", originalVcs)
+      process.env["LINEAR_VCS"] = originalVcs
     } else {
-      Deno.env.delete("LINEAR_VCS")
+      delete process.env["LINEAR_VCS"]
     }
-    await Deno.remove(tempDir, { recursive: true })
+    await rm(tempDir, { recursive: true, force: true })
   }
 })
 
-Deno.test("startVcsWork - propagates git checkout errors when source ref doesn't exist", async () => {
-  const tempDir = await Deno.makeTempDir()
-  const originalCwd = Deno.cwd()
-  const originalVcs = Deno.env.get("LINEAR_VCS")
+test("startVcsWork - propagates git checkout errors when source ref doesn't exist", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-vcs-test-"))
+  const originalCwd = process.cwd()
+  const originalVcs = process.env["LINEAR_VCS"]
 
   try {
-    Deno.env.set("LINEAR_VCS", "git")
-    Deno.chdir(tempDir)
+    process.env["LINEAR_VCS"] = "git"
+    process.chdir(tempDir)
 
-    // Initialize git repo
-    await new Deno.Command("git", { args: ["init"] }).output()
-    await new Deno.Command("git", {
-      args: ["config", "user.email", "test@example.com"],
-    }).output()
-    await new Deno.Command("git", {
-      args: ["config", "user.name", "Test User"],
-    }).output()
+    execFileSync("git", ["init"], { cwd: tempDir })
+    execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: tempDir })
+    execFileSync("git", ["config", "user.name", "Test User"], { cwd: tempDir })
 
-    // Create initial commit
-    await Deno.writeTextFile("test.txt", "test")
-    await new Deno.Command("git", { args: ["add", "test.txt"] }).output()
-    await new Deno.Command("git", {
-      args: ["commit", "-m", "initial commit"],
-    }).output()
+    await writeFile(join(tempDir, "test.txt"), "test")
+    execFileSync("git", ["add", "test.txt"], { cwd: tempDir })
+    execFileSync("git", ["commit", "-m", "initial commit"], { cwd: tempDir })
 
     // Try to create a branch from a non-existent ref
-    await assertRejects(
-      async () =>
-        await startVcsWork("ABC-123", "feature/ABC-123-test", "nonexistent"),
-      CliError,
-      "Failed to create branch",
-    )
+    await expect(startVcsWork("ABC-123", "feature/ABC-123-test", "nonexistent")).rejects.toThrow("Failed to create branch")
   } finally {
-    Deno.chdir(originalCwd)
+    process.chdir(originalCwd)
     if (originalVcs !== undefined) {
-      Deno.env.set("LINEAR_VCS", originalVcs)
+      process.env["LINEAR_VCS"] = originalVcs
     } else {
-      Deno.env.delete("LINEAR_VCS")
+      delete process.env["LINEAR_VCS"]
     }
-    await Deno.remove(tempDir, { recursive: true })
+    await rm(tempDir, { recursive: true, force: true })
   }
 })

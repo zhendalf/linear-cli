@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commentAddCommand } from "../../../src/commands/issue/issue-comment-add.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test adding a comment with body flag
 await snapshotTest({
@@ -11,7 +8,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["TEST-123", "--body", "This is a test comment"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -48,7 +44,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentAddCommand.parse()
+      await commentAddCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -67,7 +63,6 @@ await snapshotTest({
     "--parent",
     "parent-comment-uuid-123",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -104,7 +99,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentAddCommand.parse()
+      await commentAddCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

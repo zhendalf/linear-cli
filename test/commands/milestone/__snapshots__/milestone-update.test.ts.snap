@@ -1,30 +1,28 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Milestone Update Command - Help Text 1`] = `
-stdout:
-"
-Usage: update <id>
+exports[`Milestone Update Command - Help Text 1`] = `
+"stdout:
+"Usage: update [options] <id>
 
-Description:
+Update an existing project milestone
 
-  Update an existing project milestone
+Arguments:
+  id                           Milestone ID
 
 Options:
-
-  -h, --help                    - Show this help.                          
-  --name         <name>         - Milestone name                           
-  --description  <description>  - Milestone description                    
-  --target-date  <date>         - Target date (YYYY-MM-DD)                 
-  --sort-order   <value>        - Sort order relative to other milestones  
-  --project      <projectId>    - Move to a different project              
-
+  --name <name>                Milestone name
+  --description <description>  Milestone description
+  --target-date <date>         Target date (YYYY-MM-DD)
+  --sort-order <value>         Sort order relative to other milestones
+  --project <projectId>        Move to a different project
+  -h, --help                   display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Update Command - Update Name 1`] = `
-stdout:
+exports[`Milestone Update Command - Update Name 1`] = `
+"stdout:
 "✓ Updated milestone: Updated Milestone Name
   ID: milestone-123
   Target Date: 2026-03-31
@@ -32,11 +30,11 @@ stdout:
   Project: Test Project
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Update Command - Update Multiple Fields 1`] = `
-stdout:
+exports[`Milestone Update Command - Update Multiple Fields 1`] = `
+"stdout:
 "✓ Updated milestone: Q2 Goals
   ID: milestone-456
   Target Date: 2026-06-30
@@ -44,11 +42,11 @@ stdout:
   Project: Another Project
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Update Command - Update Sort Order 1`] = `
-stdout:
+exports[`Milestone Update Command - Update Sort Order 1`] = `
+"stdout:
 "✓ Updated milestone: Sorted Milestone
   ID: milestone-sort
   Target Date: 2026-06-15
@@ -56,11 +54,11 @@ stdout:
   Project: Test Project
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Update Command - Update Sort Order Zero 1`] = `
-stdout:
+exports[`Milestone Update Command - Update Sort Order Zero 1`] = `
+"stdout:
 "✓ Updated milestone: First Milestone
   ID: milestone-zero
   Target Date: 2026-01-15
@@ -68,11 +66,11 @@ stdout:
   Project: Test Project
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Update Command - Update Target Date 1`] = `
-stdout:
+exports[`Milestone Update Command - Update Target Date 1`] = `
+"stdout:
 "✓ Updated milestone: Existing Milestone
   ID: milestone-789
   Target Date: 2026-12-31
@@ -80,5 +78,5 @@ stdout:
   Project: Final Project
 "
 stderr:
-""
+"""
 `;

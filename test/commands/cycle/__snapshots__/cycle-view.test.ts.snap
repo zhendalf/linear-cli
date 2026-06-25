@@ -1,26 +1,24 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Cycle View Command - Help Text 1`] = `
-stdout:
-"
-Usage: view <cycleRef>
+exports[`Cycle View Command - Help Text 1`] = `
+"stdout:
+"Usage: view|v [options] <cycleRef>
 
-Description:
+View cycle details
 
-  View cycle details
+Arguments:
+  cycleRef       Cycle reference (name or number)
 
 Options:
-
-  -h, --help          - Show this help.                      
-  --team      <team>  - Team key (defaults to current team)  
-
+  --team <team>  Team key (defaults to current team)
+  -h, --help     display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Cycle View Command - Active Cycle With Issues 1`] = `
-stdout:
+exports[`Cycle View Command - Active Cycle With Issues 1`] = `
+"stdout:
 "# Sprint 13
 
 **Number:** 13
@@ -51,11 +49,11 @@ Focus on performance improvements
 - ENG-401: Update onboarding flow (Done)
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Cycle View Command - Cycle With No Issues 1`] = `
-stdout:
+exports[`Cycle View Command - Cycle With No Issues 1`] = `
+"stdout:
 "# Sprint 14
 
 **Number:** 14
@@ -70,11 +68,11 @@ stdout:
 _No issues in this cycle yet._
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Cycle View Command - Many Issues Truncated 1`] = `
-stdout:
+exports[`Cycle View Command - Many Issues Truncated 1`] = `
+"stdout:
 "# Sprint 12
 
 **Number:** 12
@@ -114,5 +112,5 @@ Completed sprint
 _...and 5 more issues_
 "
 stderr:
-""
+"""
 `;

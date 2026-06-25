@@ -1,58 +1,56 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Document Delete Command - Help Text 1`] = `
-stdout:
-"
-Usage: delete [documentId]
+exports[`Document Delete Command - Help Text 1`] = `
+"stdout:
+"Usage: delete|d [options] [documentId]
 
-Description:
+Delete a document (moves to trash)
 
-  Delete a document (moves to trash)
+Arguments:
+  documentId          Document ID or slug
 
 Options:
-
-  -h, --help              - Show this help.                                     
-  -y, --yes               - Skip confirmation prompt                            
-  --bulk        <ids...>  - Delete multiple documents by slug or ID             
-  --bulk-file   <file>    - Read document slugs/IDs from a file (one per line)  
-  --bulk-stdin            - Read document slugs/IDs from stdin                  
-
+  -y, --yes           Skip confirmation prompt
+  --bulk <ids...>     Delete multiple documents by slug or ID
+  --bulk-file <file>  Read document slugs/IDs from a file (one per line)
+  --bulk-stdin        Read document slugs/IDs from stdin
+  -h, --help          display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Delete Command - Soft Delete 1`] = `
-stdout:
+exports[`Document Delete Command - Soft Delete 1`] = `
+"stdout:
 "✓ Deleted document: Test Document
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Delete Command - Document Not Found 1`] = `
-stdout:
+exports[`Document Delete Command - Document Not Found 1`] = `
+"stdout:
 ""
 stderr:
 "✗ Failed to delete document: Document not found: nonexistent123
-"
+""
 `;
 
-snapshot[`Document Delete Command - Bulk Delete 1`] = `
-stdout:
+exports[`Document Delete Command - Bulk Delete 1`] = `
+"stdout:
 "Found 2 document(s) to delete.
 
 ✓ Successfully deleted 2 documents
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Delete Command - Missing ID 1`] = `
-stdout:
+exports[`Document Delete Command - Missing ID 1`] = `
+"stdout:
 ""
 stderr:
 "✗ Failed to delete document: Document ID required
   Use --bulk for multiple documents.
-"
+""
 `;

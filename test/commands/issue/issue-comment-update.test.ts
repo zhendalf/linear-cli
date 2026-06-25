@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commentUpdateCommand } from "../../../src/commands/issue/issue-comment-update.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test updating a comment with body flag
 await snapshotTest({
@@ -11,7 +8,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["comment-uuid-123", "--body", "This is the updated comment text"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -37,7 +33,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentUpdateCommand.parse()
+      await commentUpdateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

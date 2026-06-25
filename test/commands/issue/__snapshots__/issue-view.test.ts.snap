@@ -1,32 +1,27 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Issue View Command - Help Text 1`] = `
-stdout:
-"
-Usage: view [issueId]
+exports[`Issue View Command - Help Text 1`] = `
+"stdout:
+"Usage: view|v [options] [issueId]
 
-Description:
-
-  View issue details (default) or open in browser/app
+View issue details (default) or open in browser/app
 
 Options:
-
-  -h, --help               - Show this help.                                 
-  -w, --web                - Open in web browser                             
-  -a, --app                - Open in Linear.app                              
-  --no-comments            - Exclude comments from the output                
-  --show-resolved-threads  - Include resolved comment threads in the output  
-  --no-pager               - Disable automatic paging for long output        
-  -j, --json               - Output issue data as JSON                       
-  --no-download            - Keep remote URLs instead of downloading files   
-
+  -w, --web                Open in web browser
+  -a, --app                Open in Linear.app
+  --no-comments            Exclude comments from the output
+  --show-resolved-threads  Include resolved comment threads in the output
+  --no-pager               Disable automatic paging for long output
+  -j, --json               Output issue data as JSON
+  --no-download            Keep remote URLs instead of downloading files
+  -h, --help               display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With Mock Server Terminal No Comments 1`] = `
-stdout:
+exports[`Issue View Command - With Mock Server Terminal No Comments 1`] = `
+"stdout:
 "# TEST-123: Fix authentication bug in login flow
 
 **State:** In Progress | **Priority:** --- | **Assignee:** Unassigned
@@ -46,11 +41,11 @@ User should be redirected to login page with clear messaging.
 User sees cryptic error message and gets stuck.
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With No Comments Flag 1`] = `
-stdout:
+exports[`Issue View Command - With No Comments Flag 1`] = `
+"stdout:
 "# TEST-123: Fix authentication bug in login flow
 
 **State:** In Progress | **Priority:** ▄▆█ | **Assignee:** @Jane Smith
@@ -58,11 +53,11 @@ stdout:
 Users are experiencing issues logging in when their session expires.
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With Comments Default 1`] = `
-stdout:
+exports[`Issue View Command - With Comments Default 1`] = `
+"stdout:
 "# TEST-123: Fix authentication bug in login flow
 
 **State:** In Progress | **Priority:** ⚠⚠⚠ | **Assignee:** @John Doe
@@ -90,11 +85,11 @@ Users are experiencing issues logging in when their session expires.
 
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With Documents And Attachments 1`] = `
-stdout:
+exports[`Issue View Command - With Documents And Attachments 1`] = `
+"stdout:
 "# TEST-246: Audit issue resource output
 
 **State:** In Progress | **Priority:** ▄▆█ | **Assignee:** @Jane Smith
@@ -114,20 +109,20 @@ Ensure issue view shows both attachments and documents.
 
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - Issue Not Found 1`] = `
-stdout:
+exports[`Issue View Command - Issue Not Found 1`] = `
+"stdout:
 ""
 stderr:
 "✗ Failed to view issue: Issue not found: TEST-999
-"
+""
 `;
 
-snapshot[`Issue View Command - JSON Output No Comments 1`] = `
-stdout:
-'{
+exports[`Issue View Command - JSON Output No Comments 1`] = `
+"stdout:
+"{
   "identifier": "TEST-123",
   "title": "Fix authentication bug in login flow",
   "description": "Users are experiencing issues logging in when their session expires.",
@@ -147,14 +142,14 @@ stdout:
     "nodes": []
   }
 }
-'
+"
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - JSON Output With Comments 1`] = `
-stdout:
-\`{
+exports[`Issue View Command - JSON Output With Comments 1`] = `
+"stdout:
+"{
   "identifier": "TEST-123",
   "title": "Fix authentication bug in login flow",
   "description": "Users are experiencing issues logging in when their session expires.",
@@ -207,14 +202,14 @@ stdout:
     "nodes": []
   }
 }
-\`
+"
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - JSON Output With Documents And Attachments 1`] = `
-stdout:
-'{
+exports[`Issue View Command - JSON Output With Documents And Attachments 1`] = `
+"stdout:
+"{
   "identifier": "TEST-246",
   "title": "Audit issue resource output",
   "description": "Ensure issue view shows both attachments and documents.",
@@ -270,13 +265,13 @@ stdout:
     ]
   }
 }
-'
+"
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With Parent And Sub-issues 1`] = `
-stdout:
+exports[`Issue View Command - With Parent And Sub-issues 1`] = `
+"stdout:
 "# TEST-456: Implement user authentication
 
 **State:** In Progress | **Priority:** ▄▆█ | **Assignee:** @Alice Developer
@@ -296,11 +291,11 @@ Add user authentication to the application.
 
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With Project And Milestone 1`] = `
-stdout:
+exports[`Issue View Command - With Project And Milestone 1`] = `
+"stdout:
 "# TEST-789: Add monitoring dashboards
 
 **State:** In Progress | **Priority:** ▄▆  | **Assignee:** @Bob Senior | **Project:** Platform Infrastructure Q1 | **Milestone:** Phase 2: Observability
@@ -308,11 +303,11 @@ stdout:
 Set up Datadog dashboards for the new service.
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - With Cycle 1`] = `
-stdout:
+exports[`Issue View Command - With Cycle 1`] = `
+"stdout:
 "# TEST-890: Implement rate limiting
 
 **State:** Todo | **Priority:** ▄   | **Assignee:** Unassigned | **Project:** API Gateway v2 | **Cycle:** Sprint 7
@@ -320,11 +315,11 @@ stdout:
 Add rate limiting to the API gateway.
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - Hides Resolved Threads By Default 1`] = `
-stdout:
+exports[`Issue View Command - Hides Resolved Threads By Default 1`] = `
+"stdout:
 "# TEST-321: Audit resolved comment thread output
 
 **State:** In Progress | **Priority:** ▄▆█ | **Assignee:** Unassigned
@@ -346,11 +341,11 @@ Check how issue view handles resolved comment threads.
 Resolved thread hidden: 1. Use --show-resolved-threads to show them.
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - Show Resolved Threads 1`] = `
-stdout:
+exports[`Issue View Command - Show Resolved Threads 1`] = `
+"stdout:
 "# TEST-321: Audit resolved comment thread output
 
 **State:** In Progress | **Priority:** ▄▆█ | **Assignee:** Unassigned
@@ -374,12 +369,12 @@ Check how issue view handles resolved comment threads.
 
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue View Command - JSON Output With Resolved Thread Metadata 1`] = `
-stdout:
-'{
+exports[`Issue View Command - JSON Output With Resolved Thread Metadata 1`] = `
+"stdout:
+"{
   "identifier": "TEST-654",
   "title": "Expose resolved thread metadata",
   "description": "Test JSON output for resolved thread data.",
@@ -441,7 +436,7 @@ stdout:
     "nodes": []
   }
 }
-'
+"
 stderr:
-""
+"""
 `;

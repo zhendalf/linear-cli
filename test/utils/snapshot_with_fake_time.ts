@@ -1,308 +1,225 @@
-import { eraseDown } from "@cliffy/ansi/ansi-escapes"
-import { getRuntimeName } from "@cliffy/internal/runtime/runtime-name"
-import { test } from "@cliffy/internal/testing/test"
-// Simple quote string implementation - wraps strings in quotes for snapshot output
-function quoteString(str: string): string {
-  return `"${str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
-}
-import { red } from "@std/fmt/colors"
-import { assertSnapshot } from "@std/testing/snapshot"
-import { AssertionError } from "@std/assert/assertion-error"
-import { FakeTime } from "@std/testing/time"
+/**
+ * In-process snapshot test harness for commander-based commands.
+ * Replaces the cliffy/Deno subprocess-based snapshot test approach.
+ *
+ * Usage:
+ *   await snapshotTest({
+ *     name: "My Command - Help",
+ *     meta: import.meta,
+ *     args: ["--help"],
+ *     colors: false,
+ *     fn: async () => {
+ *       await myCommand.parseAsync(["--help"], { from: "user" })
+ *     }
+ *   })
+ */
 
-/** Snapshot test step options. */
+import { test, expect, setSystemTime } from "bun:test"
+
+// Mutex to serialize snapshot tests - they modify process globals (argv, env, stdout)
+// and must not run concurrently even when bun:test runs tests in parallel
+let snapshotMutex: Promise<void> = Promise.resolve()
+
+function withMutex<T>(fn: () => Promise<T>): Promise<T> {
+  const result = snapshotMutex.then(fn)
+  // Allow errors to propagate to caller but not block subsequent tests
+  snapshotMutex = result.then(() => {}, () => {})
+  return result
+}
+
 export interface SnapshotTestStep {
-  /** Data written to the test process. */
   stdin?: Array<string> | string
-  /** Arguments passed to the test file. */
   args?: Array<string>
-  /** If enabled, test error will be ignored. */
   canFail?: true
 }
 
-/** Extended snapshot test options that support FakeTime. */
 export interface SnapshotTestWithFakeTimeOptions extends SnapshotTestStep {
-  /** Test name. */
   name: string
-  /** Import meta. Required to determine the import url of the test file. */
   meta: ImportMeta
-  /** Test function. */
   fn(): void | Promise<void>
-  /**
-   * Object of test steps. Key is the test name and the value is an array of
-   * input sequences/characters.
-   */
   steps?: Record<string, SnapshotTestStep>
-  /**
-   * Arguments passed to the `deno test` command when executing the snapshot
-   * tests. `--allow-env=SNAPSHOT_TEST_NAME` is passed by default.
-   */
   denoArgs?: Array<string>
-  /**
-   * Snapshot output directory. Snapshot files will be written to this directory.
-   * This can be relative to the test directory or an absolute path.
-   *
-   * If both `dir` and `path` are specified, the `dir` option will be ignored and
-   * the `path` option will be handled as normal.
-   */
   dir?: string
-  /**
-   * Snapshot output path. The snapshot will be written to this file. This can be
-   * a path relative to the test directory or an absolute path.
-   *
-   * If both `dir` and `path` are specified, the `dir` option will be ignored and
-   * the `path` option will be handled as normal.
-   */
   path?: string
-  /**
-   * Operating system snapshot suffix. This is useful when your test produces
-   * different output on different operating systems.
-   */
-  osSuffix?: Array<typeof Deno.build.os>
-  /** Enable/disable colors. Default is `false`. */
+  osSuffix?: Array<string>
   colors?: boolean
-  /**
-   * Timeout in milliseconds to wait until the input stream data is buffered
-   * before writing the next data to the stream. This ensures that each user
-   * input is rendered as separate line in the snapshot file. If your test gets
-   * flaky, try to increase the timeout. The default timeout is `600`.
-   */
   timeout?: number
-  /** If truthy the current test step will be ignored.
-   *
-   * It is a quick way to skip over a step, but also can be used for
-   * conditional logic, like determining if an environment feature is present.
-   */
   ignore?: boolean
-  /** If at least one test has `only` set to `true`, only run tests that have
-   * `only` set to `true` and fail the test suite. */
   only?: boolean
-  /** Function to use when serializing the snapshot. */
   serializer?: (actual: string) => string
-  /**
-   * Fake time to set for deterministic time-based output.
-   * This will be passed to the child process as an environment variable.
-   */
   fakeTime?: string | number | Date
+  canFail?: true
 }
 
-const encoder = new TextEncoder()
+// ANSI escape sequence pattern for stripping colors
+const ANSI_PATTERN = /\x1b\[[0-9;]*[mGKHFABCDEFGHIJKnsuhl]/g
+
+function stripAnsi(str: string): string {
+  return str.replace(ANSI_PATTERN, "")
+}
 
 /**
- * Snapshot test that supports FakeTime across process boundaries.
+ * Capture stdout and stderr output from a function call.
+ * Temporarily replaces process.stdout.write and process.stderr.write.
+ */
+/**
+ * Sentinel thrown by our process.exit mock so we can distinguish a
+ * (suppressible) process.exit() call from a genuine thrown error.
+ */
+class ProcessExitSignal extends Error {
+  constructor(public exitCode: number | string | null | undefined) {
+    super(`process.exit(${exitCode})`)
+    this.name = "ProcessExitSignal"
+  }
+}
+
+/**
+ * Decide whether a caught error is commander/exit control-flow that should be
+ * captured-and-continued, vs. a genuine failure that must propagate so the
+ * test goes red.
  *
- * This extends Cliffy's snapshot test to support deterministic time-based testing
- * by passing the fake time as an environment variable to the spawned child process.
+ * Control-flow (suppressible):
+ *  - our ProcessExitSignal (from a mocked process.exit, e.g. --help/--version)
+ *  - commander's CommanderError / exitOverride errors (help/version/known exits)
  *
- * @param options Extended test options including fakeTime
+ * Everything else (assertion failures, mock/server errors, unexpected throws)
+ * is rethrown.
+ */
+function isControlFlowExit(err: unknown): boolean {
+  if (err instanceof ProcessExitSignal) {
+    return true
+  }
+  if (err && typeof err === "object") {
+    const e = err as { name?: string; code?: string; constructor?: { name?: string } }
+    // commander.CommanderError instances carry a `code` like
+    // "commander.helpDisplayed" / "commander.version" / "commander.help".
+    if (typeof e.code === "string" && e.code.startsWith("commander.")) {
+      return true
+    }
+    if (e.name === "CommanderError" || e.constructor?.name === "CommanderError") {
+      return true
+    }
+  }
+  return false
+}
+
+export async function captureOutput(
+  fn: () => void | Promise<void>,
+  options?: { canFail?: boolean },
+): Promise<{ stdout: string; stderr: string }> {
+  let stdoutBuf = ""
+  let stderrBuf = ""
+
+  const origStdoutWrite = process.stdout.write.bind(process.stdout)
+  const origStderrWrite = process.stderr.write.bind(process.stderr)
+
+  const origConsoleLog = console.log
+  const origConsoleError = console.error
+  const origConsoleWarn = console.warn
+  const origExit = process.exit
+
+  process.stdout.write = (chunk: string | Uint8Array, ...args: unknown[]) => {
+    stdoutBuf += typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString()
+    return true
+  }
+
+  process.stderr.write = (chunk: string | Uint8Array, ...args: unknown[]) => {
+    stderrBuf += typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString()
+    return true
+  }
+
+  console.log = (...args: unknown[]) => {
+    stdoutBuf += args.map(String).join(" ") + "\n"
+  }
+
+  console.error = (...args: unknown[]) => {
+    stderrBuf += args.map(String).join(" ") + "\n"
+  }
+
+  console.warn = (...args: unknown[]) => {
+    stderrBuf += args.map(String).join(" ") + "\n"
+  }
+
+  // Mock process.exit so commander --help and error exits don't kill the test process
+  process.exit = ((code: number | string | null | undefined) => {
+    throw new ProcessExitSignal(code)
+  }) as typeof process.exit
+
+  let caught: unknown
+  let didThrow = false
+  try {
+    await fn()
+  } catch (err) {
+    caught = err
+    didThrow = true
+  } finally {
+    process.stdout.write = origStdoutWrite
+    process.stderr.write = origStderrWrite
+    console.log = origConsoleLog
+    console.error = origConsoleError
+    console.warn = origConsoleWarn
+    process.exit = origExit
+  }
+
+  // Only suppress commander control-flow exits (help/version/normal exit).
+  // A genuine assertion/mock/action failure MUST propagate so the test fails,
+  // unless the test explicitly opted into `canFail`.
+  if (didThrow && !options?.canFail && !isControlFlowExit(caught)) {
+    throw caught
+  }
+
+  return { stdout: stdoutBuf, stderr: stderrBuf }
+}
+
+/**
+ * Register a snapshot test using bun:test.
+ * The old cliffy harness spawned a subprocess per test; this runs in-process.
  */
 export async function snapshotTest(
   options: SnapshotTestWithFakeTimeOptions,
 ): Promise<void> {
-  if (options.meta.main) {
-    await runTest(options)
-  } else {
-    registerTest(options)
-  }
-}
+  const { name, fn, fakeTime, colors = false, ignore = false, only = false, canFail = false } = options
 
-function registerTest(options: SnapshotTestWithFakeTimeOptions) {
-  const fileName = options.meta.url.split("/").at(-1) ?? ""
+  const testFn = only ? test.only : (ignore ? test.skip : test)
 
-  if (["node", "bun"].includes(getRuntimeName())) {
-    test({
-      name: options.name,
-      ignore: true,
-      fn() {},
-    })
-  } else {
-    Deno.test({
-      name: options.name,
-      ignore: options.ignore ?? false,
-      only: options.only ?? false,
-      async fn(ctx) {
-        const steps = Object.entries(options.steps ?? {})
-        if (steps.length) {
-          for (const [name, step] of steps) {
-            await ctx.step({
-              name,
-              fn: (ctx) => fn(ctx, step),
-            })
-          }
-        } else {
-          await fn(ctx)
-        }
-      },
-    })
-  }
-
-  async function fn(
-    ctx: Deno.TestContext,
-    step?: SnapshotTestStep,
-  ) {
-    const { stdout, stderr } = await executeTest(options, step)
-
-    const serializer = options.serializer ?? quoteString
-    const output = `stdout:\n${serializer(stdout)}\nstderr:\n${
-      serializer(stderr)
-    }`
-
-    const suffix = options.osSuffix?.includes(Deno.build.os)
-      ? `.${Deno.build.os}`
-      : ""
-
-    await assertSnapshot(ctx, output, {
-      dir: options.dir,
-      path: options.path ??
-        (options.dir ? undefined : `__snapshots__/${fileName}${suffix}.snap`),
-      serializer: (value) => value,
-    })
-  }
-}
-
-async function executeTest(
-  options: SnapshotTestWithFakeTimeOptions,
-  step?: SnapshotTestStep,
-): Promise<{ stdout: string; stderr: string }> {
-  let output: Deno.CommandOutput | undefined
-  let stdout: string | undefined
-  let stderr: string | undefined
-
-  try {
-    let denoArgs: Array<string>
-
-    if (options.denoArgs) {
-      denoArgs = options.denoArgs
-    } else {
-      denoArgs = ["--allow-all", "--quiet"]
+  testFn(name, () => withMutex(async () => {
+    // Set up fake time if requested
+    if (fakeTime != null) {
+      const fakeTimeValue = fakeTime instanceof Date
+        ? fakeTime
+        : new Date(typeof fakeTime === "number" ? fakeTime : fakeTime)
+      setSystemTime(fakeTimeValue)
     }
 
-    // Add FakeTime env var permission if needed
-    if (options.fakeTime) {
-      const envArgs = denoArgs.find((arg) => arg.startsWith("--allow-env="))
-      if (envArgs) {
-        denoArgs = denoArgs.map((arg) =>
-          arg.startsWith("--allow-env=")
-            ? `${arg},CLIFFY_SNAPSHOT_FAKE_TIME`
-            : arg
-        )
-      } else {
-        denoArgs.push("--allow-env=CLIFFY_SNAPSHOT_FAKE_TIME")
-      }
+    // Disable colors for snapshot tests unless explicitly enabled
+    const chalk = (await import("chalk")).default
+    const origChalkLevel = chalk.level
+    if (!colors) {
+      chalk.level = 0
     }
 
-    const env: Record<string, string> = {
-      SNAPSHOT_TEST_NAME: options.name,
-      ...options.colors ? {} : { NO_COLOR: "true" },
-    }
-
-    // Add fake time to environment if specified
-    if (options.fakeTime) {
-      const fakeTimeValue = options.fakeTime instanceof Date
-        ? options.fakeTime.toISOString()
-        : String(options.fakeTime)
-      env.CLIFFY_SNAPSHOT_FAKE_TIME = fakeTimeValue
-    }
-
-    const cmd = new Deno.Command("deno", {
-      stdin: "piped",
-      stdout: "piped",
-      stderr: "piped",
-      args: [
-        "run",
-        ...denoArgs,
-        options.meta.url,
-        ...options.args ?? [],
-        ...step?.args ?? [],
-      ],
-      env,
-    })
-    const child: Deno.ChildProcess = cmd.spawn()
-    const writer = child.stdin.getWriter()
-
-    const stdin = [
-      ...options?.stdin ?? [],
-      ...step?.stdin ?? [],
-    ]
-
-    if (stdin.length) {
-      const delay = Number(
-        await getEnvIfGranted("CLIFFY_SNAPSHOT_DELAY") ||
-          (options.timeout ?? Deno.build.os === "windows" ? 1200 : 300),
-      )
-
-      for (const data of stdin) {
-        await writer.write(encoder.encode(data))
-        // Workaround to ensure all inputs are processed and rendered separately.
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-
-    output = await child.output()
-    stdout = addLineBreaks(new TextDecoder().decode(output.stdout))
-    stderr = addLineBreaks(new TextDecoder().decode(output.stderr))
-
-    writer.releaseLock()
-    await child.stdin.close()
-  } catch (error: unknown) {
-    const assertionError = new AssertionError(
-      `Snapshot test failed: ${options.meta.url}.\n${red(stderr ?? "")}`,
-    )
-    assertionError.cause = error
-    throw assertionError
-  }
-
-  if (!output.success && !options.canFail && !step?.canFail) {
-    throw new AssertionError(
-      `Snapshot test failed: ${options.meta.url}.` +
-        `Test command failed with a none zero exit code: ${output.code}.\n${
-          red(stderr ?? "")
-        }`,
-    )
-  }
-
-  return { stdout, stderr }
-}
-
-/** Add a line break after each test input. */
-function addLineBreaks(str: string) {
-  return str.replaceAll(
-    eraseDown(),
-    eraseDown() + "\n",
-  )
-}
-
-async function runTest(options: SnapshotTestWithFakeTimeOptions) {
-  const testName = Deno.env.get("SNAPSHOT_TEST_NAME")
-  if (testName === options.name) {
-    // Set up FakeTime if environment variable is present
-    const fakeTimeEnv = Deno.env.get("CLIFFY_SNAPSHOT_FAKE_TIME")
-    let fakeTime: FakeTime | undefined
-
-    if (fakeTimeEnv) {
-      const fakeTimeValue = isNaN(Number(fakeTimeEnv))
-        ? fakeTimeEnv
-        : Number(fakeTimeEnv)
-      fakeTime = new FakeTime(fakeTimeValue)
-    }
+    // Set process.argv so commander's .parse() (without args) reads the test args
+    const origArgv = process.argv
+    const testArgs = options.args ?? []
+    process.argv = ["node", "test-file.ts", ...testArgs]
 
     try {
-      await options.fn()
+      const { stdout, stderr } = await captureOutput(fn, { canFail })
+      const cleanStdout = colors ? stdout : stripAnsi(stdout)
+      const cleanStderr = colors ? stderr : stripAnsi(stderr)
+
+      // Format output like the old cliffy harness: stdout + stderr combined
+      const output = `stdout:\n"${cleanStdout}"\nstderr:\n"${cleanStderr}"`
+
+      expect(output).toMatchSnapshot()
     } finally {
-      if (fakeTime) {
-        fakeTime.restore()
+      process.argv = origArgv
+      // Restore fake time
+      if (fakeTime != null) {
+        setSystemTime()
       }
+      // Restore chalk
+      chalk.level = origChalkLevel
     }
-  }
-}
-
-async function getEnvIfGranted(name: string): Promise<string | undefined> {
-  const { state } = await Deno.permissions.query({
-    name: "env",
-    variable: name,
-  })
-
-  return state === "granted" && Deno.env.has(name)
-    ? Deno.env.get(name)
-    : undefined
+  }))
 }

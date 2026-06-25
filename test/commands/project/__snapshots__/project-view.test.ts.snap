@@ -1,27 +1,25 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Project View Command - Help Text 1`] = `
-stdout:
-"
-Usage: view <projectId>
+exports[`Project View Command - Help Text 1`] = `
+"stdout:
+"Usage: view|v [options] <projectId>
 
-Description:
+View project details
 
-  View project details
+Arguments:
+  projectId   Project ID or slug
 
 Options:
-
-  -h, --help  - Show this help.      
-  -w, --web   - Open in web browser  
-  -a, --app   - Open in Linear.app   
-
+  -w, --web   Open in web browser
+  -a, --app   Open in Linear.app
+  -h, --help  display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Project View Command - With Project Details 1`] = `
-stdout:
+exports[`Project View Command - With Project Details 1`] = `
+"stdout:
 "# 🔐 Authentication System Redesign
 
 **Slug:** auth-redesign-2024
@@ -82,11 +80,11 @@ Great progress this week! The OAuth implementation is nearly complete and we're 
 **Canceled:** 1
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Project View Command - Minimal Project 1`] = `
-stdout:
+exports[`Project View Command - Minimal Project 1`] = `
+"stdout:
 "# Simple Project
 
 **Slug:** simple
@@ -98,5 +96,5 @@ stdout:
 **Updated:** 1/20/2024
 "
 stderr:
-""
+"""
 `;

@@ -1,43 +1,43 @@
-import { assertEquals } from "@std/assert"
+import { expect, test } from "bun:test"
 import {
   getIssueIdentifier,
   searchIssuesByTerm,
 } from "../../src/utils/linear.ts"
-import { setupMockLinearServer } from "../utils/test-helpers.ts"
+import { setupMockLinearServer } from "./test-helpers.ts"
 
-Deno.test("getIssueId - handles full issue identifiers", async () => {
+test("getIssueId - handles full issue identifiers", async () => {
   const result = await getIssueIdentifier("ABC-123")
-  assertEquals(result, "ABC-123")
+  expect(result).toBe("ABC-123")
 })
 
-Deno.test("getIssueId - handles integer-only IDs with team prefix", async () => {
-  Deno.env.set("LINEAR_TEAM_ID", "CLI")
+test("getIssueId - handles integer-only IDs with team prefix", async () => {
+  process.env["LINEAR_TEAM_ID"] = "CLI"
 
   const result = await getIssueIdentifier("123")
-  assertEquals(result, "CLI-123")
+  expect(result).toBe("CLI-123")
 
-  Deno.env.delete("LINEAR_TEAM_ID")
+  delete process.env["LINEAR_TEAM_ID"]
 })
 
-Deno.test("getIssueId - rejects invalid integer patterns", async () => {
-  Deno.env.set("LINEAR_TEAM_ID", "TEST")
+test("getIssueId - rejects invalid integer patterns", async () => {
+  process.env["LINEAR_TEAM_ID"] = "TEST"
 
   const result = await getIssueIdentifier("0123") // Leading zero should be rejected
-  assertEquals(result, undefined)
+  expect(result).toBeUndefined()
 
-  Deno.env.delete("LINEAR_TEAM_ID")
+  delete process.env["LINEAR_TEAM_ID"]
 })
 
-Deno.test("getIssueId - rejects zero", async () => {
-  Deno.env.set("LINEAR_TEAM_ID", "TEST")
+test("getIssueId - rejects zero", async () => {
+  process.env["LINEAR_TEAM_ID"] = "TEST"
 
   const result = await getIssueIdentifier("0")
-  assertEquals(result, undefined)
+  expect(result).toBeUndefined()
 
-  Deno.env.delete("LINEAR_TEAM_ID")
+  delete process.env["LINEAR_TEAM_ID"]
 })
 
-Deno.test("searchIssuesByTerm - without limit fetches a single page", async () => {
+test("searchIssuesByTerm - without limit fetches a single page", async () => {
   const { cleanup } = await setupMockLinearServer([
     {
       queryName: "SearchIssues",
@@ -97,7 +97,7 @@ Deno.test("searchIssuesByTerm - without limit fetches a single page", async () =
       teamKey: "CLI",
     })
 
-    assertEquals(result, {
+    expect(result).toEqual({
       nodes: [
         {
           id: "issue-1",

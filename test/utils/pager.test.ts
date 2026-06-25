@@ -1,94 +1,77 @@
-import { assertEquals } from "@std/assert"
+import { expect, test } from "bun:test"
 import { getPagerCommand, shouldUsePager } from "../../src/utils/pager.ts"
 
-Deno.test({
-  name: "shouldUsePager - returns false when usePager is false",
-  fn() {
-    const outputLines = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}`)
-    assertEquals(shouldUsePager(outputLines, false), false)
-  },
+test("shouldUsePager - returns false when usePager is false", () => {
+  const outputLines = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}`)
+  expect(shouldUsePager(outputLines, false)).toBe(false)
 })
 
-Deno.test({
-  name: "shouldUsePager - returns false when not in terminal",
-  fn() {
-    // Mock stdout.isTerminal to return false
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => false
+test("shouldUsePager - returns false when not in terminal", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true })
 
-    try {
-      const outputLines = Array.from(
-        { length: 100 },
-        (_, i) => `Line ${i + 1}`,
-      )
-      assertEquals(shouldUsePager(outputLines, true), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-    }
-  },
+  try {
+    const outputLines = Array.from(
+      { length: 100 },
+      (_, i) => `Line ${i + 1}`,
+    )
+    expect(shouldUsePager(outputLines, true)).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+  }
 })
 
-Deno.test({
-  name:
-    "shouldUsePager - returns true when content is long and conditions are met",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldUsePager - returns true when content is long and conditions are met", () => {
+  const origIsTTY = process.stdout.isTTY
+  const origRows = process.stdout.rows
+  const origColumns = process.stdout.columns
 
-    // Mock consoleSize to return a small terminal
-    const originalConsoleSize = Deno.consoleSize
-    Deno.consoleSize = () => ({ columns: 80, rows: 10 })
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  Object.defineProperty(process.stdout, "rows", { value: 10, configurable: true })
+  Object.defineProperty(process.stdout, "columns", { value: 80, configurable: true })
 
-    try {
-      // Create output longer than terminal height (10 - 2 = 8)
-      const outputLines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}`)
-      assertEquals(shouldUsePager(outputLines, true), true)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      Deno.consoleSize = originalConsoleSize
-    }
-  },
+  try {
+    // Create output longer than terminal height (10 - 2 = 8)
+    const outputLines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}`)
+    expect(shouldUsePager(outputLines, true)).toBe(true)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    Object.defineProperty(process.stdout, "rows", { value: origRows, configurable: true })
+    Object.defineProperty(process.stdout, "columns", { value: origColumns, configurable: true })
+  }
 })
 
-Deno.test({
-  name: "shouldUsePager - returns false when content is short",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldUsePager - returns false when content is short", () => {
+  const origIsTTY = process.stdout.isTTY
+  const origRows = process.stdout.rows
+  const origColumns = process.stdout.columns
 
-    // Mock consoleSize to return a large terminal
-    const originalConsoleSize = Deno.consoleSize
-    Deno.consoleSize = () => ({ columns: 80, rows: 50 })
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  Object.defineProperty(process.stdout, "rows", { value: 50, configurable: true })
+  Object.defineProperty(process.stdout, "columns", { value: 80, configurable: true })
 
-    try {
-      // Create output shorter than terminal height (50 - 2 = 48)
-      const outputLines = Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`)
-      assertEquals(shouldUsePager(outputLines, true), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      Deno.consoleSize = originalConsoleSize
-    }
-  },
+  try {
+    // Create output shorter than terminal height (50 - 2 = 48)
+    const outputLines = Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`)
+    expect(shouldUsePager(outputLines, true)).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    Object.defineProperty(process.stdout, "rows", { value: origRows, configurable: true })
+    Object.defineProperty(process.stdout, "columns", { value: origColumns, configurable: true })
+  }
 })
 
-Deno.test({
-  name: "getPagerCommand - includes -X flag for less on unix systems",
-  fn() {
-    // Clear PAGER environment variable to test default behavior
-    const originalPager = Deno.env.get("PAGER")
-    if (originalPager) Deno.env.delete("PAGER")
+test("getPagerCommand - includes -X flag for less on unix systems", () => {
+  const originalPager = process.env["PAGER"]
+  if (originalPager) delete process.env["PAGER"]
 
-    try {
-      const pagerConfig = getPagerCommand()
-      if (Deno.build.os !== "windows") {
-        assertEquals(pagerConfig?.command, "less")
-        assertEquals(pagerConfig?.args, ["-R", "-X"])
-      }
-    } finally {
-      // Restore original PAGER if it existed
-      if (originalPager) Deno.env.set("PAGER", originalPager)
+  try {
+    const pagerConfig = getPagerCommand()
+    if (process.platform !== "win32") {
+      expect(pagerConfig?.command).toBe("less")
+      expect(pagerConfig?.args).toEqual(["-R", "-X"])
     }
-  },
+  } finally {
+    if (originalPager) process.env["PAGER"] = originalPager
+  }
 })

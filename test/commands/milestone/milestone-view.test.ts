@@ -1,6 +1,5 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { viewCommand } from "../../../src/commands/milestone/milestone-view.ts"
-import { commonDenoArgs } from "../../utils/test-helpers.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
 
 // Test help output
@@ -9,9 +8,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await viewCommand.parse()
+    await viewCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -21,7 +19,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["milestone-123"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -81,14 +78,14 @@ await snapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await viewCommand.parse()
+      await viewCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
@@ -99,7 +96,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["milestone-789"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -131,14 +127,14 @@ await snapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await viewCommand.parse()
+      await viewCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
@@ -149,7 +145,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["milestone-456"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -193,14 +188,14 @@ await snapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await viewCommand.parse()
+      await viewCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })

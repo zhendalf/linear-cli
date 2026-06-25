@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert"
+import { expect, test } from "bun:test"
 import {
   CliError,
   extractGraphQLMessage,
@@ -10,55 +10,55 @@ import {
 } from "../../src/utils/errors.ts"
 import { ClientError, type GraphQLResponse } from "graphql-request"
 
-Deno.test("isDebugMode - returns false when LINEAR_DEBUG is not set", () => {
-  Deno.env.delete("LINEAR_DEBUG")
-  assertEquals(isDebugMode(), false)
+test("isDebugMode - returns false when LINEAR_DEBUG is not set", () => {
+  delete process.env["LINEAR_DEBUG"]
+  expect(isDebugMode()).toBe(false)
 })
 
-Deno.test("isDebugMode - returns true when LINEAR_DEBUG is '1'", () => {
-  Deno.env.set("LINEAR_DEBUG", "1")
+test("isDebugMode - returns true when LINEAR_DEBUG is '1'", () => {
+  process.env["LINEAR_DEBUG"] = "1"
   try {
-    assertEquals(isDebugMode(), true)
+    expect(isDebugMode()).toBe(true)
   } finally {
-    Deno.env.delete("LINEAR_DEBUG")
+    delete process.env["LINEAR_DEBUG"]
   }
 })
 
-Deno.test("isDebugMode - returns true when LINEAR_DEBUG is 'true'", () => {
-  Deno.env.set("LINEAR_DEBUG", "true")
+test("isDebugMode - returns true when LINEAR_DEBUG is 'true'", () => {
+  process.env["LINEAR_DEBUG"] = "true"
   try {
-    assertEquals(isDebugMode(), true)
+    expect(isDebugMode()).toBe(true)
   } finally {
-    Deno.env.delete("LINEAR_DEBUG")
+    delete process.env["LINEAR_DEBUG"]
   }
 })
 
-Deno.test("CliError - stores user message", () => {
+test("CliError - stores user message", () => {
   const error = new CliError("Something went wrong")
-  assertEquals(error.userMessage, "Something went wrong")
-  assertEquals(error.message, "Something went wrong")
+  expect(error.userMessage).toBe("Something went wrong")
+  expect(error.message).toBe("Something went wrong")
 })
 
-Deno.test("CliError - stores suggestion", () => {
+test("CliError - stores suggestion", () => {
   const error = new CliError("Something went wrong", {
     suggestion: "Try running with --force",
   })
-  assertEquals(error.suggestion, "Try running with --force")
+  expect(error.suggestion).toBe("Try running with --force")
 })
 
-Deno.test("NotFoundError - formats message correctly", () => {
+test("NotFoundError - formats message correctly", () => {
   const error = new NotFoundError("Issue", "ENG-123")
-  assertEquals(error.userMessage, "Issue not found: ENG-123")
-  assertEquals(error.entityType, "Issue")
-  assertEquals(error.identifier, "ENG-123")
+  expect(error.userMessage).toBe("Issue not found: ENG-123")
+  expect(error.entityType).toBe("Issue")
+  expect(error.identifier).toBe("ENG-123")
 })
 
-Deno.test("ValidationError - stores message and suggestion", () => {
+test("ValidationError - stores message and suggestion", () => {
   const error = new ValidationError("Invalid relation type: foo", {
     suggestion: "Must be one of: blocks, related",
   })
-  assertEquals(error.userMessage, "Invalid relation type: foo")
-  assertEquals(error.suggestion, "Must be one of: blocks, related")
+  expect(error.userMessage).toBe("Invalid relation type: foo")
+  expect(error.suggestion).toBe("Must be one of: blocks, related")
 })
 
 // Helper to create test ClientError instances
@@ -80,32 +80,32 @@ function createClientError(
   return new ClientError(response, { query: "query {}" })
 }
 
-Deno.test("extractGraphQLMessage - extracts userPresentableMessage", () => {
+test("extractGraphQLMessage - extracts userPresentableMessage", () => {
   const error = createClientError("Internal error", "Issue not found")
-  assertEquals(extractGraphQLMessage(error), "Issue not found")
+  expect(extractGraphQLMessage(error)).toBe("Issue not found")
 })
 
-Deno.test("extractGraphQLMessage - falls back to error message", () => {
+test("extractGraphQLMessage - falls back to error message", () => {
   const error = createClientError("Entity not found: Issue")
-  assertEquals(extractGraphQLMessage(error), "Entity not found: Issue")
+  expect(extractGraphQLMessage(error)).toBe("Entity not found: Issue")
 })
 
-Deno.test("isNotFoundError - returns true for 'not found' messages", () => {
+test("isNotFoundError - returns true for 'not found' messages", () => {
   const error = createClientError("Entity not found: Issue")
-  assertEquals(isNotFoundError(error), true)
+  expect(isNotFoundError(error)).toBe(true)
 })
 
-Deno.test("isNotFoundError - returns false for other errors", () => {
+test("isNotFoundError - returns false for other errors", () => {
   const error = createClientError("Authentication required")
-  assertEquals(isNotFoundError(error), false)
+  expect(isNotFoundError(error)).toBe(false)
 })
 
-Deno.test("isClientError - returns true for ClientError", () => {
+test("isClientError - returns true for ClientError", () => {
   const error = createClientError("Some error")
-  assertEquals(isClientError(error), true)
+  expect(isClientError(error)).toBe(true)
 })
 
-Deno.test("isClientError - returns false for other errors", () => {
+test("isClientError - returns false for other errors", () => {
   const error = new Error("Some error")
-  assertEquals(isClientError(error), false)
+  expect(isClientError(error)).toBe(false)
 })

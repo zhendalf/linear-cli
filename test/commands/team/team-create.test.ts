@@ -1,24 +1,20 @@
-import { assertEquals } from "@std/assert"
+import { describe, expect, test } from "bun:test"
 import { createCommand } from "../../../src/commands/team/team-create.ts"
 
-Deno.test("team create command", async (t) => {
-  await t.step("should be defined", () => {
-    assertEquals(typeof createCommand, "object")
-    assertEquals(createCommand.getName(), "create")
+describe("team create command", () => {
+  test("should be defined", () => {
+    expect(typeof createCommand).toBe("object")
+    expect(createCommand.name()).toBe("create")
   })
-
-  await t.step("should have correct description", () => {
-    assertEquals(createCommand.getDescription(), "Create a linear team")
+  test("should have correct description", () => {
+    expect(createCommand.description()).toBe("Create a linear team")
   })
-
-  await t.step("should have expected options", () => {
-    const options = createCommand.getOptions()
-    const optionNames = options.map((opt) => opt.name)
-
-    assertEquals(optionNames.includes("name"), true)
-    assertEquals(optionNames.includes("description"), true)
-    assertEquals(optionNames.includes("key"), true)
-    assertEquals(optionNames.includes("private"), true)
-    assertEquals(optionNames.includes("no-interactive"), true)
+  test("should have expected options", () => {
+    const optionNames = createCommand.options.map((opt) => opt.name())
+    expect(optionNames).toContain("name")
+    expect(optionNames).toContain("description")
+    expect(optionNames).toContain("key")
+    expect(optionNames).toContain("private")
+    expect(optionNames).toContain("no-interactive")
   })
 })

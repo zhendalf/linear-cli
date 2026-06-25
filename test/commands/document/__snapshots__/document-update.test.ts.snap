@@ -1,60 +1,58 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Document Update Command - Help Text 1`] = `
-stdout:
-"
-Usage: update <documentId>
+exports[`Document Update Command - Help Text 1`] = `
+"stdout:
+"Usage: update|u [options] <documentId>
 
-Description:
+Update an existing document
 
-  Update an existing document
+Arguments:
+  documentId                 Document ID or slug
 
 Options:
-
-  -h, --help                     - Show this help.                              
-  -t, --title         <title>    - New title for the document                   
-  -c, --content       <content>  - New markdown content (inline)                
-  -f, --content-file  <path>     - Read new content from file                   
-  --icon              <icon>     - New icon (emoji)                             
-  -e, --edit                     - Open current content in \$EDITOR for editing  
-
+  -t, --title <title>        New title for the document
+  -c, --content <content>    New markdown content (inline)
+  -f, --content-file <path>  Read new content from file
+  --icon <icon>              New icon (emoji)
+  -e, --edit                 Open current content in $EDITOR for editing
+  -h, --help                 display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Update Command - Update Title 1`] = `
-stdout:
+exports[`Document Update Command - Update Title 1`] = `
+"stdout:
 "✓ Updated document: New Title
 https://linear.app/test/document/new-title-d4b93e3b2695
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Update Command - Update Content 1`] = `
-stdout:
+exports[`Document Update Command - Update Content 1`] = `
+"stdout:
 "✓ Updated document: Delegation System Spec
 https://linear.app/test/document/delegation-system-spec-d4b93e3b2695
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Update Command - Update Multiple Fields 1`] = `
-stdout:
+exports[`Document Update Command - Update Multiple Fields 1`] = `
+"stdout:
 "✓ Updated document: Updated Title
 https://linear.app/test/document/updated-title-d4b93e3b2695
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document Update Command - No Fields Provided 1`] = `
-stdout:
+exports[`Document Update Command - No Fields Provided 1`] = `
+"stdout:
 ""
 stderr:
 "✗ Failed to update document: No update fields provided
   Use --title, --content, --content-file, --icon, or --edit.
-"
+""
 `;

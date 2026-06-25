@@ -1,7 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { listCommand } from "../../../src/commands/document/document-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
-import { commonDenoArgs } from "../../utils/test-helpers.ts"
 
 // Test help output
 await snapshotTest({
@@ -9,9 +8,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await listCommand.parse()
+    await listCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -26,7 +24,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--json"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -57,14 +54,14 @@ await snapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await listCommand.parse()
+      await listCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
@@ -75,7 +72,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: [],
-  denoArgs: commonDenoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -94,14 +90,14 @@ await snapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await listCommand.parse()
+      await listCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })

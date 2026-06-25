@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commentListCommand } from "../../../src/commands/issue/issue-comment-list.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test listing comments for an issue
 await snapshotTest({
@@ -11,7 +8,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["TEST-123"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -86,7 +82,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentListCommand.parse()
+      await commentListCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -99,7 +95,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["TEST-123", "--json"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -146,7 +141,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentListCommand.parse()
+      await commentListCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -159,7 +154,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["TEST-123"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -192,7 +186,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentListCommand.parse()
+      await commentListCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

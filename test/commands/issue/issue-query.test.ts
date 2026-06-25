@@ -1,12 +1,7 @@
-import { snapshotTest } from "@cliffy/testing"
-import { assertEquals } from "@std/assert"
-import { getColorEnabled, setColorEnabled } from "@std/fmt/colors"
-import { stub } from "@std/testing/mock"
+import { expect, test } from "bun:test"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { queryCommand } from "../../../src/commands/issue/issue-query.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
 await snapshotTest({
@@ -14,9 +9,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await queryCommand.parse()
+    await queryCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -74,7 +68,6 @@ await snapshotTest({
     "started",
     "--json",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -103,7 +96,7 @@ await snapshotTest({
     ], { NO_COLOR: "true" })
 
     try {
-      await queryCommand.parse()
+      await queryCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -123,7 +116,6 @@ await snapshotTest({
     "--search-comments",
     "--json",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -151,7 +143,7 @@ await snapshotTest({
     ], { NO_COLOR: "true" })
 
     try {
-      await queryCommand.parse()
+      await queryCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -159,10 +151,9 @@ await snapshotTest({
 })
 
 // Test --all-teams table output shows TEAM column
-Deno.test("Issue Query Command - All Teams shows TEAM column", async () => {
+test("Issue Query Command - All Teams shows TEAM column", async () => {
   const fixedNow = new Date("2026-04-03T10:00:00.000Z")
   const RealDate = Date
-  const originalColorEnabled = getColorEnabled()
   class MockDate extends RealDate {
     constructor(value?: string | number | Date) {
       super(value == null ? fixedNow.toISOString() : value)
@@ -172,7 +163,6 @@ Deno.test("Issue Query Command - All Teams shows TEAM column", async () => {
     }
   }
   globalThis.Date = MockDate as DateConstructor
-  setColorEnabled(false)
 
   const { cleanup } = await setupMockLinearServer([
     {
@@ -209,32 +199,31 @@ Deno.test("Issue Query Command - All Teams shows TEAM column", async () => {
   ], { NO_COLOR: "true" })
 
   const logs: string[] = []
-  const logStub = stub(console, "log", (...args: unknown[]) => {
+  const origConsoleLog = console.log
+  console.log = (...args: unknown[]) => {
     logs.push(args.map(String).join(" "))
-  })
+  }
 
   try {
-    await queryCommand.parse(["--all-teams"])
+    await queryCommand.parseAsync(["--all-teams"], { from: "user" })
 
     const output = logs.join("\n")
     // Header should contain TEAM column
-    assertEquals(output.includes("TEAM"), true)
+    expect(output.includes("TEAM")).toBe(true)
     // Should contain both team keys
-    assertEquals(output.includes("ENG"), true)
-    assertEquals(output.includes("FE"), true)
+    expect(output.includes("ENG")).toBe(true)
+    expect(output.includes("FE")).toBe(true)
   } finally {
-    logStub.restore()
+    console.log = origConsoleLog
     globalThis.Date = RealDate
-    setColorEnabled(originalColorEnabled)
     await cleanup()
   }
 })
 
 // Blocked indicator in table output
-Deno.test("Issue Query Command - Shows Blocked Indicator", async () => {
+test("Issue Query Command - Shows Blocked Indicator", async () => {
   const fixedNow = new Date("2026-04-03T10:00:00.000Z")
   const RealDate = Date
-  const originalColorEnabled = getColorEnabled()
   class MockDate extends RealDate {
     constructor(value?: string | number | Date) {
       super(value == null ? fixedNow.toISOString() : value)
@@ -244,7 +233,6 @@ Deno.test("Issue Query Command - Shows Blocked Indicator", async () => {
     }
   }
   globalThis.Date = MockDate as DateConstructor
-  setColorEnabled(false)
 
   const { cleanup } = await setupMockLinearServer([
     {
@@ -296,149 +284,153 @@ Deno.test("Issue Query Command - Shows Blocked Indicator", async () => {
   ], { NO_COLOR: "true" })
 
   const logs: string[] = []
-  const logStub = stub(console, "log", (...args: unknown[]) => {
+  const origConsoleLog = console.log
+  console.log = (...args: unknown[]) => {
     logs.push(args.map(String).join(" "))
-  })
+  }
 
   try {
-    await queryCommand.parse(["--team", "ENG", "--all-states"])
+    await queryCommand.parseAsync(["--team", "ENG", "--all-states"], { from: "user" })
 
     const lines = logs.join("\n").split("\n")
     const blocked = lines.find((l) => l.includes("ENG-300"))!
     const unblocked = lines.find((l) => l.includes("ENG-301"))!
-    assertEquals(blocked.includes("⊘"), true)
-    assertEquals(unblocked.includes("⊘"), false)
+    expect(blocked.includes("⊘")).toBe(true)
+    expect(unblocked.includes("⊘")).toBe(false)
   } finally {
-    logStub.restore()
+    console.log = origConsoleLog
     globalThis.Date = RealDate
-    setColorEnabled(originalColorEnabled)
     await cleanup()
   }
 })
 
 // Test validation: --team + --all-teams conflict
-Deno.test("Issue Query Command - rejects --team with --all-teams", async () => {
+test("Issue Query Command - rejects --team with --all-teams", async () => {
   const errorLogs: string[] = []
-  const errorStub = stub(console, "error", (...args: unknown[]) => {
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
     errorLogs.push(args.map(String).join(" "))
-  })
-  const exitStub = stub(Deno, "exit", (_code?: number) => {
+  }
+  const origProcessExit = process.exit
+  process.exit = ((_code?: number) => {
     throw new Error("EXIT")
-  })
+  }) as typeof process.exit
 
   try {
-    await queryCommand.parse(["--team", "ENG", "--all-teams"])
+    await queryCommand.parseAsync(["--team", "ENG", "--all-teams"], { from: "user" })
   } catch {
     // expected
   } finally {
-    errorStub.restore()
-    exitStub.restore()
+    console.error = origConsoleError
+    process.exit = origProcessExit
   }
 
-  assertEquals(
+  expect(
     errorLogs.some((l) => l.includes("Cannot use both --team and --all-teams")),
-    true,
-  )
+  ).toBe(true)
 })
 
 // Test validation: --sort with --search conflict
-Deno.test("Issue Query Command - rejects --sort with --search", async () => {
+test("Issue Query Command - rejects --sort with --search", async () => {
   const { cleanup } = await setupMockLinearServer([], {
     LINEAR_TEAM_ID: "ENG",
     NO_COLOR: "true",
   })
 
   const errorLogs: string[] = []
-  const errorStub = stub(console, "error", (...args: unknown[]) => {
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
     errorLogs.push(args.map(String).join(" "))
-  })
-  const exitStub = stub(Deno, "exit", (_code?: number) => {
+  }
+  const origProcessExit = process.exit
+  process.exit = ((_code?: number) => {
     throw new Error("EXIT")
-  })
+  }) as typeof process.exit
 
   try {
-    await queryCommand.parse([
+    await queryCommand.parseAsync([
       "--search",
       "foo",
       "--sort",
       "priority",
       "--team",
       "ENG",
-    ])
+    ], { from: "user" })
   } catch {
     // expected
   } finally {
-    errorStub.restore()
-    exitStub.restore()
+    console.error = origConsoleError
+    process.exit = origProcessExit
     await cleanup()
   }
 
-  assertEquals(
+  expect(
     errorLogs.some((l) => l.includes("--sort cannot be used with --search")),
-    true,
-  )
+  ).toBe(true)
 })
 
 // Test validation: --search-comments without --search
-Deno.test("Issue Query Command - rejects --search-comments without --search", async () => {
+test("Issue Query Command - rejects --search-comments without --search", async () => {
   const { cleanup } = await setupMockLinearServer([], {
     LINEAR_TEAM_ID: "ENG",
     NO_COLOR: "true",
   })
 
   const errorLogs: string[] = []
-  const errorStub = stub(console, "error", (...args: unknown[]) => {
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
     errorLogs.push(args.map(String).join(" "))
-  })
-  const exitStub = stub(Deno, "exit", (_code?: number) => {
+  }
+  const origProcessExit = process.exit
+  process.exit = ((_code?: number) => {
     throw new Error("EXIT")
-  })
+  }) as typeof process.exit
 
   try {
-    await queryCommand.parse(["--search-comments", "--team", "ENG"])
+    await queryCommand.parseAsync(["--search-comments", "--team", "ENG"], { from: "user" })
   } catch {
     // expected
   } finally {
-    errorStub.restore()
-    exitStub.restore()
+    console.error = origConsoleError
+    process.exit = origProcessExit
     await cleanup()
   }
 
-  assertEquals(
+  expect(
     errorLogs.some((l) => l.includes("--search-comments requires --search")),
-    true,
-  )
+  ).toBe(true)
 })
 
 // Test validation: --milestone without --project
-Deno.test("Issue Query Command - rejects --milestone without --project", async () => {
+test("Issue Query Command - rejects --milestone without --project", async () => {
   const { cleanup } = await setupMockLinearServer([], {
     LINEAR_TEAM_ID: "ENG",
     NO_COLOR: "true",
   })
 
   const errorLogs: string[] = []
-  const errorStub = stub(console, "error", (...args: unknown[]) => {
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
     errorLogs.push(args.map(String).join(" "))
-  })
-  const exitStub = stub(Deno, "exit", (_code?: number) => {
+  }
+  const origProcessExit = process.exit
+  process.exit = ((_code?: number) => {
     throw new Error("EXIT")
-  })
+  }) as typeof process.exit
 
   try {
-    await queryCommand.parse(["--milestone", "v1", "--team", "ENG"])
+    await queryCommand.parseAsync(["--milestone", "v1", "--team", "ENG"], { from: "user" })
   } catch {
     // expected
   } finally {
-    errorStub.restore()
-    exitStub.restore()
+    console.error = origConsoleError
+    process.exit = origProcessExit
     await cleanup()
   }
 
-  assertEquals(
+  expect(
     errorLogs.some((l) => l.includes("--milestone requires --project")),
-    true,
-  )
+  ).toBe(true)
 })
 
 // Note: "no default team" error path is not tested here because

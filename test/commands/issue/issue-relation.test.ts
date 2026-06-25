@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { relationCommand } from "../../../src/commands/issue/issue-relation.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
 await snapshotTest({
@@ -11,9 +8,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["add", "--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await relationCommand.parse()
+    await relationCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -23,7 +19,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["add", "ENG-123", "blocks", "ENG-456"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -54,7 +49,7 @@ await snapshotTest({
     ])
 
     try {
-      await relationCommand.parse()
+      await relationCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -68,7 +63,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["add", "ENG-123", "blocked-by", "ENG-456"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -101,7 +95,7 @@ await snapshotTest({
     ])
 
     try {
-      await relationCommand.parse()
+      await relationCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

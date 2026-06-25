@@ -1,29 +1,22 @@
-import { snapshotTest as cliffySnapshotTest } from "@cliffy/testing"
-import { assertEquals } from "@std/assert"
-import { getColorEnabled, setColorEnabled } from "@std/fmt/colors"
-import { stub } from "@std/testing/mock"
+import { expect, test } from "bun:test"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { mineCommand } from "../../../src/commands/issue/issue-mine.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
-await cliffySnapshotTest({
+await snapshotTest({
   name: "Issue Mine Command - Help Text",
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await mineCommand.parse()
+    await mineCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
-Deno.test("Issue Mine Command - Filter By Label", async () => {
+test("Issue Mine Command - Filter By Label", async () => {
   const fixedNow = new Date("2026-03-30T10:00:00.000Z")
   const RealDate = Date
-  const originalColorEnabled = getColorEnabled()
   class MockDate extends RealDate {
     constructor(value?: string | number | Date) {
       super(value == null ? fixedNow.toISOString() : value)
@@ -34,7 +27,6 @@ Deno.test("Issue Mine Command - Filter By Label", async () => {
     }
   }
   globalThis.Date = MockDate as DateConstructor
-  setColorEnabled(false)
 
   const { cleanup } = await setupMockLinearServer([
     {
@@ -86,37 +78,37 @@ Deno.test("Issue Mine Command - Filter By Label", async () => {
   ], { LINEAR_TEAM_ID: "ENG", LINEAR_ISSUE_SORT: "priority", NO_COLOR: "true" })
 
   const logs: string[] = []
-  const logStub = stub(console, "log", (...args: unknown[]) => {
+  const origConsoleLog = console.log
+  console.log = (...args: unknown[]) => {
     logs.push(args.map(String).join(" "))
-  })
+  }
 
   try {
-    await mineCommand.parse([
+    await mineCommand.parseAsync([
       "--label",
       "Bug",
       "--team",
       "ENG",
       "--sort",
       "priority",
-    ])
+    ], { from: "user" })
 
-    assertEquals(
+    expect(
       logs.join("\n") + "\n",
+    ).toEqual(
       "◌   ID      TITLE         LABELS B E STATE       UPDATED    \n" +
         "⚠⚠⚠ ENG-101 Fix login bug Bug      3 In Progress 17 days ago\n",
     )
   } finally {
-    logStub.restore()
+    console.log = origConsoleLog
     globalThis.Date = RealDate
-    setColorEnabled(originalColorEnabled)
     await cleanup()
   }
 })
 
-Deno.test("Issue Mine Command - Shows Blocked Indicator", async () => {
+test("Issue Mine Command - Shows Blocked Indicator", async () => {
   const fixedNow = new Date("2026-03-30T10:00:00.000Z")
   const RealDate = Date
-  const originalColorEnabled = getColorEnabled()
   class MockDate extends RealDate {
     constructor(value?: string | number | Date) {
       super(value == null ? fixedNow.toISOString() : value)
@@ -127,7 +119,6 @@ Deno.test("Issue Mine Command - Shows Blocked Indicator", async () => {
     }
   }
   globalThis.Date = MockDate as DateConstructor
-  setColorEnabled(false)
 
   const baseState = {
     id: "state-1",
@@ -229,12 +220,13 @@ Deno.test("Issue Mine Command - Shows Blocked Indicator", async () => {
   ], { LINEAR_TEAM_ID: "ENG", LINEAR_ISSUE_SORT: "priority", NO_COLOR: "true" })
 
   const logs: string[] = []
-  const logStub = stub(console, "log", (...args: unknown[]) => {
+  const origConsoleLog = console.log
+  console.log = (...args: unknown[]) => {
     logs.push(args.map(String).join(" "))
-  })
+  }
 
   try {
-    await mineCommand.parse(["--team", "ENG", "--sort", "priority"])
+    await mineCommand.parseAsync(["--team", "ENG", "--sort", "priority"], { from: "user" })
 
     const output = logs.join("\n")
     // ENG-200 is blocked by an open issue → indicator present.
@@ -244,13 +236,12 @@ Deno.test("Issue Mine Command - Shows Blocked Indicator", async () => {
     const eng201 = output.split("\n").find((l) => l.includes("ENG-201"))!
     const eng202 = output.split("\n").find((l) => l.includes("ENG-202"))!
 
-    assertEquals(eng200.includes("⊘"), true)
-    assertEquals(eng201.includes("⊘"), false)
-    assertEquals(eng202.includes("⊘"), false)
+    expect(eng200.includes("⊘")).toBe(true)
+    expect(eng201.includes("⊘")).toBe(false)
+    expect(eng202.includes("⊘")).toBe(false)
   } finally {
-    logStub.restore()
+    console.log = origConsoleLog
     globalThis.Date = RealDate
-    setColorEnabled(originalColorEnabled)
     await cleanup()
   }
 })

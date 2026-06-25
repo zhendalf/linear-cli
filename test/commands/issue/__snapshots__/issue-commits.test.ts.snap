@@ -1,19 +1,14 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Issue Commits Command - Help Text 1`] = `
-stdout:
-"
-Usage: commits [issueId]
+exports[`Issue Commits Command - Help Text 1`] = `
+"stdout:
+"Usage: commits [options] [issueId]
 
-Description:
-
-  Show all commits for a Linear issue (jj only)
+Show all commits for a Linear issue (jj only)
 
 Options:
-
-  -h, --help  - Show this help.  
-
+  -h, --help  display help for command
 "
 stderr:
-""
+"""
 `;

@@ -37,6 +37,11 @@ async function loadConfigFromPath(
 }
 
 async function loadConfig(): Promise<void> {
+  // Start from a clean slate so repeated init() calls don't accumulate stale
+  // keys from a previously-loaded config (relevant when cwd/env change, e.g.
+  // tests, but also correct in general).
+  config = {}
+
   // Build list of global config paths (lowest priority)
   const globalConfigPaths: string[] = []
   if (isWindows) {

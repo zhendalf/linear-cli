@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert"
+import { expect, test } from "bun:test"
 import {
   shouldEnableHyperlinks,
   shouldShowSpinner,
@@ -6,173 +6,130 @@ import {
 
 // Tests for shouldShowSpinner
 
-Deno.test({
-  name: "shouldShowSpinner - returns false when NO_COLOR is set",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldShowSpinner - returns false when NO_COLOR is set", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  process.env["NO_COLOR"] = "1"
 
-    // Set NO_COLOR
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    Deno.env.set("NO_COLOR", "1")
-
-    try {
-      assertEquals(shouldShowSpinner(), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      } else {
-        Deno.env.delete("NO_COLOR")
-      }
+  try {
+    expect(shouldShowSpinner()).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
+    } else {
+      delete process.env["NO_COLOR"]
     }
-  },
+  }
 })
 
-Deno.test({
-  name: "shouldShowSpinner - returns false when stdout is not a terminal",
-  fn() {
-    // Mock stdout.isTerminal to return false
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => false
+test("shouldShowSpinner - returns false when stdout is not a terminal", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  if (origNoColor != null) {
+    delete process.env["NO_COLOR"]
+  }
 
-    // Ensure NO_COLOR is not set
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    if (originalNoColor != null) {
-      Deno.env.delete("NO_COLOR")
+  try {
+    expect(shouldShowSpinner()).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
     }
-
-    try {
-      assertEquals(shouldShowSpinner(), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      }
-    }
-  },
+  }
 })
 
-Deno.test({
-  name: "shouldShowSpinner - returns true when terminal and NO_COLOR not set",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldShowSpinner - returns true when terminal and NO_COLOR not set", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  if (origNoColor != null) {
+    delete process.env["NO_COLOR"]
+  }
 
-    // Ensure NO_COLOR is not set
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    if (originalNoColor != null) {
-      Deno.env.delete("NO_COLOR")
+  try {
+    expect(shouldShowSpinner()).toBe(true)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
     }
-
-    try {
-      assertEquals(shouldShowSpinner(), true)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      }
-    }
-  },
+  }
 })
 
-Deno.test({
-  name: "shouldShowSpinner - returns false when NO_COLOR is empty string",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldShowSpinner - returns false when NO_COLOR is empty string", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  process.env["NO_COLOR"] = ""
 
-    // Set NO_COLOR to empty string (still counts as set)
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    Deno.env.set("NO_COLOR", "")
-
-    try {
-      assertEquals(shouldShowSpinner(), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      } else {
-        Deno.env.delete("NO_COLOR")
-      }
+  try {
+    expect(shouldShowSpinner()).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
+    } else {
+      delete process.env["NO_COLOR"]
     }
-  },
+  }
 })
 
-// Tests for shouldEnableHyperlinks (ensure it has same behavior)
+// Tests for shouldEnableHyperlinks
 
-Deno.test({
-  name: "shouldEnableHyperlinks - returns false when NO_COLOR is set",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldEnableHyperlinks - returns false when NO_COLOR is set", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  process.env["NO_COLOR"] = "1"
 
-    // Set NO_COLOR
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    Deno.env.set("NO_COLOR", "1")
-
-    try {
-      assertEquals(shouldEnableHyperlinks(), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      } else {
-        Deno.env.delete("NO_COLOR")
-      }
+  try {
+    expect(shouldEnableHyperlinks()).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
+    } else {
+      delete process.env["NO_COLOR"]
     }
-  },
+  }
 })
 
-Deno.test({
-  name: "shouldEnableHyperlinks - returns false when stdout is not a terminal",
-  fn() {
-    // Mock stdout.isTerminal to return false
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => false
+test("shouldEnableHyperlinks - returns false when stdout is not a terminal", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  if (origNoColor != null) {
+    delete process.env["NO_COLOR"]
+  }
 
-    // Ensure NO_COLOR is not set
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    if (originalNoColor != null) {
-      Deno.env.delete("NO_COLOR")
+  try {
+    expect(shouldEnableHyperlinks()).toBe(false)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
     }
-
-    try {
-      assertEquals(shouldEnableHyperlinks(), false)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      }
-    }
-  },
+  }
 })
 
-Deno.test({
-  name:
-    "shouldEnableHyperlinks - returns true when terminal and NO_COLOR not set",
-  fn() {
-    // Mock stdout.isTerminal to return true
-    const originalIsTerminal = Deno.stdout.isTerminal
-    Deno.stdout.isTerminal = () => true
+test("shouldEnableHyperlinks - returns true when terminal and NO_COLOR not set", () => {
+  const origIsTTY = process.stdout.isTTY
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+  const origNoColor = process.env["NO_COLOR"]
+  if (origNoColor != null) {
+    delete process.env["NO_COLOR"]
+  }
 
-    // Ensure NO_COLOR is not set
-    const originalNoColor = Deno.env.get("NO_COLOR")
-    if (originalNoColor != null) {
-      Deno.env.delete("NO_COLOR")
+  try {
+    expect(shouldEnableHyperlinks()).toBe(true)
+  } finally {
+    Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })
+    if (origNoColor != null) {
+      process.env["NO_COLOR"] = origNoColor
     }
-
-    try {
-      assertEquals(shouldEnableHyperlinks(), true)
-    } finally {
-      Deno.stdout.isTerminal = originalIsTerminal
-      if (originalNoColor != null) {
-        Deno.env.set("NO_COLOR", originalNoColor)
-      }
-    }
-  },
+  }
 })

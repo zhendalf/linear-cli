@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commentDeleteCommand } from "../../../src/commands/issue/issue-comment-delete.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test deleting a comment
 await snapshotTest({
@@ -11,7 +8,6 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["comment-uuid-123"],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -27,7 +23,7 @@ await snapshotTest({
     ])
 
     try {
-      await commentDeleteCommand.parse()
+      await commentDeleteCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }

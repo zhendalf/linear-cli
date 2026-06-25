@@ -1,86 +1,87 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Issue Create Command - Help Text 1`] = `
-stdout:
-"
-Usage: create
+exports[`Issue Create Command - Help Text 1`] = `
+"stdout:
+"Usage: create [options]
 
-Description:
-
-  Create a linear issue
+Create a linear issue
 
 Options:
-
-  -h, --help                                - Show this help.                                                
-  --start                                   - Start the issue after creation                                 
-  -a, --assignee             <assignee>     - Assign the issue to 'self' or someone (by username or name)    
-  --due-date                 <dueDate>      - Due date of the issue                                          
-  --parent                   <parent>       - Parent issue (if any) as a team_number code                    
-  -p, --priority             <priority>     - Priority of the issue (1-4, descending priority)               
-  --estimate                 <estimate>     - Points estimate of the issue                                   
-  -d, --description          <description>  - Description of the issue                                       
-  --description-file         <path>         - Read description from a file (preferred for markdown content)  
-  -l, --label                <label>        - Issue label associated with the issue. May be repeated.        
-  --team                     <team>         - Team associated with the issue (if not your default team)      
-  --project                  <project>      - Name or slug ID of the project with the issue                  
-  -s, --state                <state>        - Workflow state for the issue (by name or type)                 
-  --milestone                <milestone>    - Name of the project milestone                                  
-  --cycle                    <cycle>        - Cycle name, number, or 'active'                                
-  --no-use-default-template                 - Do not use default template for the issue                      
-  --no-interactive                          - Disable interactive prompts                                    
-  -t, --title                <title>        - Title of the issue                                             
-
+  --start                          Start the issue after creation
+  -a, --assignee <assignee>        Assign the issue to 'self' or someone (by
+                                   username or name)
+  --due-date <dueDate>             Due date of the issue
+  --parent <parent>                Parent issue (if any) as a team_number code
+  -p, --priority <priority>        Priority of the issue (1-4, descending
+                                   priority)
+  --estimate <estimate>            Points estimate of the issue
+  -d, --description <description>  Description of the issue
+  --description-file <path>        Read description from a file (preferred for
+                                   markdown content)
+  -l, --label <label>              Issue label associated with the issue. May be
+                                   repeated.
+  --team <team>                    Team associated with the issue (if not your
+                                   default team)
+  --project <project>              Name or slug ID of the project with the issue
+  -s, --state <state>              Workflow state for the issue (by name or
+                                   type)
+  --milestone <milestone>          Name of the project milestone
+  --cycle <cycle>                  Cycle name, number, or 'active'
+  --no-use-default-template        Do not use default template for the issue
+  --no-interactive                 Disable interactive prompts
+  -t, --title <title>              Title of the issue
+  -h, --help                       display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Create Command - Happy Path 1`] = `
-stdout:
+exports[`Issue Create Command - Happy Path 1`] = `
+"stdout:
 "Creating issue in ENG
 
 https://linear.app/test-team/issue/ENG-123/fix-authentication-bug
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Create Command - With Milestone 1`] = `
-stdout:
+exports[`Issue Create Command - With Milestone 1`] = `
+"stdout:
 "Creating issue in ENG
 
 https://linear.app/test-team/issue/ENG-789/test-milestone-feature
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Create Command - Case Insensitive Label Matching 1`] = `
-stdout:
+exports[`Issue Create Command - Case Insensitive Label Matching 1`] = `
+"stdout:
 "Creating issue in ENG
 
 https://linear.app/test-team/issue/ENG-456/test-case-insensitive-labels
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Create Command - Short Flag -p Is Priority 1`] = `
-stdout:
+exports[`Issue Create Command - Short Flag -p Is Priority 1`] = `
+"stdout:
 "Creating issue in ENG
 
 https://linear.app/test-team/issue/ENG-999/test-priority-flag
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Create Command - With Cycle 1`] = `
-stdout:
+exports[`Issue Create Command - With Cycle 1`] = `
+"stdout:
 "Creating issue in ENG
 
 https://linear.app/test-team/issue/ENG-890/test-cycle-feature
 "
 stderr:
-""
+"""
 `;

@@ -1,0 +1,4 @@
+[test]
+timeout = 30000
+# Run tests sequentially to avoid process.env/process.argv races in snapshot tests
+maxConcurrency = 1

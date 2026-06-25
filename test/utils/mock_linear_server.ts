@@ -1,15 +1,9 @@
 /**
  * Mock Linear API server for testing
- *
- * Usage:
- * const server = new MockLinearServer([
- *   {
- *     queryName: "GetIssueDetails",
- *     variables: { id: "TEST-123" },
- *     response: { data: { issue: { title: "Test Issue", ... } } }
- *   }
- * ]);
+ * Uses node:http instead of Deno.serve
  */
+
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http"
 
 interface MockResponse {
   queryName: string
@@ -20,87 +14,110 @@ interface MockResponse {
 }
 
 export class MockLinearServer {
-  private server?: Deno.HttpServer
+  private server?: Server
   private port = 0
   private mockResponses: MockResponse[]
+  // Remembers LINEAR_GRAPHQL_ENDPOINT prior to start() so stop() can restore it.
+  // `false` = not currently overriding; otherwise the saved previous value
+  // (`undefined` means the var was unset before we touched it).
+  private prevEndpoint: string | undefined | false = false
 
   constructor(responses: MockResponse[] = []) {
     this.mockResponses = responses
   }
 
   async start(): Promise<void> {
-    this.server = Deno.serve({
-      hostname: "127.0.0.1",
-      port: this.port,
-      onListen: () => {},
-    }, (request) => {
-      // Handle CORS preflight
-      if (request.method === "OPTIONS") {
-        return new Response(null, {
-          status: 200,
-          headers: {
+    return new Promise((resolve) => {
+      this.server = createServer((req: IncomingMessage, res: ServerResponse) => {
+        // Handle CORS preflight
+        if (req.method === "OPTIONS") {
+          res.writeHead(200, {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
-          },
-        })
-      }
+          })
+          res.end()
+          return
+        }
 
-      // Handle GraphQL requests
-      if (
-        request.method === "POST" &&
-        new URL(request.url).pathname === "/graphql"
-      ) {
-        return this.handleGraphQL(request)
-      }
+        // Handle GraphQL requests
+        const url = new URL(req.url ?? "/", `http://localhost`)
+        if (req.method === "POST" && url.pathname === "/graphql") {
+          this.handleGraphQL(req, res)
+          return
+        }
 
-      return new Response("Not Found", { status: 404 })
+        res.writeHead(404)
+        res.end("Not Found")
+      })
+
+      this.server.listen(0, "127.0.0.1", () => {
+        const addr = this.server!.address()
+        if (addr && typeof addr === "object") {
+          this.port = addr.port
+        }
+        // Save the prior value so stop() can restore it, then point the GraphQL
+        // client at this server.
+        this.prevEndpoint = process.env["LINEAR_GRAPHQL_ENDPOINT"]
+        process.env["LINEAR_GRAPHQL_ENDPOINT"] = this.getEndpoint()
+        resolve()
+      })
     })
-
-    if ("port" in this.server.addr) {
-      this.port = this.server.addr.port
-    }
-
-    // Wait a bit for server to start
-    await new Promise((resolve) => setTimeout(resolve, 100))
   }
 
   async stop(): Promise<void> {
-    if (this.server) {
-      await this.server.shutdown()
-      this.server = undefined
+    // Restore LINEAR_GRAPHQL_ENDPOINT to whatever it was before start().
+    if (this.prevEndpoint !== false) {
+      if (this.prevEndpoint === undefined) {
+        delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      } else {
+        process.env["LINEAR_GRAPHQL_ENDPOINT"] = this.prevEndpoint
+      }
+      this.prevEndpoint = false
     }
+
+    return new Promise((resolve) => {
+      if (this.server) {
+        this.server.close(() => {
+          this.server = undefined
+          resolve()
+        })
+      } else {
+        resolve()
+      }
+    })
   }
 
   getEndpoint(): string {
-    return `http://localhost:${this.port}/graphql`
+    return `http://127.0.0.1:${this.port}/graphql`
   }
 
-  private async handleGraphQL(request: Request): Promise<Response> {
+  private handleGraphQL(req: IncomingMessage, res: ServerResponse): void {
     const headers = {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      // Use fixed date header for deterministic snapshot tests
       "Date": "Mon, 01 Jan 2024 00:00:00 GMT",
     }
 
-    try {
-      const body = await request.json()
-      const { query, variables } = body
+    let body = ""
+    req.on("data", (chunk: Buffer) => {
+      body += chunk.toString()
+    })
 
-      // Find matching mock response
-      const mockResponse = this.findMatchingResponse(query, variables)
+    req.on("end", () => {
+      try {
+        const { query, variables } = JSON.parse(body)
+        const mockResponse = this.findMatchingResponse(query, variables)
 
-      if (mockResponse) {
-        return new Response(
-          JSON.stringify(mockResponse.response),
-          { status: mockResponse.status ?? 200, headers },
-        )
-      }
+        if (mockResponse) {
+          res.writeHead(mockResponse.status ?? 200, headers)
+          res.end(JSON.stringify(mockResponse.response))
+          return
+        }
 
-      // Default response for unhandled queries
-      return new Response(
-        JSON.stringify({
+        // Default response for unhandled queries
+        res.writeHead(200, headers)
+        res.end(JSON.stringify({
           errors: [{
             message: "No mock response configured for this query",
             extensions: {
@@ -109,20 +126,14 @@ export class MockLinearServer {
               variables,
             },
           }],
-        }),
-        { status: 200, headers },
-      )
-    } catch (_error) {
-      return new Response(
-        JSON.stringify({
-          errors: [{
-            message: "Invalid JSON in request body",
-            extensions: { code: "BAD_REQUEST" },
-          }],
-        }),
-        { status: 400, headers },
-      )
-    }
+        }))
+      } catch {
+        res.writeHead(400, headers)
+        res.end(JSON.stringify({
+          errors: [{ message: "Invalid JSON in request body", extensions: { code: "BAD_REQUEST" } }],
+        }))
+      }
+    })
   }
 
   private findMatchingResponse(
@@ -132,24 +143,12 @@ export class MockLinearServer {
     const queryName = this.extractQueryName(query)
 
     return this.mockResponses.find((mock) => {
-      // Check if query name matches
-      if (mock.queryName !== queryName) {
-        return false
-      }
-
-      if (mock.queryIncludes != null && !query.includes(mock.queryIncludes)) {
-        return false
-      }
-
-      // If no variables specified in mock, match any variables
-      if (!mock.variables) {
-        return true
-      }
-
-      // Check if all mock variables match the request variables (deep comparison)
-      return Object.entries(mock.variables).every(([key, value]) => {
-        return this.deepEqual(variables[key], value)
-      })
+      if (mock.queryName !== queryName) return false
+      if (mock.queryIncludes != null && !query.includes(mock.queryIncludes)) return false
+      if (!mock.variables) return true
+      return Object.entries(mock.variables).every(([key, value]) =>
+        this.deepEqual(variables[key], value)
+      )
     })
   }
 
@@ -158,20 +157,15 @@ export class MockLinearServer {
     if (a == null || b == null) return a === b
     if (typeof a !== typeof b) return false
     if (typeof a !== "object") return a === b
-
     const aObj = a as Record<string, unknown>
     const bObj = b as Record<string, unknown>
     const aKeys = Object.keys(aObj)
     const bKeys = Object.keys(bObj)
-
     if (aKeys.length !== bKeys.length) return false
-
     return aKeys.every((key) => this.deepEqual(aObj[key], bObj[key]))
   }
 
   private extractQueryName(query: string): string {
-    // Extract query name from GraphQL query string
-    // Examples: "query GetIssueDetails" -> "GetIssueDetails"
     const match = query.match(/(?:query|mutation)\s+(\w+)/)
     return match?.[1] || "UnknownQuery"
   }

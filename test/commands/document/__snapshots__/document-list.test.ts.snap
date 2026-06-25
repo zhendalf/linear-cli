@@ -1,30 +1,25 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Document List Command - Help Text 1`] = `
-stdout:
-"
-Usage: list
+exports[`Document List Command - Help Text 1`] = `
+"stdout:
+"Usage: list|l [options]
 
-Description:
-
-  List documents
+List documents
 
 Options:
-
-  -h, --help             - Show this help.                                        
-  --project   <project>  - Filter by project (slug or name)                       
-  --issue     <issue>    - Filter by issue (identifier like TC-123)               
-  --json                 - Output as JSON                                         
-  --limit     <limit>    - Limit results                             (Default: \\x1b[33m50\\x1b[39m)
-
+  --project <project>  Filter by project (slug or name)
+  --issue <issue>      Filter by issue (identifier like TC-123)
+  --json               Output as JSON
+  --limit <limit>      Limit results (default: 50)
+  -h, --help           display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Document List Command - JSON Output 1`] = `
-stdout:
-'{
+exports[`Document List Command - JSON Output 1`] = `
+"stdout:
+"{
   "nodes": [
     {
       "id": "doc-1",
@@ -47,15 +42,15 @@ stdout:
     "endCursor": null
   }
 }
-'
+"
 stderr:
-""
+"""
 `;
 
-snapshot[`Document List Command - Empty Results 1`] = `
-stdout:
+exports[`Document List Command - Empty Results 1`] = `
+"stdout:
 "No documents found.
 "
 stderr:
-""
+"""
 `;

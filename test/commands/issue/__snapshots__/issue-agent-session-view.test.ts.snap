@@ -1,26 +1,21 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Issue Agent Session View Command - Help Text 1`] = `
-stdout:
-"
-Usage: view <sessionId>
+exports[`Issue Agent Session View Command - Help Text 1`] = `
+"stdout:
+"Usage: view|v [options] <sessionId>
 
-Description:
-
-  View agent session details
+View agent session details
 
 Options:
-
-  -h, --help  - Show this help.  
-  -j, --json  - Output as JSON   
-
+  -j, --json  Output as JSON
+  -h, --help  display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Agent Session View Command - Active Session With Activities 1`] = `
-stdout:
+exports[`Issue Agent Session View Command - Active Session With Activities 1`] = `
+"stdout:
 "# Agent Session
 
 **ID:** session-1
@@ -44,11 +39,11 @@ Investigating auth token refresh bug in the middleware layer
 - **response** (1/1/2020) - The token refresh is failing because the expiry check uses UTC
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Agent Session View Command - Completed Session No Activities 1`] = `
-stdout:
+exports[`Issue Agent Session View Command - Completed Session No Activities 1`] = `
+"stdout:
 "# Agent Session
 
 **ID:** session-2
@@ -69,12 +64,12 @@ stdout:
 Added dark mode toggle to settings page
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Issue Agent Session View Command - JSON Output 1`] = `
-stdout:
-'{
+exports[`Issue Agent Session View Command - JSON Output 1`] = `
+"stdout:
+"{
   "id": "session-3",
   "status": "stale",
   "type": "commentThread",
@@ -101,7 +96,7 @@ stdout:
     "nodes": []
   }
 }
-'
+"
 stderr:
-""
+"""
 `;

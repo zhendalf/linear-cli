@@ -1,8 +1,8 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Initiative Update List Command - JSON Output 1`] = `
-stdout:
-'{
+exports[`Initiative Update List Command - JSON Output 1`] = `
+"stdout:
+"{
   "name": "Alpha Initiative",
   "slugId": "alpha",
   "initiativeUpdates": {
@@ -20,7 +20,7 @@ stdout:
     ]
   }
 }
-'
+"
 stderr:
-""
+"""
 `;

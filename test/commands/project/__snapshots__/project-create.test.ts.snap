@@ -1,36 +1,34 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Project Create Command - Help Text 1`] = `
-stdout:
-"
-Usage: create
+exports[`Project Create Command - Help Text 1`] = `
+"stdout:
+"Usage: create [options]
 
-Description:
-
-  Create a new Linear project
+Create a new Linear project
 
 Options:
-
-  -h, --help                        - Show this help.                                                          
-  -n, --name         <name>         - Project name (required)                                                  
-  -d, --description  <description>  - Project description                                                      
-  -t, --team         <team>         - Team key (required, can be repeated for multiple teams)                  
-  -l, --lead         <lead>         - Project lead (username, email, or @me)                                   
-  -s, --status       <status>       - Project status (planned, started, paused, completed, canceled, backlog)  
-  --start-date       <startDate>    - Start date (YYYY-MM-DD)                                                  
-  --target-date      <targetDate>   - Target completion date (YYYY-MM-DD)                                      
-  --initiative       <initiative>   - Add to initiative immediately (ID, slug, or name)                        
-  -i, --interactive                 - Interactive mode (default if no flags provided)                          
-  -j, --json                        - Output created project as JSON                                           
-
+  -n, --name <name>                Project name (required)
+  -d, --description <description>  Project description
+  -t, --team <team>                Team key (can be repeated for multiple teams)
+  -l, --lead <lead>                Project lead (username, email, or @me)
+  -s, --status <status>            Project status (planned, started, paused,
+                                   completed, canceled, backlog)
+  --start-date <startDate>         Start date (YYYY-MM-DD)
+  --target-date <targetDate>       Target completion date (YYYY-MM-DD)
+  --initiative <initiative>        Add to initiative immediately (ID, slug, or
+                                   name)
+  -i, --interactive                Interactive mode (default if no flags
+                                   provided)
+  -j, --json                       Output created project as JSON
+  -h, --help                       display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Project Create Command - With JSON Output 1`] = `
-stdout:
-'{
+exports[`Project Create Command - With JSON Output 1`] = `
+"stdout:
+"{
   "success": true,
   "project": {
     "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -39,7 +37,7 @@ stdout:
     "url": "https://linear.app/test/project/json-test-project"
   }
 }
-'
+"
 stderr:
-""
+"""
 `;

@@ -1,44 +1,39 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Milestone Create Command - Help Text 1`] = `
-stdout:
-"
-Usage: create --project <projectId> --name <name>
+exports[`Milestone Create Command - Help Text 1`] = `
+"stdout:
+"Usage: create [options]
 
-Description:
-
-  Create a new project milestone
+Create a new project milestone
 
 Options:
-
-  -h, --help                    - Show this help.                     
-  --project      <projectId>    - Project ID                (required)
-  --name         <name>         - Milestone name            (required)
-  --description  <description>  - Milestone description               
-  --target-date  <date>         - Target date (YYYY-MM-DD)            
-
+  --project <projectId>        Project ID
+  --name <name>                Milestone name
+  --description <description>  Milestone description
+  --target-date <date>         Target date (YYYY-MM-DD)
+  -h, --help                   display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Create Command - Success 1`] = `
-stdout:
+exports[`Milestone Create Command - Success 1`] = `
+"stdout:
 "✓ Created milestone: Q1 Goals
   ID: milestone-new-1
   Target Date: 2026-03-31
   Project: Test Project
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone Create Command - Minimal Fields 1`] = `
-stdout:
+exports[`Milestone Create Command - Minimal Fields 1`] = `
+"stdout:
 "✓ Created milestone: Simple Milestone
   ID: milestone-new-2
   Project: Another Project
 "
 stderr:
-""
+"""
 `;

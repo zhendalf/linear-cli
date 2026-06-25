@@ -1,25 +1,23 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Milestone View Command - Help Text 1`] = `
-stdout:
-"
-Usage: view <milestoneId>
+exports[`Milestone View Command - Help Text 1`] = `
+"stdout:
+"Usage: view|v [options] <milestoneId>
 
-Description:
+View milestone details
 
-  View milestone details
+Arguments:
+  milestoneId  Milestone ID
 
 Options:
-
-  -h, --help  - Show this help.  
-
+  -h, --help   display help for command
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone View Command - With Full Details 1`] = `
-stdout:
+exports[`Milestone View Command - With Full Details 1`] = `
+"stdout:
 "# Q1 Goals
 
 **ID:** milestone-123
@@ -48,11 +46,11 @@ First quarter objectives and key results
 - ENG-125: Create API endpoints (Todo)
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone View Command - Minimal Details 1`] = `
-stdout:
+exports[`Milestone View Command - Minimal Details 1`] = `
+"stdout:
 "# Simple Milestone
 
 **ID:** milestone-789
@@ -66,11 +64,11 @@ stdout:
 _No issues in this milestone yet._
 "
 stderr:
-""
+"""
 `;
 
-snapshot[`Milestone View Command - Many Issues 1`] = `
-stdout:
+exports[`Milestone View Command - Many Issues 1`] = `
+"stdout:
 "# Big Release
 
 **ID:** milestone-456
@@ -108,5 +106,5 @@ Major product release with many features
 _...and 5 more issues_
 "
 stderr:
-""
+"""
 `;

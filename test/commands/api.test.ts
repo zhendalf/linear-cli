@@ -1,27 +1,23 @@
-import { snapshotTest as cliffySnapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../utils/snapshot_with_fake_time.ts"
 import { apiCommand } from "../../src/commands/api.ts"
 import { loadCredentials } from "../../src/credentials.ts"
 import { MockLinearServer } from "../utils/mock_linear_server.ts"
 
-const denoArgs = ["--allow-all", "--quiet"]
-
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Help Text",
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs,
   async fn() {
-    await apiCommand.parse()
+    await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Basic Query",
   meta: import.meta,
   colors: false,
   args: ["query GetViewer { viewer { id name } }"],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -39,19 +35,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable Flag",
   meta: import.meta,
   colors: false,
@@ -60,7 +56,6 @@ await cliffySnapshotTest({
     "--variable",
     "teamId=abc123",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -78,19 +73,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable Type Coercion",
   meta: import.meta,
   colors: false,
@@ -101,7 +96,6 @@ await cliffySnapshotTest({
     "--variable",
     "active=true",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -122,58 +116,55 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - No Query Error",
   meta: import.meta,
   colors: false,
   args: [],
-  denoArgs,
   canFail: true,
   async fn() {
-    Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
     try {
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Invalid Variable Format",
   meta: import.meta,
   colors: false,
   args: ["query GetViewer { viewer { id } }", "--variable", "badformat"],
-  denoArgs,
   canFail: true,
   async fn() {
-    Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
     try {
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - GraphQL Errors Exit Non-Zero",
   meta: import.meta,
   colors: false,
   args: ["query BadQuery { nonexistent { id } }"],
-  denoArgs,
   canFail: true,
   async fn() {
     const server = new MockLinearServer([
@@ -192,19 +183,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Silent Flag",
   meta: import.meta,
   colors: false,
@@ -212,7 +203,6 @@ await cliffySnapshotTest({
     "query GetViewer { viewer { id } }",
     "--silent",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -227,28 +217,27 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable From File",
   meta: import.meta,
   colors: false,
   args: [
     "query GetTeam($filter: TeamFilter!) { teams(filter: $filter) { nodes { name } } }",
     "--variable",
-    `filter=@${Deno.cwd()}/test/commands/fixtures/api-filter.json`,
+    `filter=@${process.cwd()}/test/commands/fixtures/api-filter.json`,
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -265,19 +254,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Paginate",
   meta: import.meta,
   colors: false,
@@ -285,7 +274,6 @@ await cliffySnapshotTest({
     "query GetIssues($after: String) { issues(first: 2, after: $after) { nodes { title } pageInfo { hasNextPage endCursor } } }",
     "--paginate",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -327,44 +315,46 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - No API Key",
   meta: import.meta,
   colors: false,
   args: ["query GetViewer { viewer { id } }"],
-  denoArgs,
   canFail: true,
   async fn() {
-    const tmpDir = await Deno.makeTempDir()
+    const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const { tmpdir } = await import("node:os")
+    const tmpDir = await mkdtemp(join(tmpdir(), "linear-test-"))
     try {
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_API_KEY"]
       // Write an empty credentials file so loadCredentials() resets the cached credentials
-      await Deno.mkdir(`${tmpDir}/linear`, { recursive: true })
-      await Deno.writeTextFile(`${tmpDir}/linear/credentials.toml`, "")
-      Deno.env.set("XDG_CONFIG_HOME", tmpDir)
+      await mkdir(join(tmpDir, "linear"), { recursive: true })
+      await writeFile(join(tmpDir, "linear", "credentials.toml"), "")
+      process.env["XDG_CONFIG_HOME"] = tmpDir
       await loadCredentials()
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
-      Deno.env.delete("XDG_CONFIG_HOME")
+      delete process.env["XDG_CONFIG_HOME"]
       await loadCredentials() // restore credentials from real path
-      await Deno.remove(tmpDir, { recursive: true })
+      await rm(tmpDir, { recursive: true })
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable Coercion Null And False",
   meta: import.meta,
   colors: false,
@@ -375,7 +365,6 @@ await cliffySnapshotTest({
     "--variable",
     "label=null",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -391,19 +380,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Value Containing Equals Sign",
   meta: import.meta,
   colors: false,
@@ -412,7 +401,6 @@ await cliffySnapshotTest({
     "--variable",
     "filter=name eq backend",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -428,19 +416,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Paginate Single Page",
   meta: import.meta,
   colors: false,
@@ -448,7 +436,6 @@ await cliffySnapshotTest({
     "query GetIssues($after: String) { issues(first: 10, after: $after) { nodes { title } pageInfo { hasNextPage endCursor } } }",
     "--paginate",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -472,19 +459,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Paginate Non-Connection Query",
   meta: import.meta,
   colors: false,
@@ -492,7 +479,6 @@ await cliffySnapshotTest({
     "query GetViewer($after: String) { viewer { id name } }",
     "--paginate",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -507,19 +493,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - File Not Found For Variable",
   meta: import.meta,
   colors: false,
@@ -528,19 +514,18 @@ await cliffySnapshotTest({
     "--variable",
     "filter=@/nonexistent/path.json",
   ],
-  denoArgs,
   canFail: true,
   async fn() {
-    Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
     try {
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variables JSON",
   meta: import.meta,
   colors: false,
@@ -549,7 +534,6 @@ await cliffySnapshotTest({
     "--variables-json",
     '{"first": 5, "active": true}',
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -570,19 +554,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variables JSON Malformed",
   meta: import.meta,
   colors: false,
@@ -591,19 +575,18 @@ await cliffySnapshotTest({
     "--variables-json",
     "{bad json",
   ],
-  denoArgs,
   canFail: true,
   async fn() {
-    Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
     try {
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variables JSON Non-Object",
   meta: import.meta,
   colors: false,
@@ -612,19 +595,18 @@ await cliffySnapshotTest({
     "--variables-json",
     "[1, 2, 3]",
   ],
-  denoArgs,
   canFail: true,
   async fn() {
-    Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
     try {
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Silent Flag With HTTP Error",
   meta: import.meta,
   colors: false,
@@ -632,7 +614,6 @@ await cliffySnapshotTest({
     "query BadQuery { nonexistent { id } }",
     "--silent",
   ],
-  denoArgs,
   canFail: true,
   async fn() {
     const server = new MockLinearServer([
@@ -650,19 +631,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable Coercion Preserves Leading Zeros",
   meta: import.meta,
   colors: false,
@@ -671,7 +652,6 @@ await cliffySnapshotTest({
     "--variable",
     "id=007",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -687,19 +667,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable Coercion Preserves Scientific Notation",
   meta: import.meta,
   colors: false,
@@ -708,7 +688,6 @@ await cliffySnapshotTest({
     "--variable",
     "id=1e5",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -724,19 +703,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Paginate Multiple Connections Error",
   meta: import.meta,
   colors: false,
@@ -744,7 +723,6 @@ await cliffySnapshotTest({
     "query GetAll($after: String) { issues(first: 10, after: $after) { nodes { title } pageInfo { hasNextPage endCursor } } projects(first: 10, after: $after) { nodes { name } pageInfo { hasNextPage endCursor } } }",
     "--paginate",
   ],
-  denoArgs,
   canFail: true,
   async fn() {
     const server = new MockLinearServer([
@@ -768,19 +746,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Paginate With Nested Connections",
   meta: import.meta,
   colors: false,
@@ -788,7 +766,6 @@ await cliffySnapshotTest({
     "query GetIssues($after: String) { issues(first: 2, after: $after) { nodes { title subIssues { nodes { title } pageInfo { hasNextPage endCursor } } } pageInfo { hasNextPage endCursor } } }",
     "--paginate",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -815,19 +792,19 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })
 
-await cliffySnapshotTest({
+await snapshotTest({
   name: "API Command - Variable Overrides Variables JSON",
   meta: import.meta,
   colors: false,
@@ -838,7 +815,6 @@ await cliffySnapshotTest({
     "--variable",
     "first=5",
   ],
-  denoArgs,
   async fn() {
     const server = new MockLinearServer([
       {
@@ -858,14 +834,14 @@ await cliffySnapshotTest({
 
     try {
       await server.start()
-      Deno.env.set("LINEAR_GRAPHQL_ENDPOINT", server.getEndpoint())
-      Deno.env.set("LINEAR_API_KEY", "Bearer test-token")
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
 
-      await apiCommand.parse()
+      await apiCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await server.stop()
-      Deno.env.delete("LINEAR_GRAPHQL_ENDPOINT")
-      Deno.env.delete("LINEAR_API_KEY")
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
     }
   },
 })

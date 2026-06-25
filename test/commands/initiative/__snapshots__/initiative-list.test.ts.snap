@@ -1,8 +1,8 @@
-export const snapshot = {};
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-snapshot[`Initiative List Command - JSON Output 1`] = `
-stdout:
-'{
+exports[`Initiative List Command - JSON Output 1`] = `
+"stdout:
+"{
   "nodes": [
     {
       "id": "initiative-1",
@@ -68,7 +68,7 @@ stdout:
     "endCursor": null
   }
 }
-'
+"
 stderr:
-""
+"""
 `;

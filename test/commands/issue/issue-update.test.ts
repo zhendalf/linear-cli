@@ -1,9 +1,6 @@
-import { snapshotTest } from "@cliffy/testing"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { updateCommand } from "../../../src/commands/issue/issue-update.ts"
-import {
-  commonDenoArgs,
-  setupMockLinearServer,
-} from "../../utils/test-helpers.ts"
+import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
 await snapshotTest({
@@ -11,9 +8,8 @@ await snapshotTest({
   meta: import.meta,
   colors: false,
   args: ["--help"],
-  denoArgs: commonDenoArgs,
   async fn() {
-    await updateCommand.parse()
+    await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
   },
 })
 
@@ -35,7 +31,6 @@ await snapshotTest({
     "--estimate",
     "5",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey() - converting team key to ID
@@ -83,7 +78,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -100,7 +95,6 @@ await snapshotTest({
     "--description",
     "new description",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey() - team keys may contain digits
@@ -135,7 +129,7 @@ await snapshotTest({
     ])
 
     try {
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -154,7 +148,6 @@ await snapshotTest({
     "--milestone",
     "Phase 1",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey()
@@ -218,7 +211,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -235,7 +228,6 @@ await snapshotTest({
     "--label",
     "FRONTEND", // uppercase label that should match "frontend" label
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey() - converting team key to ID
@@ -285,7 +277,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -304,7 +296,6 @@ await snapshotTest({
     "--parent",
     "ENG-220",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey()
@@ -351,7 +342,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
@@ -368,7 +359,6 @@ await snapshotTest({
     "--cycle",
     "Sprint 7",
   ],
-  denoArgs: commonDenoArgs,
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey()
@@ -421,7 +411,7 @@ await snapshotTest({
     ], { LINEAR_TEAM_ID: "ENG" })
 
     try {
-      await updateCommand.parse()
+      await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
     } finally {
       await cleanup()
     }
