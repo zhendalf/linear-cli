@@ -2,6 +2,7 @@ import { Command, Option } from "commander"
 import stringWidth from "string-width"
 import chalk from "chalk"
 import { getOption } from "../../config.ts"
+import { collectEnum, ISSUE_STATE_TYPES } from "../../utils/option-parsers.ts"
 import {
   getPriorityDisplay,
   getTimeAgo,
@@ -39,9 +40,7 @@ export const mineCommand = new Command("mine")
     new Option(
       "-s, --state <state>",
       "Filter by issue state (can be repeated for multiple states)",
-    )
-      .argParser((val: string, prev: string[] = []) => [...prev, val])
-      .default(["unstarted"]),
+    ).argParser(collectEnum(ISSUE_STATE_TYPES, "state")),
   )
   .option(
     "--all-states",
@@ -159,15 +158,12 @@ export const mineCommand = new Command("mine")
             },
           )
         }
-        const stateArray: string[] = Array.isArray(state)
-          ? state.flat()
-          : [state]
-
-        if (
-          allStates && (stateArray.length > 1 || stateArray[0] !== "unstarted")
-        ) {
+        // Default only applies when --state was not given (see option-parsers.ts:
+        // accumulators must not carry a commander .default()).
+        if (allStates && state) {
           throw new ValidationError("Cannot use --all-states with --state flag")
         }
+        const stateArray: string[] = state ?? ["unstarted"]
 
         const sort = sortFlag ||
           getOption("issue_sort") as "manual" | "priority" | undefined

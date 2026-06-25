@@ -154,10 +154,18 @@ Add the `InvalidArgumentError` import from `"commander"`.
   collect: true,
 })
 
-// AFTER (commander)
-.option("-s, --state <state>", "State (repeatable)", (val, prev: string[] = []) => [...prev, val])
-// Set the initial default separately:
-.option(...)  // commander initialises prev=undefined on first call so [] seed works
+// AFTER (commander) — use the shared helpers in src/utils/option-parsers.ts:
+.option("-l, --label <label>", "Label (repeatable)", collect)               // free-form
+.addOption(new Option("-s, --state <state>", "State (repeatable)")
+  .argParser(collectEnum(ISSUE_STATE_TYPES, "state")))                       // enum-validated
+
+// ⚠️ TWO footguns:
+//  1. NEVER put `.default([...])` on an accumulator option — commander passes the
+//     default as `prev` on the first user value, so explicit values APPEND to the
+//     default instead of replacing it (`--state x` → ["default","x"]). Apply the
+//     default in the action instead: `const states = options.state ?? ["unstarted"]`.
+//  2. `.choices()` does NOT combine with a custom argParser, so for a REPEATABLE
+//     enum option validate inside the parser (`collectEnum`), not via `.choices()`.
 ```
 
 To preserve cliffy's typed default you can also write:

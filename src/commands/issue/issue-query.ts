@@ -2,6 +2,7 @@ import { Command, Option } from "commander"
 import stringWidth from "string-width"
 import chalk from "chalk"
 import { getOption } from "../../config.ts"
+import { collectEnum, ISSUE_STATE_TYPES } from "../../utils/option-parsers.ts"
 import {
   getPriorityDisplay,
   getTimeAgo,
@@ -49,10 +50,11 @@ export const queryCommand = new Command("query")
     (val: string, prev: string[] = []) => [...prev, val],
   )
   .option("--all-teams", "Query across all teams")
-  .option(
-    "-s, --state <state>",
-    "Filter by issue state (can be repeated for multiple states)",
-    (val: string, prev: string[] = []) => [...prev, val],
+  .addOption(
+    new Option(
+      "-s, --state <state>",
+      "Filter by issue state (can be repeated for multiple states)",
+    ).argParser(collectEnum(ISSUE_STATE_TYPES, "state")),
   )
   .option("--all-states", "Show issues from all states (this is the default)")
   .option("--assignee <assignee>", "Filter by assignee (username)")
