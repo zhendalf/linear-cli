@@ -17,7 +17,7 @@
     "build": "bun run codegen && bun run scripts/build.ts",
     "codegen": "graphql-codegen --config codegen.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "bun test",
     "lint": "biome check .",
     "format": "biome format --write .",
     "generate-skill-docs": "bun skills/linear-cli/scripts/generate-docs.ts",
@@ -52,8 +52,7 @@
     "@types/mdast": "^4.0.4",
     "@types/node": "^22.15.29",
     "lefthook": "^1.11.13",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.3"
+    "typescript": "^5.8.3"
   },
   "trustedDependencies": [
     "@biomejs/biome"
