@@ -3,3 +3,5 @@
 
 src/__codegen__/
 npm
+dist/
+node_modules/

@@ -1,8 +1,8 @@
-import { assertEquals } from "@std/assert"
-import { fromFileUrl } from "@std/path"
+import { assertEquals } from "@std/assert";
+import { fromFileUrl } from "@std/path";
 
-const keyringUrl = new URL("../src/keyring/index.ts", import.meta.url)
-const denoJsonPath = fromFileUrl(new URL("../deno.json", import.meta.url))
+const keyringUrl = new URL("../src/keyring/index.ts", import.meta.url);
+const denoJsonPath = fromFileUrl(new URL("../package.json", import.meta.url));
 
 const MOCK_BACKEND = `
 const _store = new Map();
@@ -11,10 +11,10 @@ _setBackend({
   set(account, password) { _store.set(account, password); return Promise.resolve() },
   delete(account) { _store.delete(account); return Promise.resolve() },
 });
-`.trim()
+`.trim();
 
 function mockAndImport(imports: string): string {
-  return `import { ${imports}, _setBackend } from "${keyringUrl}";\n${MOCK_BACKEND}`
+  return `import { ${imports}, _setBackend } from "${keyringUrl}";\n${MOCK_BACKEND}`;
 }
 
 async function runWithKeyring(code: string): Promise<string> {
@@ -26,17 +26,17 @@ async function runWithKeyring(code: string): Promise<string> {
     ],
     stdout: "piped",
     stderr: "piped",
-  })
+  });
 
-  const { stdout, stderr } = await command.output()
-  const output = new TextDecoder().decode(stdout).trim()
-  const errorOutput = new TextDecoder().decode(stderr)
+  const { stdout, stderr } = await command.output();
+  const output = new TextDecoder().decode(stdout).trim();
+  const errorOutput = new TextDecoder().decode(stderr);
 
   if (errorOutput && !errorOutput.startsWith("Check file:")) {
-    console.error("Subprocess stderr:", errorOutput)
+    console.error("Subprocess stderr:", errorOutput);
   }
 
-  return output
+  return output;
 }
 
 Deno.test("keyring - getPassword returns null when not set", async () => {
@@ -44,10 +44,10 @@ Deno.test("keyring - getPassword returns null when not set", async () => {
     ${mockAndImport("getPassword")}
     const result = await getPassword("missing");
     console.log(result === null ? "null" : result);
-  `
-  const output = await runWithKeyring(code)
-  assertEquals(output, "null")
-})
+  `;
+  const output = await runWithKeyring(code);
+  assertEquals(output, "null");
+});
 
 Deno.test("keyring - setPassword and getPassword round-trip", async () => {
   const code = `
@@ -55,10 +55,10 @@ Deno.test("keyring - setPassword and getPassword round-trip", async () => {
     await setPassword("my-account", "secret123");
     const result = await getPassword("my-account");
     console.log(result);
-  `
-  const output = await runWithKeyring(code)
-  assertEquals(output, "secret123")
-})
+  `;
+  const output = await runWithKeyring(code);
+  assertEquals(output, "secret123");
+});
 
 Deno.test("keyring - deletePassword removes stored password", async () => {
   const code = `
@@ -67,10 +67,10 @@ Deno.test("keyring - deletePassword removes stored password", async () => {
     await deletePassword("my-account");
     const result = await getPassword("my-account");
     console.log(result === null ? "null" : result);
-  `
-  const output = await runWithKeyring(code)
-  assertEquals(output, "null")
-})
+  `;
+  const output = await runWithKeyring(code);
+  assertEquals(output, "null");
+});
 
 Deno.test("keyring - setPassword overwrites existing value", async () => {
   const code = `
@@ -79,10 +79,10 @@ Deno.test("keyring - setPassword overwrites existing value", async () => {
     await setPassword("my-account", "second");
     const result = await getPassword("my-account");
     console.log(result);
-  `
-  const output = await runWithKeyring(code)
-  assertEquals(output, "second")
-})
+  `;
+  const output = await runWithKeyring(code);
+  assertEquals(output, "second");
+});
 
 Deno.test("keyring - multiple accounts are independent", async () => {
   const code = `
@@ -92,19 +92,19 @@ Deno.test("keyring - multiple accounts are independent", async () => {
     const a = await getPassword("account-a");
     const b = await getPassword("account-b");
     console.log(JSON.stringify({ a, b }));
-  `
-  const output = await runWithKeyring(code)
-  const result = JSON.parse(output)
-  assertEquals(result.a, "password-a")
-  assertEquals(result.b, "password-b")
-})
+  `;
+  const output = await runWithKeyring(code);
+  const result = JSON.parse(output);
+  assertEquals(result.a, "password-a");
+  assertEquals(result.b, "password-b");
+});
 
 Deno.test("keyring - deletePassword on missing account is a no-op", async () => {
   const code = `
     ${mockAndImport("deletePassword")}
     await deletePassword("nonexistent");
     console.log("ok");
-  `
-  const output = await runWithKeyring(code)
-  assertEquals(output, "ok")
-})
+  `;
+  const output = await runWithKeyring(code);
+  assertEquals(output, "ok");
+});
