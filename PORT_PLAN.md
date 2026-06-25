@@ -8,7 +8,7 @@ Authoritative migration plan synthesized from 8 subsystem-mapping reports. This 
 
 - **Runtime:** Node.js LTS (>=20) and Bun, from one ESM build. No Deno, no `deno compile`, no embedded runtime. Distribution is the npm package itself, resolved by `npx linear` / `bunx linear` / global install.
 - **Module system:** Native ESM (`"type": "module"`). Forced by top-level await in `src/main.ts`, `src/config.ts`, `src/credentials.ts` and by ESM-only deps (`chalk@5`, `open@10`, `string-width@5+`, `graphql-request@7`). Target `ES2022`, `module`/`moduleResolution` = `bundler` (tsup/esbuild bundles `.ts`-extension imports directly, avoiding a repo-wide extension rewrite).
-- **Build:** `tsup` (esbuild) → single bundled ESM file `dist/main.js` with banner `#!/usr/bin/env node`. `package.json` `bin: { "linear": "./dist/main.js" }`, `files: ["dist"]`. GraphQL codegen output (`src/__codegen__/`, gitignored) is generated as a prebuild step and bundled in.
+- **Toolchain:** **Bun** is the package manager (`bun install`, committed `bun.lock`) AND bundler. **Build:** `scripts/build.ts` calls `Bun.build({ target: "node", format: "esm", banner: "#!/usr/bin/env node" })` → single bundled ESM `dist/main.js` (chmod 0755). `package.json` `bin: { "linear": "./dist/main.js" }`, `files: ["dist"]`. `build` script runs codegen first. The bundle targets `node` so the published bin runs on both Node and Bun. (Replaces the original tsup/npm choice; tsup + tsx removed.)
 - **Package layout:**
   - `package.json` (metadata, scripts, deps, `bin`, `engines`, `files`), `tsconfig.json`, `tsup.config.ts`, `biome.json`, `vitest.config.ts` — all NEW.
   - `src/` keeps its tree: `main.ts`, `config.ts`, `credentials.ts`, `const.ts`, `commands/**`, `utils/**`. **DELETE `src/keyring/`** (all 4 files).
@@ -59,10 +59,10 @@ Conflicts between subsystem reports are resolved here to a **single choice**. No
 | import map alias `./__generated__/graphql` | **DELETE** | **Correction:** dead — 0 usages in src/test. All generated imports are already relative. No tsconfig path needed. |
 | **Build/tooling** | | |
 | Deno fmt/lint | **biome** | Single binary, `semicolons: "asNeeded"` matches existing style; ignore `src/__codegen__/`. (Add prettier only if YAML/MD formatting parity is required — open question.) |
-| `deno compile` / cargo-dist | **tsup** + npm publish | ESM bundle + shebang bin; no native binaries. |
+| `deno compile` / cargo-dist | **`Bun.build`** (`scripts/build.ts`) + publish | ESM bundle + shebang bin, `target: node`; no native binaries. Bun is PM + bundler. |
 | `deno test` | **vitest** | Single runner, validated under both Node and Bun. |
 
-**devDependencies:** `tsup`, `typescript`, `@types/node`, `biome` (`@biomejs/biome`), `vitest`, `tsx`, `@graphql-codegen/cli`, `@graphql-codegen/client-preset`, `@graphql-typed-document-node/core`, `@types/mdast`, `lefthook`.
+**devDependencies:** `typescript`, `@types/node`, `biome` (`@biomejs/biome`), `vitest`, `@graphql-codegen/cli`, `@graphql-codegen/client-preset`, `@types/mdast`, `lefthook`. (No tsup/tsx — Bun is the bundler and runs TS directly.) `@graphql-typed-document-node/core` is a runtime dep.
 
 **Removed entirely (no Node dep):** all `@std/*` (→ builtins), `@cliffy/internal`, `@cliffy/ansi`, `@cliffy/testing`, all transitive std packages.
 
@@ -115,8 +115,8 @@ Each batch = (a) port parent group file + children, (b) apply the action-signatu
 
 ### Phase G — Build / CI / docs cleanup
 **Entry:** code + tests green.
-**Work:** Rewrite `.github/workflows/ci.yaml` (setup-node + setup-bun matrix; codegen→biome→tsc→vitest→build→skill-docs; **remove keyring matrix**). New slim `release.yml` (tag `v*` → setup-node → `npm ci` → codegen → build → `npm publish --access public`). DELETE cargo-dist `release.yml`, `publish.yaml`. Rewrite `lefthook.yaml` (biome/tsc/vitest); install via `prepare`. Edit `justfile` (drop `dist-generate`, swap deno tasks; drop `svbump ... dist-workspace.toml`). Update `.gitignore` (`dist`, `node_modules`; keep `src/__codegen__/`). README/release-notes: keyring tokens must be re-entered; homebrew/shell installer removed.
-**Exit:** CI green on Node + Bun; `npm publish --dry-run` ships only `dist/`; `npx`/`bunx linear` resolves.
+**Work:** Rewrite `.github/workflows/ci.yaml` (setup-bun + setup-node matrix; `bun install`→codegen→biome→tsc→vitest (node + `bunx vitest`)→`bun run build`→skill-docs; **remove keyring matrix**). New slim `release.yml` (tag `v*` → setup-bun → `bun install --frozen-lockfile` → codegen → build → publish `--access public`). DELETE cargo-dist `release.yml`, `publish.yaml`. Rewrite `lefthook.yaml` (biome/tsc/vitest); install via `prepare`; narrow fmt glob to TS/JSON. Edit `justfile` (drop `dist-generate`, swap deno tasks; drop `svbump ... dist-workspace.toml`). `.gitignore` already updated (`dist`, `node_modules`, `.env*`; keep `src/__codegen__/`). README/release-notes: keyring tokens must be re-entered; homebrew/shell installer removed; install via `bun`/`npx`/`bunx`.
+**Exit:** CI green on Node + Bun; publish dry-run (`bun pm pack`) ships only `dist/`; `npx`/`bunx linear` resolves.
 
 ---
 
@@ -176,7 +176,7 @@ Parity is proven on **both Node (>=20) and Bun** for every layer:
 1. **Snapshot parity (primary).** After Phase F, regenerate all `.snap` via `vitest -u`, then for each command diff the *new* output against upstream Deno output captured by running the original `deno` CLI on the same fixtures. Help-text deltas are expected (commander format) and reviewed by hand; data-row output should match modulo formatting. Mock GraphQL via the ported `node:http` `MockLinearServer` + `LINEAR_GRAPHQL_ENDPOINT`, with faked clock (`vi.setSystemTime`) and fixed `Date` header for determinism.
 2. **`--help` diffing.** Generate `linear … --help` for every command on both the Deno build and the Node build; review the structural diff (commands, options, args, aliases, defaults present) to confirm no option/flag was dropped in the signature reorder. Automate as a script over the command tree.
 3. **Live smoke tests against Linear.** With a real `LINEAR_API_KEY`, run a read-only matrix on Node and Bun: `auth status`, `auth whoami`, `issue mine`, `issue view <id>`, `issue query`, `team list`, `project list`, `label list`, `document view`, `api '<graphql>'`, plus a write to a scratch workspace (`issue create`/`comment`) and an interactive prompt path (`auth login`, a delete confirm). Verify pager, OSC-8 hyperlinks, markdown rendering, and spinner visually in a real TTY.
-4. **Cross-runtime CI matrix.** `ci.yaml` runs codegen→biome→tsc→`vitest run`→`tsup build` under both `actions/setup-node@20` and `oven-sh/setup-bun`, plus `bunx vitest run`. `npm pack`/`--dry-run` confirms only `dist/` ships and `npx`/`bunx linear --version` resolves.
+4. **Cross-runtime CI matrix.** `ci.yaml` runs `bun install`→codegen→biome→tsc→`vitest run`→`bun run build` under `oven-sh/setup-bun` and `actions/setup-node@20`, plus `bunx vitest run`. `bun pm pack` confirms only `dist/` ships and `npx`/`bunx linear --version` resolves.
 5. **Credentials/config behavior.** Dedicated tests assert: 0600 mode on the credentials file, `LINEAR_API_KEY` overrides file, `--workspace` + env conflict error, default reassignment on `removeCredential`, and `.linear.toml` global/project/git-root precedence.
 
 ---
@@ -189,7 +189,7 @@ Parity is proven on **both Node (>=20) and Bun** for every layer:
 4. **`auth migrate` / `--plaintext`** — **DELETE** `auth migrate`; **DROP** the `--plaintext` flag (clean break for 2.0).
 5. **Credentials file format** — **JSON** (`{ "default": "...", "<workspace>": "lin_api_..." }`), written with `{mode:0o600}`. Per-folder `.linear.toml` stays TOML (read via smol-toml). The 5-step `getResolvedApiKey` precedence (incl. per-folder `api_key` and `workspace=` lookup) is **preserved exactly** and explicitly tested in Phase F.
 6. **YAML/Markdown formatting** — **narrow** the lefthook fmt glob to TS/JSON; do NOT add prettier.
-7. **Lockfile of record** — **`package-lock.json`** (npm) committed; CI still runs the Bun matrix.
+7. **Toolchain** — **Bun** is package manager + bundler. Committed lockfile is **`bun.lock`**; `scripts/build.ts` uses `Bun.build`. CI installs with `bun install` and still runs tests under both Node and Bun. Phase G publish uses `bun publish` (or `npm publish` — bundle is runtime-agnostic).
 8. **Package identity** — name **`@zhendalf/linear-cli`** (user's fork), **version `2.0.0`**, bin **`linear`**. Local-only for now; publish decision deferred.
 
 ### PR / review process (locked)

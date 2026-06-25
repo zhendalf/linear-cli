@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env bun
 
 /**
  * Generates markdown documentation from `linear --help` output.
