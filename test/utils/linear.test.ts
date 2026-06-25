@@ -1,8 +1,5 @@
 import { expect, test } from "bun:test"
-import {
-  getIssueIdentifier,
-  searchIssuesByTerm,
-} from "../../src/utils/linear.ts"
+import { getIssueIdentifier, searchIssuesByTerm } from "../../src/utils/linear.ts"
 import { setupMockLinearServer } from "./test-helpers.ts"
 
 test("getIssueId - handles full issue identifiers", async () => {
@@ -38,59 +35,62 @@ test("getIssueId - rejects zero", async () => {
 })
 
 test("searchIssuesByTerm - without limit fetches a single page", async () => {
-  const { cleanup } = await setupMockLinearServer([
-    {
-      queryName: "SearchIssues",
-      variables: {
-        term: "issue",
-        filter: {
-          team: { key: { eq: "CLI" } },
+  const { cleanup } = await setupMockLinearServer(
+    [
+      {
+        queryName: "SearchIssues",
+        variables: {
+          term: "issue",
+          filter: {
+            team: { key: { eq: "CLI" } },
+          },
         },
-      },
-      response: {
-        data: {
-          searchIssues: {
-            nodes: [
-              {
-                id: "issue-1",
-                identifier: "CLI-1",
-                title: "First issue",
-                url: "https://linear.app/schpet/issue/CLI-1/first-issue",
-                priority: 2,
-                priorityLabel: "High",
-                estimate: 3,
-                createdAt: "2026-04-01T10:00:00.000Z",
-                updatedAt: "2026-04-01T10:00:00.000Z",
-                state: {
-                  id: "state-1",
-                  name: "Backlog",
-                  color: "#999999",
-                  type: "backlog",
+        response: {
+          data: {
+            searchIssues: {
+              nodes: [
+                {
+                  id: "issue-1",
+                  identifier: "CLI-1",
+                  title: "First issue",
+                  url: "https://linear.app/schpet/issue/CLI-1/first-issue",
+                  priority: 2,
+                  priorityLabel: "High",
+                  estimate: 3,
+                  createdAt: "2026-04-01T10:00:00.000Z",
+                  updatedAt: "2026-04-01T10:00:00.000Z",
+                  state: {
+                    id: "state-1",
+                    name: "Backlog",
+                    color: "#999999",
+                    type: "backlog",
+                  },
+                  assignee: null,
+                  team: {
+                    id: "team-1",
+                    key: "CLI",
+                    name: "Linear CLI",
+                  },
+                  project: null,
+                  projectMilestone: null,
+                  cycle: null,
+                  labels: { nodes: [] },
+                  inverseRelations: { nodes: [] },
+                  metadata: {},
                 },
-                assignee: null,
-                team: {
-                  id: "team-1",
-                  key: "CLI",
-                  name: "Linear CLI",
-                },
-                project: null,
-                projectMilestone: null,
-                cycle: null,
-                labels: { nodes: [] },
-                inverseRelations: { nodes: [] },
-                metadata: {},
+              ],
+              pageInfo: {
+                hasNextPage: true,
+                endCursor: "cursor-1",
               },
-            ],
-            pageInfo: {
-              hasNextPage: true,
-              endCursor: "cursor-1",
+              totalCount: 2,
             },
-            totalCount: 2,
           },
         },
       },
-    },
-  ], { NO_COLOR: "true" })
+    ],
+    { NO_COLOR: "true" },
+  )
 
   try {
     const result = await searchIssuesByTerm("issue", {

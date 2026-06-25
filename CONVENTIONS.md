@@ -1,1 +1,1 @@
-- this is a deno project
+- this is a native Node/Bun TypeScript project (not Deno)

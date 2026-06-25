@@ -1,14 +1,14 @@
 import { Command } from "commander"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { formatRelativeTime } from "../../utils/display.ts"
 import { openProjectPage } from "../../utils/actions.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
+import { formatRelativeTime } from "../../utils/display.ts"
+import { NotFoundError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { handleError, NotFoundError } from "../../utils/errors.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 
 const GetProjectDetails = gql(`
   query GetProjectDetails($id: String!) {
@@ -129,8 +129,7 @@ export const viewCommand = new Command("view")
         3: "Medium",
         4: "Low",
       }
-      const priority =
-        priorityMap[project.priority as keyof typeof priorityMap] || "None"
+      const priority = priorityMap[project.priority as keyof typeof priorityMap] || "None"
       lines.push(`**Priority:** ${priority}`)
 
       // Health
@@ -140,14 +139,10 @@ export const viewCommand = new Command("view")
 
       // People
       if (project.creator) {
-        lines.push(
-          `**Creator:** ${project.creator.displayName || project.creator.name}`,
-        )
+        lines.push(`**Creator:** ${project.creator.displayName || project.creator.name}`)
       }
       if (project.lead) {
-        lines.push(
-          `**Lead:** ${project.lead.displayName || project.lead.name}`,
-        )
+        lines.push(`**Lead:** ${project.lead.displayName || project.lead.name}`)
       }
 
       // Dates
@@ -161,21 +156,15 @@ export const viewCommand = new Command("view")
         lines.push(`**Started At:** ${formatRelativeTime(project.startedAt)}`)
       }
       if (project.completedAt) {
-        lines.push(
-          `**Completed At:** ${formatRelativeTime(project.completedAt)}`,
-        )
+        lines.push(`**Completed At:** ${formatRelativeTime(project.completedAt)}`)
       }
       if (project.canceledAt) {
-        lines.push(
-          `**Canceled At:** ${formatRelativeTime(project.canceledAt)}`,
-        )
+        lines.push(`**Canceled At:** ${formatRelativeTime(project.canceledAt)}`)
       }
 
       // Teams
       if (project.teams.nodes.length > 0) {
-        const teamList = project.teams.nodes
-          .map((team) => `${team.name} (${team.key})`)
-          .join(", ")
+        const teamList = project.teams.nodes.map((team) => `${team.name} (${team.key})`).join(", ")
         lines.push(`**Teams:** ${teamList}`)
       }
 

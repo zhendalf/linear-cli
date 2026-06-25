@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { CliError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 
 export const commentDeleteCommand = new Command("delete")
   .description("Delete a comment")

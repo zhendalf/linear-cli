@@ -1,5 +1,5 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commentListCommand } from "../../../src/commands/issue/issue-comment-list.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test listing comments for an issue

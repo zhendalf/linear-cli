@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { mineCommand as listCommand } from "../../../src/commands/issue/issue-mine.ts"
-import { parseDateFilter } from "../../../src/utils/linear.ts"
 import { ValidationError } from "../../../src/utils/errors.ts"
+import { parseDateFilter } from "../../../src/utils/linear.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
@@ -30,54 +30,59 @@ test("Issue List Command - Filter By Label", async () => {
   }
   globalThis.Date = MockDate as DateConstructor
 
-  const { cleanup } = await setupMockLinearServer([
-    {
-      queryName: "GetTeamIdByKey",
-      variables: { team: "ENG" },
-      response: {
-        data: {
-          teams: {
-            nodes: [{ id: "team-eng-id" }],
+  const { cleanup } = await setupMockLinearServer(
+    [
+      {
+        queryName: "GetTeamIdByKey",
+        variables: { team: "ENG" },
+        response: {
+          data: {
+            teams: {
+              nodes: [{ id: "team-eng-id" }],
+            },
           },
         },
       },
-    },
-    {
-      queryName: "GetIssuesForState",
-      response: {
-        data: {
-          issues: {
-            nodes: [
-              {
-                id: "issue-1",
-                identifier: "ENG-101",
-                title: "Fix login bug",
-                priority: 1,
-                estimate: 3,
-                assignee: { initials: "MC" },
-                state: {
-                  id: "state-1",
-                  name: "In Progress",
-                  color: "#f2c94c",
-                  type: "started",
+      {
+        queryName: "GetIssuesForState",
+        response: {
+          data: {
+            issues: {
+              nodes: [
+                {
+                  id: "issue-1",
+                  identifier: "ENG-101",
+                  title: "Fix login bug",
+                  priority: 1,
+                  estimate: 3,
+                  assignee: { initials: "MC" },
+                  state: {
+                    id: "state-1",
+                    name: "In Progress",
+                    color: "#f2c94c",
+                    type: "started",
+                  },
+                  labels: {
+                    nodes: [
+                      {
+                        id: "label-1",
+                        name: "Bug",
+                        color: "#eb5757",
+                      },
+                    ],
+                  },
+                  inverseRelations: { nodes: [] },
+                  updatedAt: "2026-03-13T10:00:00.000Z",
                 },
-                labels: {
-                  nodes: [{
-                    id: "label-1",
-                    name: "Bug",
-                    color: "#eb5757",
-                  }],
-                },
-                inverseRelations: { nodes: [] },
-                updatedAt: "2026-03-13T10:00:00.000Z",
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: null },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
       },
-    },
-  ], { LINEAR_TEAM_ID: "ENG", LINEAR_ISSUE_SORT: "priority", NO_COLOR: "true" })
+    ],
+    { LINEAR_TEAM_ID: "ENG", LINEAR_ISSUE_SORT: "priority", NO_COLOR: "true" },
+  )
 
   const logs: string[] = []
   const origConsoleLog = console.log
@@ -86,18 +91,11 @@ test("Issue List Command - Filter By Label", async () => {
   }
 
   try {
-    await listCommand.parseAsync([
-      "--label",
-      "Bug",
-      "--team",
-      "ENG",
-      "--sort",
-      "priority",
-    ], { from: "user" })
+    await listCommand.parseAsync(["--label", "Bug", "--team", "ENG", "--sort", "priority"], {
+      from: "user",
+    })
 
-    expect(
-      logs.join("\n") + "\n",
-    ).toEqual(
+    expect(logs.join("\n") + "\n").toEqual(
       "◌   ID      TITLE         LABELS B E STATE       UPDATED    \n" +
         "⚠⚠⚠ ENG-101 Fix login bug Bug      3 In Progress 17 days ago\n",
     )
@@ -126,10 +124,7 @@ test("parseDateFilter - accepts full ISO 8601 with time and Z", () => {
 })
 
 test("parseDateFilter - accepts ISO 8601 with timezone offset", () => {
-  const result = parseDateFilter(
-    "2024-01-15T09:00:00+05:30",
-    "--created-after",
-  )
+  const result = parseDateFilter("2024-01-15T09:00:00+05:30", "--created-after")
   const expected = new Date("2024-01-15T09:00:00+05:30").toISOString()
   if (result !== expected) {
     throw new Error(`Expected ${expected}, got ${result}`)

@@ -1,6 +1,5 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import {
   type BulkOperationResult,
   collectBulkIds,
@@ -8,16 +7,12 @@ import {
   isBulkMode,
   printBulkSummary,
 } from "../../utils/bulk.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { confirm } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { confirm } from "../../utils/prompt.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 interface InitiativeArchiveResult extends BulkOperationResult {
   name: string
@@ -27,44 +22,31 @@ export const archiveCommand = new Command("archive")
   .description("Archive a Linear initiative")
   .argument("[initiativeId]")
   .option("-y, --force", "Skip confirmation prompt")
-  .option(
-    "--bulk <ids...>",
-    "Archive multiple initiatives by ID, slug, or name",
-  )
-  .option(
-    "--bulk-file <file>",
-    "Read initiative IDs from a file (one per line)",
-  )
+  .option("--bulk <ids...>", "Archive multiple initiatives by ID, slug, or name")
+  .option("--bulk-file <file>", "Read initiative IDs from a file (one per line)")
   .option("--bulk-stdin", "Read initiative IDs from stdin")
-  .action(
-    async (
-      initiativeId: string | undefined,
-      options,
-    ) => {
-      const { force, bulk, bulkFile, bulkStdin } = options
-      const client = getGraphQLClient()
+  .action(async (initiativeId: string | undefined, options) => {
+    const { force, bulk, bulkFile, bulkStdin } = options
+    const client = getGraphQLClient()
 
-      // Check if bulk mode
-      if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
-        await handleBulkArchive(client, {
-          bulk,
-          bulkFile,
-          bulkStdin,
-          force,
-        })
-        return
-      }
+    // Check if bulk mode
+    if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
+      await handleBulkArchive(client, {
+        bulk,
+        bulkFile,
+        bulkStdin,
+        force,
+      })
+      return
+    }
 
-      // Single mode requires initiativeId
-      if (!initiativeId) {
-        throw new ValidationError(
-          "Initiative ID required. Use --bulk for multiple initiatives.",
-        )
-      }
+    // Single mode requires initiativeId
+    if (!initiativeId) {
+      throw new ValidationError("Initiative ID required. Use --bulk for multiple initiatives.")
+    }
 
-      await handleSingleArchive(client, initiativeId, { force })
-    },
-  )
+    await handleSingleArchive(client, initiativeId, { force })
+  })
 
 async function handleSingleArchive(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -114,9 +96,7 @@ async function handleSingleArchive(
   // Confirm archival
   if (!force) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        "Interactive confirmation required. Use --force to skip.",
-      )
+      throw new ValidationError("Interactive confirmation required. Use --force to skip.")
     }
     const confirmed = await confirm({
       message: `Archive initiative "${initiative.name}"?`,
@@ -185,9 +165,7 @@ async function handleBulkArchive(
   // Confirm bulk operation
   if (!force) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        "Interactive confirmation required. Use --force to skip.",
-      )
+      throw new ValidationError("Interactive confirmation required. Use --force to skip.")
     }
     const confirmed = await confirm({
       message: `Archive ${ids.length} initiative(s)?`,
@@ -201,9 +179,7 @@ async function handleBulkArchive(
   }
 
   // Define the archive operation
-  const archiveOperation = async (
-    idOrSlugOrName: string,
-  ): Promise<InitiativeArchiveResult> => {
+  const archiveOperation = async (idOrSlugOrName: string): Promise<InitiativeArchiveResult> => {
     // Resolve the ID
     const resolvedId = await resolveInitiativeId(client, idOrSlugOrName)
     if (!resolvedId) {
@@ -300,11 +276,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 

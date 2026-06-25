@@ -1,6 +1,6 @@
 import { Command } from "commander"
+import { ValidationError, handleError } from "../../utils/errors.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
-import { handleError, ValidationError } from "../../utils/errors.ts"
 
 export const idCommand = new Command("id")
   .description("Print the issue based on the current git branch")
@@ -10,13 +10,9 @@ export const idCommand = new Command("id")
       if (resolvedId) {
         console.log(resolvedId)
       } else {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          {
-            suggestion:
-              "Please provide an issue ID or run from a branch with an issue identifier.",
-          },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID or run from a branch with an issue identifier.",
+        })
       }
     } catch (error) {
       handleError(error, "Failed to get issue ID")

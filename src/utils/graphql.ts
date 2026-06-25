@@ -1,11 +1,11 @@
-import { ClientError, GraphQLClient } from "graphql-request"
 import chalk from "chalk"
-import { getCliWorkspace, getOption } from "../config.ts"
-import { getCredentialApiKey } from "../credentials.ts"
+import { ClientError, GraphQLClient } from "graphql-request"
 import pkg from "../../package.json" with { type: "json" }
+import { getCliWorkspace, getOption } from "../config.ts"
+import { LINEAR_API_ENDPOINT } from "../const.ts"
+import { getCredentialApiKey } from "../credentials.ts"
 import { extractGraphQLMessage, isDebugMode } from "./errors.ts"
 import { isStderrTTY } from "./runtime.ts"
-import { LINEAR_API_ENDPOINT } from "../const.ts"
 
 export { ClientError }
 

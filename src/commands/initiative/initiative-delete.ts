@@ -1,6 +1,5 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import {
   type BulkOperationResult,
   collectBulkIds,
@@ -8,16 +7,12 @@ import {
   isBulkMode,
   printBulkSummary,
 } from "../../utils/bulk.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { confirm, input } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { confirm, input } from "../../utils/prompt.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 interface InitiativeDeleteResult extends BulkOperationResult {
   name: string
@@ -27,44 +22,31 @@ export const deleteCommand = new Command("delete")
   .description("Permanently delete a Linear initiative")
   .argument("[initiativeId]")
   .option("-y, --force", "Skip confirmation prompt")
-  .option(
-    "--bulk <ids...>",
-    "Delete multiple initiatives by ID, slug, or name",
-  )
-  .option(
-    "--bulk-file <file>",
-    "Read initiative IDs from a file (one per line)",
-  )
+  .option("--bulk <ids...>", "Delete multiple initiatives by ID, slug, or name")
+  .option("--bulk-file <file>", "Read initiative IDs from a file (one per line)")
   .option("--bulk-stdin", "Read initiative IDs from stdin")
-  .action(
-    async (
-      initiativeId: string | undefined,
-      options,
-    ) => {
-      const { force, bulk, bulkFile, bulkStdin } = options
-      const client = getGraphQLClient()
+  .action(async (initiativeId: string | undefined, options) => {
+    const { force, bulk, bulkFile, bulkStdin } = options
+    const client = getGraphQLClient()
 
-      // Check if bulk mode
-      if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
-        await handleBulkDelete(client, {
-          bulk,
-          bulkFile,
-          bulkStdin,
-          force,
-        })
-        return
-      }
+    // Check if bulk mode
+    if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
+      await handleBulkDelete(client, {
+        bulk,
+        bulkFile,
+        bulkStdin,
+        force,
+      })
+      return
+    }
 
-      // Single mode requires initiativeId
-      if (!initiativeId) {
-        throw new ValidationError(
-          "Initiative ID required. Use --bulk for multiple initiatives.",
-        )
-      }
+    // Single mode requires initiativeId
+    if (!initiativeId) {
+      throw new ValidationError("Initiative ID required. Use --bulk for multiple initiatives.")
+    }
 
-      await handleSingleDelete(client, initiativeId, { force })
-    },
-  )
+    await handleSingleDelete(client, initiativeId, { force })
+  })
 
 async function handleSingleDelete(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,24 +94,19 @@ async function handleSingleDelete(
 
   // Warn about linked projects
   if (projectCount > 0) {
-    console.log(
-      `\n⚠️  Initiative "${initiative.name}" has ${projectCount} linked project(s).`,
-    )
+    console.log(`\n⚠️  Initiative "${initiative.name}" has ${projectCount} linked project(s).`)
     console.log("Deleting the initiative will unlink these projects.\n")
   }
 
   // Confirm deletion with typed confirmation for safety
   if (!force) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        "Interactive confirmation required. Use --force to skip.",
-      )
+      throw new ValidationError("Interactive confirmation required. Use --force to skip.")
     }
     console.log(`\n⚠️  This action is PERMANENT and cannot be undone.\n`)
 
     const confirmed = await confirm({
-      message:
-        `Are you sure you want to permanently delete "${initiative.name}"?`,
+      message: `Are you sure you want to permanently delete "${initiative.name}"?`,
       default: false,
     })
 
@@ -206,9 +183,7 @@ async function handleBulkDelete(
   // Confirm bulk operation
   if (!force) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        "Interactive confirmation required. Use --force to skip.",
-      )
+      throw new ValidationError("Interactive confirmation required. Use --force to skip.")
     }
     const confirmed = await confirm({
       message: `Permanently delete ${ids.length} initiative(s)?`,
@@ -222,9 +197,7 @@ async function handleBulkDelete(
   }
 
   // Define the delete operation
-  const deleteOperation = async (
-    idOrSlugOrName: string,
-  ): Promise<InitiativeDeleteResult> => {
+  const deleteOperation = async (idOrSlugOrName: string): Promise<InitiativeDeleteResult> => {
     // Resolve the ID
     const resolvedId = await resolveInitiativeId(client, idOrSlugOrName)
     if (!resolvedId) {
@@ -308,11 +281,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 

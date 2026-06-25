@@ -1,18 +1,9 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import {
-  getTeamIdByKey,
-  lookupUserId,
-  resolveProjectId,
-} from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { getTeamIdByKey, lookupUserId, resolveProjectId } from "../../utils/linear.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 
 const UpdateProject = gql(`
@@ -44,13 +35,13 @@ const GetProjectStatuses = gql(`
 `)
 
 const STATUS_TYPE_MAPPING: Record<string, string> = {
-  "planned": "planned",
+  planned: "planned",
   "in progress": "started",
-  "started": "started",
-  "paused": "paused",
-  "completed": "completed",
-  "canceled": "canceled",
-  "backlog": "backlog",
+  started: "started",
+  paused: "paused",
+  completed: "completed",
+  canceled: "canceled",
+  backlog: "backlog",
 }
 
 export const updateCommand = new Command("update")
@@ -70,120 +61,108 @@ export const updateCommand = new Command("update")
     "Team key (can be repeated for multiple teams)",
     (val: string, prev: string[] = []) => [...prev, val],
   )
-  .action(
-    async (
-      projectId: string,
-      options,
-    ) => {
-      const {
-        name,
-        description,
-        status,
-        lead,
-        startDate,
-        targetDate,
-        team: teams,
-      } = options
+  .action(async (projectId: string, options) => {
+    const { name, description, status, lead, startDate, targetDate, team: teams } = options
 
-      const spinner = createSpinner("", shouldShowSpinner())
+    const spinner = createSpinner("", shouldShowSpinner())
 
-      try {
-        if (
-          !name && description == null && !status && !lead &&
-          !startDate && !targetDate && (!teams || teams.length === 0)
-        ) {
-          throw new ValidationError(
-            "At least one update option must be provided",
-            {
-              suggestion:
-                "Use --name, --description, --status, --lead, --start-date, --target-date, or --team",
-            },
-          )
-        }
-
-        if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-          throw new ValidationError("Start date must be in YYYY-MM-DD format")
-        }
-
-        if (targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-          throw new ValidationError("Target date must be in YYYY-MM-DD format")
-        }
-
-        spinner.start()
-        const client = getGraphQLClient()
-        const resolvedId = await resolveProjectId(projectId)
-
-        const input: Record<string, unknown> = {}
-
-        if (name) input.name = name
-        if (description != null) input.description = description
-        if (startDate) input.startDate = startDate
-        if (targetDate) input.targetDate = targetDate
-
-        if (status) {
-          const statusLower = status.toLowerCase()
-          const apiStatusType = STATUS_TYPE_MAPPING[statusLower]
-          if (!apiStatusType) {
-            spinner.stop()
-            throw new ValidationError(`Invalid status: ${status}`, {
-              suggestion:
-                "Valid values: planned, started, paused, completed, canceled, backlog",
-            })
-          }
-          const statusResult = await client.request(GetProjectStatuses)
-          const projectStatuses = statusResult.projectStatuses?.nodes || []
-          const matchingStatus = projectStatuses.find(
-            (s: { type: string }) => s.type === apiStatusType,
-          )
-          if (!matchingStatus) {
-            spinner.stop()
-            throw new NotFoundError("Project status", apiStatusType)
-          }
-          input.statusId = matchingStatus.id
-        }
-
-        if (lead) {
-          const leadId = await lookupUserId(lead)
-          if (!leadId) {
-            spinner.stop()
-            throw new NotFoundError("Lead", lead)
-          }
-          input.leadId = leadId
-        }
-
-        if (teams && teams.length > 0) {
-          const teamIds: string[] = []
-          for (const teamKey of teams) {
-            const teamId = await getTeamIdByKey(teamKey.toUpperCase())
-            if (!teamId) {
-              spinner.stop()
-              throw new NotFoundError("Team", teamKey)
-            }
-            teamIds.push(teamId)
-          }
-          input.teamIds = teamIds
-        }
-
-        const result = await client.request(UpdateProject, {
-          id: resolvedId,
-          input,
+    try {
+      if (
+        !name &&
+        description == null &&
+        !status &&
+        !lead &&
+        !startDate &&
+        !targetDate &&
+        (!teams || teams.length === 0)
+      ) {
+        throw new ValidationError("At least one update option must be provided", {
+          suggestion:
+            "Use --name, --description, --status, --lead, --start-date, --target-date, or --team",
         })
-        spinner.stop()
-
-        if (!result.projectUpdate.success) {
-          throw new CliError("Failed to update project")
-        }
-
-        const project = result.projectUpdate.project
-        if (project) {
-          console.log(`✓ Updated project: ${project.name}`)
-          if (project.url) {
-            console.log(project.url)
-          }
-        }
-      } catch (error) {
-        spinner.stop()
-        handleError(error, "Failed to update project")
       }
-    },
-  )
+
+      if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        throw new ValidationError("Start date must be in YYYY-MM-DD format")
+      }
+
+      if (targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+        throw new ValidationError("Target date must be in YYYY-MM-DD format")
+      }
+
+      spinner.start()
+      const client = getGraphQLClient()
+      const resolvedId = await resolveProjectId(projectId)
+
+      const input: Record<string, unknown> = {}
+
+      if (name) input.name = name
+      if (description != null) input.description = description
+      if (startDate) input.startDate = startDate
+      if (targetDate) input.targetDate = targetDate
+
+      if (status) {
+        const statusLower = status.toLowerCase()
+        const apiStatusType = STATUS_TYPE_MAPPING[statusLower]
+        if (!apiStatusType) {
+          spinner.stop()
+          throw new ValidationError(`Invalid status: ${status}`, {
+            suggestion: "Valid values: planned, started, paused, completed, canceled, backlog",
+          })
+        }
+        const statusResult = await client.request(GetProjectStatuses)
+        const projectStatuses = statusResult.projectStatuses?.nodes || []
+        const matchingStatus = projectStatuses.find(
+          (s: { type: string }) => s.type === apiStatusType,
+        )
+        if (!matchingStatus) {
+          spinner.stop()
+          throw new NotFoundError("Project status", apiStatusType)
+        }
+        input.statusId = matchingStatus.id
+      }
+
+      if (lead) {
+        const leadId = await lookupUserId(lead)
+        if (!leadId) {
+          spinner.stop()
+          throw new NotFoundError("Lead", lead)
+        }
+        input.leadId = leadId
+      }
+
+      if (teams && teams.length > 0) {
+        const teamIds: string[] = []
+        for (const teamKey of teams) {
+          const teamId = await getTeamIdByKey(teamKey.toUpperCase())
+          if (!teamId) {
+            spinner.stop()
+            throw new NotFoundError("Team", teamKey)
+          }
+          teamIds.push(teamId)
+        }
+        input.teamIds = teamIds
+      }
+
+      const result = await client.request(UpdateProject, {
+        id: resolvedId,
+        input,
+      })
+      spinner.stop()
+
+      if (!result.projectUpdate.success) {
+        throw new CliError("Failed to update project")
+      }
+
+      const project = result.projectUpdate.project
+      if (project) {
+        console.log(`✓ Updated project: ${project.name}`)
+        if (project.url) {
+          console.log(project.url)
+        }
+      }
+    } catch (error) {
+      spinner.stop()
+      handleError(error, "Failed to update project")
+    }
+  })

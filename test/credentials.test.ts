@@ -1,6 +1,6 @@
-import { test, expect, beforeEach, afterEach, beforeAll, afterAll } from "bun:test"
-import { mkdtemp, rm, stat, writeFile, readFile } from "node:fs/promises"
+import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test"
 import { mkdtempSync } from "node:fs"
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -241,9 +241,7 @@ test("getResolvedApiKey - rung 3: --workspace flag resolves to that workspace's 
 test("getResolvedApiKey - rung 3: --workspace flag for unknown workspace throws", async () => {
   await addCredential("known-ws", "lin_api_known")
   setCliWorkspace("does-not-exist")
-  expect(() => getResolvedApiKey()).toThrow(
-    'Workspace "does-not-exist" not found in credentials',
-  )
+  expect(() => getResolvedApiKey()).toThrow('Workspace "does-not-exist" not found in credentials')
 })
 
 test("getResolvedApiKey - rung 4: .linear.toml workspace= resolves to that workspace's stored key over default", async () => {

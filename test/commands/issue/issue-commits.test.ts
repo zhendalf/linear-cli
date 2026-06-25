@@ -1,5 +1,5 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commitsCommand } from "../../../src/commands/issue/issue-commits.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({

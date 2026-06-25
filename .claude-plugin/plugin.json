@@ -6,7 +6,5 @@
     "name": "schpet"
   },
   "homepage": "https://github.com/schpet/linear-cli",
-  "skills": [
-    "./skills/linear-cli"
-  ]
+  "skills": ["./skills/linear-cli"]
 }

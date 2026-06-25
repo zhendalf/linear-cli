@@ -1,24 +1,26 @@
 import { expect, test } from "bun:test"
 import {
-  extractImageInfo,
-  extractLinearLinkInfo,
-  getUrlHash,
-  replaceImageUrls,
-} from "../../../src/utils/markdown-images.ts"
-import {
   formatPathHyperlink,
   hyperlink,
   resolveHyperlinkFormat,
   shouldEnableHyperlinks,
 } from "../../../src/utils/hyperlink.ts"
+import {
+  extractImageInfo,
+  extractLinearLinkInfo,
+  getUrlHash,
+  replaceImageUrls,
+} from "../../../src/utils/markdown-images.ts"
 
 test("extractImageInfo - extracts markdown images", () => {
   const markdown = "Check this ![screenshot](https://example.com/img.png)"
   const images = extractImageInfo(markdown)
-  expect(images).toEqual([{
-    url: "https://example.com/img.png",
-    alt: "screenshot",
-  }])
+  expect(images).toEqual([
+    {
+      url: "https://example.com/img.png",
+      alt: "screenshot",
+    },
+  ])
 })
 
 test("extractImageInfo - extracts multiple images", () => {
@@ -34,10 +36,12 @@ Here is ![first](https://example.com/1.png) and ![second](https://example.com/2.
 test("extractImageInfo - handles image without alt text", () => {
   const markdown = "![](https://example.com/img.png)"
   const images = extractImageInfo(markdown)
-  expect(images).toEqual([{
-    url: "https://example.com/img.png",
-    alt: null,
-  }])
+  expect(images).toEqual([
+    {
+      url: "https://example.com/img.png",
+      alt: null,
+    },
+  ])
 })
 
 test("extractImageInfo - handles empty content", () => {
@@ -72,9 +76,7 @@ test("getUrlHash - hash is valid hex string", async () => {
 
 test("replaceImageUrls - replaces URLs with local paths", async () => {
   const markdown = "![alt](https://example.com/img.png)"
-  const urlToPath = new Map([
-    ["https://example.com/img.png", "/tmp/cached/img.png"],
-  ])
+  const urlToPath = new Map([["https://example.com/img.png", "/tmp/cached/img.png"]])
   const result = await replaceImageUrls(markdown, urlToPath)
   expect(result.includes("/tmp/cached/img.png")).toBe(true)
   expect(result.includes("https://example.com/img.png")).toBe(false)
@@ -96,19 +98,14 @@ test("replaceImageUrls - replaces multiple URLs", async () => {
 
 test("replaceImageUrls - leaves unmatched URLs unchanged", async () => {
   const markdown = "![alt](https://example.com/img.png)"
-  const urlToPath = new Map([
-    ["https://other.com/img.png", "/tmp/cached/img.png"],
-  ])
+  const urlToPath = new Map([["https://other.com/img.png", "/tmp/cached/img.png"]])
   const result = await replaceImageUrls(markdown, urlToPath)
   expect(result.includes("https://example.com/img.png")).toBe(true)
 })
 
 test("replaceImageUrls - preserves GFM task lists", async () => {
-  const markdown =
-    "- [ ] todo\n- [x] done\n\n![alt](https://example.com/img.png)\n"
-  const urlToPath = new Map([
-    ["https://example.com/img.png", "/tmp/cached/img.png"],
-  ])
+  const markdown = "- [ ] todo\n- [x] done\n\n![alt](https://example.com/img.png)\n"
+  const urlToPath = new Map([["https://example.com/img.png", "/tmp/cached/img.png"]])
   const result = await replaceImageUrls(markdown, urlToPath)
   expect(result.includes("- [ ] todo")).toBe(true)
   expect(result.includes("- [x] done")).toBe(true)
@@ -116,11 +113,8 @@ test("replaceImageUrls - preserves GFM task lists", async () => {
 })
 
 test("replaceImageUrls - preserves GFM tables", async () => {
-  const markdown =
-    "| a | b |\n| - | - |\n| 1 | 2 |\n\n![alt](https://example.com/img.png)\n"
-  const urlToPath = new Map([
-    ["https://example.com/img.png", "/tmp/cached/img.png"],
-  ])
+  const markdown = "| a | b |\n| - | - |\n| 1 | 2 |\n\n![alt](https://example.com/img.png)\n"
+  const urlToPath = new Map([["https://example.com/img.png", "/tmp/cached/img.png"]])
   const result = await replaceImageUrls(markdown, urlToPath)
   expect(result.includes("| a | b |")).toBe(true)
   expect(result.includes("/tmp/cached/img.png")).toBe(true)
@@ -156,9 +150,7 @@ test("extractLinearLinkInfo - ignores spoofed subdomain", () => {
 
 test("hyperlink - creates OSC-8 escape sequence", () => {
   const result = hyperlink("click me", "https://example.com")
-  expect(result).toBe(
-    "\x1b]8;;https://example.com\x1b\\click me\x1b]8;;\x1b\\",
-  )
+  expect(result).toBe("\x1b]8;;https://example.com\x1b\\click me\x1b]8;;\x1b\\")
 })
 
 test("hyperlink - handles empty text", () => {
@@ -181,20 +173,12 @@ test("formatPathHyperlink - wraps remote URL in hyperlink", () => {
     "default",
   )
   // Remote URLs link directly to themselves
-  expect(
-    result.includes("\x1b]8;;https://example.com/img.png\x1b\\"),
-  ).toBe(true)
-  expect(
-    result.includes("https://example.com/img.png\x1b]8;;\x1b\\"),
-  ).toBe(true)
+  expect(result.includes("\x1b]8;;https://example.com/img.png\x1b\\")).toBe(true)
+  expect(result.includes("https://example.com/img.png\x1b]8;;\x1b\\")).toBe(true)
 })
 
 test("formatPathHyperlink - wraps local path with file URL format", () => {
-  const result = formatPathHyperlink(
-    "/tmp/test/image.png",
-    "/tmp/test/image.png",
-    "default",
-  )
+  const result = formatPathHyperlink("/tmp/test/image.png", "/tmp/test/image.png", "default")
   // Local paths get file:// URL format
   expect(result.includes("\x1b]8;;file://")).toBe(true)
   expect(result.includes("/tmp/test/image.png")).toBe(true)

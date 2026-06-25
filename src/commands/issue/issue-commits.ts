@@ -1,14 +1,14 @@
-import { Command } from "commander"
-import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
-import { getVcs } from "../../utils/vcs.ts"
 import { spawn } from "node:child_process"
+import { Command } from "commander"
 import {
+  NotFoundError,
+  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
-  NotFoundError,
-  ValidationError,
 } from "../../utils/errors.ts"
+import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
+import { getVcs } from "../../utils/vcs.ts"
 
 export const commitsCommand = new Command("commits")
   .description("Show all commits for a Linear issue (jj only)")
@@ -18,18 +18,16 @@ export const commitsCommand = new Command("commits")
       const vcs = getVcs()
 
       if (vcs !== "jj") {
-        throw new ValidationError(
-          "commits is only supported with jj-vcs",
-          { suggestion: "This command requires jujutsu (jj) version control." },
-        )
+        throw new ValidationError("commits is only supported with jj-vcs", {
+          suggestion: "This command requires jujutsu (jj) version control.",
+        })
       }
 
       const resolvedId = await getIssueIdentifier(issueId)
       if (!resolvedId) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          { suggestion: "Please provide an issue ID like 'ENG-123'." },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID like 'ENG-123'.",
+        })
       }
 
       // Verify the issue exists in Linear
@@ -55,7 +53,9 @@ export const commitsCommand = new Command("commits")
           stdio: ["inherit", "pipe", "pipe"],
         })
         let stdout = ""
-        checkProcess.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString() })
+        checkProcess.stdout.on("data", (chunk: Buffer) => {
+          stdout += chunk.toString()
+        })
         checkProcess.on("close", (code) => {
           if (code !== 0) {
             reject(new NotFoundError("Commits", resolvedId))
@@ -72,18 +72,22 @@ export const commitsCommand = new Command("commits")
 
       // Show the commits with full details
       await new Promise<void>((resolve, reject) => {
-        const jjProcess = spawn("jj", [
-          "log",
-          "-r",
-          revset,
-          "-p",
-          "--git",
-          "--no-graph",
-          "-T",
-          "builtin_log_compact_full_description",
-        ], {
-          stdio: "inherit",
-        })
+        const jjProcess = spawn(
+          "jj",
+          [
+            "log",
+            "-r",
+            revset,
+            "-p",
+            "--git",
+            "--no-graph",
+            "-T",
+            "builtin_log_compact_full_description",
+          ],
+          {
+            stdio: "inherit",
+          },
+        )
         jjProcess.on("close", (code) => {
           process.exitCode = code ?? 0
           resolve()

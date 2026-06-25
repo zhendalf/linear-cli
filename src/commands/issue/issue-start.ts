@@ -1,37 +1,17 @@
 import { Command } from "commander"
-import { getPriorityDisplay } from "../../utils/display.ts"
-import {
-  fetchIssuesForState,
-  getIssueIdentifier,
-  getTeamKey,
-} from "../../utils/linear.ts"
 import { startWorkOnIssue as startIssue } from "../../utils/actions.ts"
+import { getPriorityDisplay } from "../../utils/display.ts"
+import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { fetchIssuesForState, getIssueIdentifier, getTeamKey } from "../../utils/linear.ts"
 import { searchSelect } from "../../utils/prompt.ts"
-import {
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 export const startCommand = new Command("start")
   .description("Start working on an issue")
   .argument("[issueId]")
-  .option(
-    "-A, --all-assignees",
-    "Show issues for all assignees",
-  )
-  .option(
-    "-U, --unassigned",
-    "Show only unassigned issues",
-  )
-  .option(
-    "-f, --from-ref <fromRef>",
-    "Git ref to create new branch from",
-  )
-  .option(
-    "-b, --branch <branch>",
-    "Custom branch name to use instead of the issue identifier",
-  )
+  .option("-A, --all-assignees", "Show issues for all assignees")
+  .option("-U, --unassigned", "Show only unassigned issues")
+  .option("-f, --from-ref <fromRef>", "Git ref to create new branch from")
+  .option("-b, --branch <branch>", "Custom branch name to use instead of the issue identifier")
   .action(async (issueId: string | undefined, options) => {
     const { allAssignees, unassigned, fromRef, branch } = options
     try {
@@ -42,9 +22,7 @@ export const startCommand = new Command("start")
 
       // Validate that conflicting flags are not used together
       if (allAssignees && unassigned) {
-        throw new ValidationError(
-          "Cannot specify both --all-assignees and --unassigned",
-        )
+        throw new ValidationError("Cannot specify both --all-assignees and --unassigned")
       }
 
       // Only resolve the provided issueId, don't infer from VCS
@@ -66,11 +44,8 @@ export const startCommand = new Command("start")
 
         resolvedId = await searchSelect({
           message: "Select an issue to start:",
-          choices: issues.map((
-            issue: { identifier: string; title: string; priority: number },
-          ) => ({
-            name: getPriorityDisplay(issue.priority) +
-              ` ${issue.identifier}: ${issue.title}`,
+          choices: issues.map((issue: { identifier: string; title: string; priority: number }) => ({
+            name: getPriorityDisplay(issue.priority) + ` ${issue.identifier}: ${issue.title}`,
             value: issue.identifier,
           })),
         })

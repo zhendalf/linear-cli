@@ -1,5 +1,5 @@
-import { expect, test, beforeEach, afterEach } from "bun:test"
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises"
+import { afterEach, beforeEach, expect, test } from "bun:test"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { getOption, init } from "../src/config.ts"
@@ -8,20 +8,7 @@ import { getOption, init } from "../src/config.ts"
 // to avoid interference from config files that may exist in the repo
 
 test("getOption - download_images returns boolean for truthy strings", () => {
-  const truthyValues = [
-    "true",
-    "TRUE",
-    "True",
-    "yes",
-    "YES",
-    "y",
-    "Y",
-    "on",
-    "ON",
-    "1",
-    "t",
-    "T",
-  ]
+  const truthyValues = ["true", "TRUE", "True", "yes", "YES", "y", "Y", "on", "ON", "1", "t", "T"]
 
   for (const value of truthyValues) {
     const result = getOption("download_images", value)
@@ -30,20 +17,7 @@ test("getOption - download_images returns boolean for truthy strings", () => {
 })
 
 test("getOption - download_images returns boolean for falsy strings", () => {
-  const falsyValues = [
-    "false",
-    "FALSE",
-    "False",
-    "no",
-    "NO",
-    "n",
-    "N",
-    "off",
-    "OFF",
-    "0",
-    "f",
-    "F",
-  ]
+  const falsyValues = ["false", "FALSE", "False", "no", "NO", "n", "N", "off", "OFF", "0", "f", "F"]
 
   for (const value of falsyValues) {
     const result = getOption("download_images", value)
@@ -175,10 +149,7 @@ test("getOption - project config takes precedence over home config", async () =>
       join(tempHome, ".config", "linear", "linear.toml"),
       `workspace = "${homeConfigValue}"\n`,
     )
-    await writeFile(
-      join(projectDir, ".linear.toml"),
-      `workspace = "${projectConfigValue}"\n`,
-    )
+    await writeFile(join(projectDir, ".linear.toml"), `workspace = "${projectConfigValue}"\n`)
     process.chdir(projectDir)
     delete process.env["LINEAR_WORKSPACE"]
     delete process.env["XDG_CONFIG_HOME"]
@@ -281,10 +252,7 @@ test("getOption - global and project configs are merged", async () => {
       join(tempHome, ".config", "linear", "linear.toml"),
       `issue_sort = "${globalIssueSort}"\n`,
     )
-    await writeFile(
-      join(projectDir, ".linear.toml"),
-      `workspace = "${projectWorkspace}"\n`,
-    )
+    await writeFile(join(projectDir, ".linear.toml"), `workspace = "${projectWorkspace}"\n`)
     process.chdir(projectDir)
     delete process.env["LINEAR_WORKSPACE"]
     delete process.env["LINEAR_ISSUE_SORT"]

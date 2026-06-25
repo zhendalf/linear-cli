@@ -5,7 +5,7 @@ import {
   hasWorkspace,
   setDefaultWorkspace,
 } from "../../credentials.ts"
-import { AuthError, handleError, NotFoundError } from "../../utils/errors.ts"
+import { AuthError, NotFoundError, handleError } from "../../utils/errors.ts"
 import { select } from "../../utils/prompt.ts"
 
 export const defaultCommand = new Command("default")

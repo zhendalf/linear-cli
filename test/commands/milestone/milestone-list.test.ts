@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { listCommand } from "../../../src/commands/milestone/milestone-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -26,10 +26,12 @@ await snapshotTest({
         response: {
           data: {
             projects: {
-              nodes: [{
-                id: "project-123",
-                slugId: "project-123",
-              }],
+              nodes: [
+                {
+                  id: "project-123",
+                  slugId: "project-123",
+                },
+              ],
             },
           },
         },
@@ -109,10 +111,12 @@ await snapshotTest({
         response: {
           data: {
             projects: {
-              nodes: [{
-                id: "project-456",
-                slugId: "project-456",
-              }],
+              nodes: [
+                {
+                  id: "project-456",
+                  slugId: "project-456",
+                },
+              ],
             },
           },
         },

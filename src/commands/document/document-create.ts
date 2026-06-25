@@ -1,17 +1,12 @@
-import { Command } from "commander"
 import { readFile } from "node:fs/promises"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getEditor, openEditor } from "../../utils/editor.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
+import { getEditor, openEditor } from "../../utils/editor.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { input, select } from "../../utils/prompt.ts"
-import { isStdoutTTY, isStdinTTY } from "../../utils/runtime.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { isStdinTTY, isStdoutTTY } from "../../utils/runtime.ts"
 
 /**
  * Read content from stdin if available (piped input, with timeout)
@@ -48,133 +43,34 @@ export const createCommand = new Command("create")
   .option("--issue <issue>", "Attach to issue (identifier like TC-123)")
   .option("--icon <icon>", "Document icon (emoji)")
   .option("-i, --interactive", "Interactive mode with prompts")
-  .action(
-    async (options) => {
-      const {
-        title,
-        content,
-        contentFile,
-        project,
-        issue,
-        icon,
-        interactive,
-      } = options
-      try {
-        const client = getGraphQLClient()
+  .action(async (options) => {
+    const { title, content, contentFile, project, issue, icon, interactive } = options
+    try {
+      const client = getGraphQLClient()
 
-        // Determine if we should use interactive mode
-        let useInteractive = interactive && isStdoutTTY()
+      // Determine if we should use interactive mode
+      let useInteractive = interactive && isStdoutTTY()
 
-        // If no title and not interactive, check if we should enter interactive mode
-        const noFlagsProvided = !title && !content && !contentFile &&
-          !project &&
-          !issue && !icon
-        if (noFlagsProvided && isStdoutTTY()) {
-          useInteractive = true
+      // If no title and not interactive, check if we should enter interactive mode
+      const noFlagsProvided = !title && !content && !contentFile && !project && !issue && !icon
+      if (noFlagsProvided && isStdoutTTY()) {
+        useInteractive = true
+      }
+
+      // Interactive mode
+      if (useInteractive) {
+        const result = await promptInteractiveCreate()
+
+        if (!result.title) {
+          throw new ValidationError("Title is required")
         }
 
-        // Interactive mode
-        if (useInteractive) {
-          const result = await promptInteractiveCreate()
-
-          if (!result.title) {
-            throw new ValidationError("Title is required")
-          }
-
-          const inputData: Record<string, string | undefined> = {
-            title: result.title,
-            content: result.content,
-            icon: result.icon,
-            projectId: result.projectId,
-            issueId: result.issueId,
-          }
-
-          // Remove undefined values
-          Object.keys(inputData).forEach((key) => {
-            if (inputData[key] === undefined) {
-              delete inputData[key]
-            }
-          })
-
-          await createDocument(client, inputData)
-          return
-        }
-
-        // Non-interactive mode requires title
-        if (!title) {
-          throw new ValidationError("Title is required", {
-            suggestion: "Use --title or run with -i for interactive mode.",
-          })
-        }
-
-        // Resolve content from various sources
-        let finalContent: string | undefined
-
-        if (content) {
-          // Content provided inline via --content
-          finalContent = content
-        } else if (contentFile) {
-          // Content from file via --content-file
-          try {
-            finalContent = await readFile(contentFile, "utf8")
-          } catch (error) {
-            const nodeErr = error as NodeJS.ErrnoException
-            if (nodeErr?.code === "ENOENT") {
-              throw new NotFoundError("File", contentFile)
-            }
-            throw new CliError(
-              `Failed to read content file: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-              { cause: error },
-            )
-          }
-        } else if (!isStdinTTY()) {
-          // Try reading from stdin if piped
-          const stdinContent = await readContentFromStdin()
-          if (stdinContent) {
-            finalContent = stdinContent
-          }
-        } else if (isStdoutTTY()) {
-          // No content provided, open editor
-          console.log("Opening editor for document content...")
-          finalContent = await openEditor()
-          if (!finalContent) {
-            console.log(
-              "No content entered. Creating document without content.",
-            )
-          }
-        }
-
-        // Resolve project ID if provided
-        let projectId: string | undefined
-        if (project) {
-          projectId = await resolveProjectId(client, project)
-          if (!projectId) {
-            throw new NotFoundError("Project", project, {
-              suggestion: "Provide a valid project slug or ID.",
-            })
-          }
-        }
-
-        // Resolve issue ID if provided
-        let issueId: string | undefined
-        if (issue) {
-          issueId = await resolveIssueId(client, issue)
-          if (!issueId) {
-            throw new NotFoundError("Issue", issue, {
-              suggestion: "Provide a valid issue identifier (e.g., TC-123).",
-            })
-          }
-        }
-
-        // Build input
         const inputData: Record<string, string | undefined> = {
-          title,
-          content: finalContent,
-          icon,
-          projectId,
-          issueId,
+          title: result.title,
+          content: result.content,
+          icon: result.icon,
+          projectId: result.projectId,
+          issueId: result.issueId,
         }
 
         // Remove undefined values
@@ -185,11 +81,96 @@ export const createCommand = new Command("create")
         })
 
         await createDocument(client, inputData)
-      } catch (error) {
-        handleError(error, "Failed to create document")
+        return
       }
-    },
-  )
+
+      // Non-interactive mode requires title
+      if (!title) {
+        throw new ValidationError("Title is required", {
+          suggestion: "Use --title or run with -i for interactive mode.",
+        })
+      }
+
+      // Resolve content from various sources
+      let finalContent: string | undefined
+
+      if (content) {
+        // Content provided inline via --content
+        finalContent = content
+      } else if (contentFile) {
+        // Content from file via --content-file
+        try {
+          finalContent = await readFile(contentFile, "utf8")
+        } catch (error) {
+          const nodeErr = error as NodeJS.ErrnoException
+          if (nodeErr?.code === "ENOENT") {
+            throw new NotFoundError("File", contentFile)
+          }
+          throw new CliError(
+            `Failed to read content file: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+            { cause: error },
+          )
+        }
+      } else if (!isStdinTTY()) {
+        // Try reading from stdin if piped
+        const stdinContent = await readContentFromStdin()
+        if (stdinContent) {
+          finalContent = stdinContent
+        }
+      } else if (isStdoutTTY()) {
+        // No content provided, open editor
+        console.log("Opening editor for document content...")
+        finalContent = await openEditor()
+        if (!finalContent) {
+          console.log("No content entered. Creating document without content.")
+        }
+      }
+
+      // Resolve project ID if provided
+      let projectId: string | undefined
+      if (project) {
+        projectId = await resolveProjectId(client, project)
+        if (!projectId) {
+          throw new NotFoundError("Project", project, {
+            suggestion: "Provide a valid project slug or ID.",
+          })
+        }
+      }
+
+      // Resolve issue ID if provided
+      let issueId: string | undefined
+      if (issue) {
+        issueId = await resolveIssueId(client, issue)
+        if (!issueId) {
+          throw new NotFoundError("Issue", issue, {
+            suggestion: "Provide a valid issue identifier (e.g., TC-123).",
+          })
+        }
+      }
+
+      // Build input
+      const inputData: Record<string, string | undefined> = {
+        title,
+        content: finalContent,
+        icon,
+        projectId,
+        issueId,
+      }
+
+      // Remove undefined values
+      Object.keys(inputData).forEach((key) => {
+        if (inputData[key] === undefined) {
+          delete inputData[key]
+        }
+      })
+
+      await createDocument(client, inputData)
+    } catch (error) {
+      handleError(error, "Failed to create document")
+    }
+  })
 
 async function promptInteractiveCreate(): Promise<{
   title?: string
@@ -213,9 +194,7 @@ async function promptInteractiveCreate(): Promise<{
     choices: [
       { name: "Skip (no content)", value: "skip" },
       { name: "Enter inline", value: "inline" },
-      ...(editorDisplayName
-        ? [{ name: `Open ${editorDisplayName}`, value: "editor" }]
-        : []),
+      ...(editorDisplayName ? [{ name: `Open ${editorDisplayName}`, value: "editor" }] : []),
       { name: "Read from file", value: "file" },
     ],
     default: "skip",
@@ -247,9 +226,7 @@ async function promptInteractiveCreate(): Promise<{
         throw new NotFoundError("File", filePath)
       }
       throw new CliError(
-        `Failed to read file: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error },
       )
     }

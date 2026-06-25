@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { agentSessionViewCommand } from "../../../src/commands/issue/issue-agent-session-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 await snapshotTest({
   name: "Issue Agent Session View Command - Help Text",
@@ -33,8 +33,7 @@ await snapshotTest({
               startedAt: "2020-01-01T10:00:05Z",
               endedAt: null,
               dismissedAt: null,
-              summary:
-                "Investigating auth token refresh bug in the middleware layer",
+              summary: "Investigating auth token refresh bug in the middleware layer",
               externalLink: null,
               creator: { name: "Alice" },
               appUser: { name: "Linear Assistant" },
@@ -72,8 +71,7 @@ await snapshotTest({
                     content: {
                       __typename: "AgentActivityResponseContent",
                       type: "response",
-                      body:
-                        "The token refresh is failing because the expiry check uses UTC",
+                      body: "The token refresh is failing because the expiry check uses UTC",
                     },
                   },
                 ],

@@ -1,9 +1,9 @@
 import { Command } from "commander"
-import { listCommand } from "./project-list.ts"
-import { viewCommand } from "./project-view.ts"
 import { createCommand } from "./project-create.ts"
-import { updateCommand } from "./project-update.ts"
 import { deleteCommand } from "./project-delete.ts"
+import { listCommand } from "./project-list.ts"
+import { updateCommand } from "./project-update.ts"
+import { viewCommand } from "./project-view.ts"
 
 export const projectCommand = new Command("project")
   .alias("p")

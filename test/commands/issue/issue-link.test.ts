@@ -1,5 +1,5 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { linkCommand } from "../../../src/commands/issue/issue-link.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
@@ -58,12 +58,7 @@ await snapshotTest({
   name: "Issue Link Command - link URL with custom title",
   meta: import.meta,
   colors: false,
-  args: [
-    "ENG-456",
-    "https://example.com/doc",
-    "--title",
-    "Design document",
-  ],
+  args: ["ENG-456", "https://example.com/doc", "--title", "Design document"],
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       {
@@ -123,13 +118,15 @@ await snapshotTest({
         queryName: "GetIssueId",
         variables: { id: "ENG-999" },
         response: {
-          errors: [{
-            message: "Entity not found",
-            extensions: {
-              type: "entity",
-              userPresentableMessage: "Entity not found",
+          errors: [
+            {
+              message: "Entity not found",
+              extensions: {
+                type: "entity",
+                userPresentableMessage: "Entity not found",
+              },
             },
-          }],
+          ],
         },
       },
     ])

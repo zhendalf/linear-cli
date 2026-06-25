@@ -28,9 +28,7 @@ export async function runCommand(
     // Match Deno.Command semantics: `env` overrides MERGE with the parent
     // environment (Deno inherits unless clearEnv is set), so a single override
     // must not drop PATH and break executable resolution.
-    const env = opts?.env
-      ? { ...process.env, ...opts.env }
-      : process.env
+    const env = opts?.env ? { ...process.env, ...opts.env } : process.env
     const { stdout, stderr } = await execFileAsync(cmd, args, {
       cwd: opts?.cwd,
       env,

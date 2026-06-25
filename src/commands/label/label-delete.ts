@@ -1,17 +1,12 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getTeamKey } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { createSpinner } from "../../utils/spinner.ts"
-import { select, confirm } from "../../utils/prompt.ts"
+import { getTeamKey } from "../../utils/linear.ts"
+import { confirm, select } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const DeleteIssueLabel = gql(`
   mutation DeleteIssueLabel($id: String!) {
@@ -69,11 +64,7 @@ async function resolveLabelId(
   teamKey?: string,
 ): Promise<Label | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      nameOrId,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nameOrId)) {
     try {
       const result = await client.request(GetLabelById, { id: nameOrId })
       if (result.issueLabel) {
@@ -100,9 +91,7 @@ async function resolveLabelId(
 
   // If team is specified, filter by team
   if (teamKey) {
-    const teamLabel = labels.find(
-      (l) => l.team?.key?.toLowerCase() === teamKey.toLowerCase(),
-    )
+    const teamLabel = labels.find((l) => l.team?.key?.toLowerCase() === teamKey.toLowerCase())
     if (teamLabel) {
       return teamLabel
     }
@@ -117,10 +106,9 @@ async function resolveLabelId(
   // If multiple labels with same name exist, let user choose
   if (labels.length > 1) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        `Multiple labels named "${nameOrId}" found`,
-        { suggestion: "Use --team to disambiguate." },
-      )
+      throw new ValidationError(`Multiple labels named "${nameOrId}" found`, {
+        suggestion: "Use --team to disambiguate.",
+      })
     }
     const choices = labels.map((l) => ({
       name: `${l.name} (${l.team?.key || "Workspace"}) - ${l.color}`,
@@ -142,10 +130,7 @@ async function resolveLabelId(
 export const deleteCommand = new Command("delete")
   .description("Delete an issue label")
   .argument("<nameOrId>", "Label name or ID")
-  .option(
-    "-t, --team <teamKey>",
-    "Team key to disambiguate labels with same name",
-  )
+  .option("-t, --team <teamKey>", "Team key to disambiguate labels with same name")
   .option("-f, --force", "Skip confirmation prompt")
   .action(async (nameOrId: string, options) => {
     const { team: teamKey, force } = options

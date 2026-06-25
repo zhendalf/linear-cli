@@ -1,17 +1,8 @@
-import { Command } from "commander"
 import chalk from "chalk"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import {
-  addCredential,
-  getWorkspaces,
-  hasWorkspace,
-} from "../../credentials.ts"
-import {
-  AuthError,
-  CliError,
-  handleError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { addCredential, getWorkspaces, hasWorkspace } from "../../credentials.ts"
+import { AuthError, CliError, ValidationError, handleError } from "../../utils/errors.ts"
 import { createGraphQLClient } from "../../utils/graphql.ts"
 import { password } from "../../utils/prompt.ts"
 
@@ -46,8 +37,7 @@ export const loginCommand = new Command("login")
 
       if (!apiKey) {
         throw new ValidationError("No API key provided", {
-          suggestion:
-            "Create one at https://linear.app/settings/account/security",
+          suggestion: "Create one at https://linear.app/settings/account/security",
         })
       }
 
@@ -69,9 +59,7 @@ export const loginCommand = new Command("login")
         const existingCount = getWorkspaces().length
 
         if (alreadyExists) {
-          console.log(
-            `Updated credentials for workspace: ${org.name} (${workspace})`,
-          )
+          console.log(`Updated credentials for workspace: ${org.name} (${workspace})`)
         } else {
           console.log(`Logged in to workspace: ${org.name} (${workspace})`)
         }
@@ -84,15 +72,9 @@ export const loginCommand = new Command("login")
         // Warn if LINEAR_API_KEY is set
         if (process.env["LINEAR_API_KEY"]) {
           console.log()
-          console.log(
-            chalk.yellow("Warning: LINEAR_API_KEY environment variable is set."),
-          )
+          console.log(chalk.yellow("Warning: LINEAR_API_KEY environment variable is set."))
           console.log(chalk.yellow("It takes precedence over stored credentials."))
-          console.log(
-            chalk.yellow(
-              "Remove it from your shell config to use multi-workspace auth.",
-            ),
-          )
+          console.log(chalk.yellow("Remove it from your shell config to use multi-workspace auth."))
         }
       } catch (error) {
         if (
@@ -108,9 +90,7 @@ export const loginCommand = new Command("login")
           })
         }
         throw new CliError(
-          `Failed to authenticate: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `Failed to authenticate: ${error instanceof Error ? error.message : String(error)}`,
           { cause: error },
         )
       }

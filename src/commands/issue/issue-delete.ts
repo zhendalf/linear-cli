@@ -1,7 +1,5 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getIssueIdentifier } from "../../utils/linear.ts"
 import {
   type BulkOperationResult,
   collectBulkIds,
@@ -9,14 +7,11 @@ import {
   isBulkMode,
   printBulkSummary,
 } from "../../utils/bulk.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { getIssueIdentifier } from "../../utils/linear.ts"
 import { confirm } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 interface IssueDeleteResult extends BulkOperationResult {
   identifier?: string
@@ -27,46 +22,37 @@ export const deleteCommand = new Command("delete")
   .alias("d")
   .argument("[issueId]")
   .option("-y, --confirm", "Skip confirmation prompt")
-  .option(
-    "--bulk <ids...>",
-    "Delete multiple issues by identifier (e.g., TC-123 TC-124)",
-  )
-  .option(
-    "--bulk-file <file>",
-    "Read issue identifiers from a file (one per line)",
-  )
+  .option("--bulk <ids...>", "Delete multiple issues by identifier (e.g., TC-123 TC-124)")
+  .option("--bulk-file <file>", "Read issue identifiers from a file (one per line)")
   .option("--bulk-stdin", "Read issue identifiers from stdin")
-  .action(
-    async (issueId: string | undefined, options) => {
-      const { confirm: confirmFlag, bulk, bulkFile, bulkStdin } = options
-      try {
-        const client = getGraphQLClient()
+  .action(async (issueId: string | undefined, options) => {
+    const { confirm: confirmFlag, bulk, bulkFile, bulkStdin } = options
+    try {
+      const client = getGraphQLClient()
 
-        // Check if bulk mode
-        if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
-          await handleBulkDelete(client, {
-            bulk,
-            bulkFile,
-            bulkStdin,
-            confirm: confirmFlag,
-          })
-          return
-        }
-
-        // Single mode requires issueId
-        if (!issueId) {
-          throw new ValidationError(
-            "Issue ID required",
-            { suggestion: "Use --bulk for multiple issues." },
-          )
-        }
-
-        await handleSingleDelete(client, issueId, { confirm: confirmFlag })
-      } catch (error) {
-        handleError(error, "Failed to delete issue")
+      // Check if bulk mode
+      if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
+        await handleBulkDelete(client, {
+          bulk,
+          bulkFile,
+          bulkStdin,
+          confirm: confirmFlag,
+        })
+        return
       }
-    },
-  )
+
+      // Single mode requires issueId
+      if (!issueId) {
+        throw new ValidationError("Issue ID required", {
+          suggestion: "Use --bulk for multiple issues.",
+        })
+      }
+
+      await handleSingleDelete(client, issueId, { confirm: confirmFlag })
+    } catch (error) {
+      handleError(error, "Failed to delete issue")
+    }
+  })
 
 async function handleSingleDelete(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,10 +86,9 @@ async function handleSingleDelete(
   // Show confirmation prompt unless --confirm flag is used
   if (!confirmFlag) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        "Interactive confirmation required",
-        { suggestion: "Use --confirm to skip." },
-      )
+      throw new ValidationError("Interactive confirmation required", {
+        suggestion: "Use --confirm to skip.",
+      })
     }
     const confirmed = await confirm({
       message: `Are you sure you want to delete "${identifier}: ${title}"?`,
@@ -166,10 +151,9 @@ async function handleBulkDelete(
   // Confirm bulk operation
   if (!confirmFlag) {
     if (!isStdinTTY()) {
-      throw new ValidationError(
-        "Interactive confirmation required",
-        { suggestion: "Use --confirm to skip." },
-      )
+      throw new ValidationError("Interactive confirmation required", {
+        suggestion: "Use --confirm to skip.",
+      })
     }
     const confirmed = await confirm({
       message: `Delete ${ids.length} issue(s)?`,
@@ -183,9 +167,7 @@ async function handleBulkDelete(
   }
 
   // Define the delete operation
-  const deleteOperation = async (
-    issueIdInput: string,
-  ): Promise<IssueDeleteResult> => {
+  const deleteOperation = async (issueIdInput: string): Promise<IssueDeleteResult> => {
     // Resolve the issue identifier
     const resolvedId = await getIssueIdentifier(issueIdInput)
     if (!resolvedId) {

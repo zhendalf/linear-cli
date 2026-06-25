@@ -1,27 +1,22 @@
+import { readFile } from "node:fs/promises"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { input } from "../../utils/prompt.ts"
-import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
-import { readFile } from "node:fs/promises"
 
 export const commentUpdateCommand = new Command("update")
   .description("Update an existing comment")
   .argument("<commentId>")
   .option("-b, --body <text>", "New comment body text")
-  .option(
-    "--body-file <path>",
-    "Read comment body from a file (preferred for markdown content)",
-  )
+  .option("--body-file <path>", "Read comment body from a file (preferred for markdown content)")
   .action(async (commentId: string, options) => {
     const { body, bodyFile } = options
 
     try {
       // Validate that body and bodyFile are not both provided
       if (body && bodyFile) {
-        throw new ValidationError(
-          "Cannot specify both --body and --body-file",
-        )
+        throw new ValidationError("Cannot specify both --body and --body-file")
       }
 
       // Read body from file if provided
@@ -30,14 +25,9 @@ export const commentUpdateCommand = new Command("update")
         try {
           newBody = await readFile(bodyFile, "utf8")
         } catch (error) {
-          throw new ValidationError(
-            `Failed to read body file: ${bodyFile}`,
-            {
-              suggestion: `Error: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            },
-          )
+          throw new ValidationError(`Failed to read body file: ${bodyFile}`, {
+            suggestion: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          })
         }
       }
 

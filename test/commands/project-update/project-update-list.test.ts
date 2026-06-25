@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { listCommand } from "../../../src/commands/project-update/project-update-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 await snapshotTest({
   name: "Project Update List Command - JSON Output",

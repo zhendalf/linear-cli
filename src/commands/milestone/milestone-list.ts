@@ -1,14 +1,14 @@
 import { Command, Option } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay } from "../../utils/display.ts"
-import { resolveProjectId } from "../../utils/linear.ts"
+import { handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { resolveProjectId } from "../../utils/linear.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import { handleError } from "../../utils/errors.ts"
 
 const GetProjectMilestones = gql(`
   query GetProjectMilestones($projectId: String!) {
@@ -62,15 +62,11 @@ export const listCommand = new Command("list")
         if (!a.targetDate) return 1
         if (!b.targetDate) return -1
         const dateComparison = a.targetDate.localeCompare(b.targetDate)
-        return dateComparison !== 0
-          ? dateComparison
-          : a.name.localeCompare(b.name)
+        return dateComparison !== 0 ? dateComparison : a.name.localeCompare(b.name)
       })
 
       // Calculate column widths
-      const { columns } = isStdoutTTY()
-        ? getConsoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
       const ID_WIDTH = 36 // UUID format
       const TARGET_DATE_WIDTH = 12 // "YYYY-MM-DD" format or "No date"
@@ -85,9 +81,7 @@ export const listCommand = new Command("list")
       const SPACE_WIDTH = 4
       const fixed = ID_WIDTH + TARGET_DATE_WIDTH + PROJECT_WIDTH + SPACE_WIDTH
       const PADDING = 1
-      const maxNameWidth = Math.max(
-        ...sortedMilestones.map((m) => stringWidth(m.name)),
-      )
+      const maxNameWidth = Math.max(...sortedMilestones.map((m) => stringWidth(m.name)))
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
 
@@ -115,18 +109,21 @@ export const listCommand = new Command("list")
       // Print each milestone
       for (const milestone of sortedMilestones) {
         const targetDate = milestone.targetDate || "No date"
-        const projectName = milestone.project.name.length > PROJECT_WIDTH
-          ? milestone.project.name.slice(0, PROJECT_WIDTH - 3) + "..."
-          : padDisplay(milestone.project.name, PROJECT_WIDTH)
+        const projectName =
+          milestone.project.name.length > PROJECT_WIDTH
+            ? milestone.project.name.slice(0, PROJECT_WIDTH - 3) + "..."
+            : padDisplay(milestone.project.name, PROJECT_WIDTH)
 
-        const truncName = milestone.name.length > nameWidth
-          ? milestone.name.slice(0, nameWidth - 3) + "..."
-          : padDisplay(milestone.name, nameWidth)
+        const truncName =
+          milestone.name.length > nameWidth
+            ? milestone.name.slice(0, nameWidth - 3) + "..."
+            : padDisplay(milestone.name, nameWidth)
 
         console.log(
-          `${truncName} ${padDisplay(milestone.id, ID_WIDTH)} ${
-            padDisplay(targetDate, TARGET_DATE_WIDTH)
-          } ${projectName}`,
+          `${truncName} ${padDisplay(milestone.id, ID_WIDTH)} ${padDisplay(
+            targetDate,
+            TARGET_DATE_WIDTH,
+          )} ${projectName}`,
         )
       }
     } catch (error) {

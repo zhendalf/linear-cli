@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { createCommand } from "../../../src/commands/project/project-create.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -18,13 +18,7 @@ await snapshotTest({
   name: "Project Create Command - With JSON Output",
   meta: import.meta,
   colors: false,
-  args: [
-    "--name",
-    "JSON Test Project",
-    "--team",
-    "ENG",
-    "--json",
-  ],
+  args: ["--name", "JSON Test Project", "--team", "ENG", "--json"],
   async fn() {
     const server = new MockLinearServer([
       {

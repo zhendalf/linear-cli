@@ -3,11 +3,7 @@ import { CliError } from "./errors.ts"
 import { runCommand } from "./runtime.ts"
 
 export async function getCurrentBranch(): Promise<string | null> {
-  const { success, stdout, stderr } = await runCommand("git", [
-    "symbolic-ref",
-    "--short",
-    "HEAD",
-  ])
+  const { success, stdout, stderr } = await runCommand("git", ["symbolic-ref", "--short", "HEAD"])
 
   if (!success) {
     const errorMsg = stderr.trim()
@@ -23,10 +19,7 @@ export async function getCurrentBranch(): Promise<string | null> {
 }
 
 export async function getRepoDir(): Promise<string> {
-  const { success, stdout, stderr } = await runCommand("git", [
-    "rev-parse",
-    "--show-toplevel",
-  ])
+  const { success, stdout, stderr } = await runCommand("git", ["rev-parse", "--show-toplevel"])
 
   if (!success) {
     const errorMsg = stderr.trim()
@@ -39,11 +32,7 @@ export async function getRepoDir(): Promise<string> {
 
 export async function branchExists(branch: string): Promise<boolean> {
   try {
-    const { success } = await runCommand("git", [
-      "rev-parse",
-      "--verify",
-      branch,
-    ])
+    const { success } = await runCommand("git", ["rev-parse", "--verify", branch])
     return success
   } catch {
     return false

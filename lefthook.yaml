@@ -1,17 +1,17 @@
+# Fast checks on commit; the full test suite on push.
+# (Running `bun test` in the parallel pre-commit group contends with the
+# file-mutating biome step, so tests live in pre-push instead.)
 pre-commit:
   parallel: true
   commands:
-    lint:
-      glob: "*.ts"
-      run: deno lint --fix {staged_files}
-      stage_fixed: true
-    fmt:
-      glob: "*.{ts,md,yml,yaml,json}"
-      run: deno fmt {staged_files}
+    lint-format:
+      glob: "*.{ts,json,jsonc}"
+      run: bunx biome check --write {staged_files}
       stage_fixed: true
     typecheck:
-      glob: "*.ts"
-      run: deno check {staged_files}
+      run: bun x tsc --noEmit
+
+pre-push:
+  commands:
     test:
-      glob: "*.ts"
-      run: deno test -A {staged_files}
+      run: bun test

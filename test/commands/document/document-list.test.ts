@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { listCommand } from "../../../src/commands/document/document-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -37,8 +37,7 @@ await snapshotTest({
                   id: "doc-1",
                   title: "Delegation System Spec",
                   slugId: "d4b93e3b2695",
-                  url:
-                    "https://linear.app/test/document/delegation-system-spec-d4b93e3b2695",
+                  url: "https://linear.app/test/document/delegation-system-spec-d4b93e3b2695",
                   updatedAt: "2026-01-18T10:30:00Z",
                   project: { name: "TinyCloud SDK", slugId: "tinycloud-sdk" },
                   issue: null,

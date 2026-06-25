@@ -1,12 +1,12 @@
 import { Command } from "commander"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
+import { NotFoundError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import { handleError, NotFoundError } from "../../utils/errors.ts"
 
 const GetMilestoneDetails = gql(`
   query GetMilestoneDetails($id: String!) {
@@ -75,9 +75,7 @@ export const viewCommand = new Command("view")
       }
 
       // Project info
-      lines.push(
-        `**Project:** ${milestone.project.name} (${milestone.project.slugId})`,
-      )
+      lines.push(`**Project:** ${milestone.project.name} (${milestone.project.slugId})`)
       lines.push(`**Project URL:** ${milestone.project.url}`)
 
       lines.push("")
@@ -129,16 +127,12 @@ export const viewCommand = new Command("view")
         lines.push("**Recent Issues:**")
         lines.push("")
         milestone.issues.nodes.slice(0, 10).forEach((issue) => {
-          lines.push(
-            `- ${issue.identifier}: ${issue.title} (${issue.state.name})`,
-          )
+          lines.push(`- ${issue.identifier}: ${issue.title} (${issue.state.name})`)
         })
 
         if (milestone.issues.nodes.length > 10) {
           lines.push("")
-          lines.push(
-            `_...and ${milestone.issues.nodes.length - 10} more issues_`,
-          )
+          lines.push(`_...and ${milestone.issues.nodes.length - 10} more issues_`)
         }
       } else {
         lines.push("")

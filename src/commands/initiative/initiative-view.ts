@@ -1,13 +1,13 @@
 import { Command } from "commander"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
+import { NotFoundError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { applyConsoleFormat } from "../../utils/styling.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { handleError, NotFoundError } from "../../utils/errors.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
 
 const GetInitiativeDetails = gql(`
   query GetInitiativeDetails($id: String!) {
@@ -47,11 +47,11 @@ const GetInitiativeDetails = gql(`
 
 // Initiative status display names
 const INITIATIVE_STATUS_DISPLAY: Record<string, string> = {
-  "active": "Active",
-  "planned": "Planned",
-  "paused": "Paused",
-  "completed": "Completed",
-  "canceled": "Canceled",
+  active: "Active",
+  planned: "Planned",
+  paused: "Paused",
+  completed: "Completed",
+  canceled: "Canceled",
 }
 
 // Status colors for terminal display
@@ -132,8 +132,7 @@ export const viewCommand = new Command("view")
       lines.push(`**URL:** ${initiative.url}`)
 
       // Status with color styling
-      const statusDisplay = INITIATIVE_STATUS_DISPLAY[initiative.status] ||
-        initiative.status
+      const statusDisplay = INITIATIVE_STATUS_DISPLAY[initiative.status] || initiative.status
       const statusLine = `**Status:** ${statusDisplay}`
       if (isStdoutTTY()) {
         const statusColor = STATUS_COLORS[initiative.status] || "#6B6F76"
@@ -149,9 +148,7 @@ export const viewCommand = new Command("view")
 
       // Owner
       if (initiative.owner) {
-        lines.push(
-          `**Owner:** ${initiative.owner.displayName || initiative.owner.name}`,
-        )
+        lines.push(`**Owner:** ${initiative.owner.displayName || initiative.owner.name}`)
       }
 
       // Target date
@@ -161,9 +158,7 @@ export const viewCommand = new Command("view")
 
       // Archived status
       if (initiative.archivedAt) {
-        lines.push(
-          `**Archived:** ${formatRelativeTime(initiative.archivedAt)}`,
-        )
+        lines.push(`**Archived:** ${formatRelativeTime(initiative.archivedAt)}`)
       }
 
       lines.push("")
@@ -196,14 +191,7 @@ export const viewCommand = new Command("view")
         }
 
         // Sort by status type priority
-        const statusOrder = [
-          "started",
-          "planned",
-          "backlog",
-          "paused",
-          "completed",
-          "canceled",
-        ]
+        const statusOrder = ["started", "planned", "backlog", "paused", "completed", "canceled"]
 
         for (const statusType of statusOrder) {
           const statusProjects = projectsByStatus[statusType]
@@ -216,9 +204,7 @@ export const viewCommand = new Command("view")
         }
 
         // Any remaining statuses not in our order
-        for (
-          const [statusType, statusProjects] of Object.entries(projectsByStatus)
-        ) {
+        for (const [statusType, statusProjects] of Object.entries(projectsByStatus)) {
           if (!statusOrder.includes(statusType)) {
             for (const project of statusProjects) {
               const statusName = project.status?.name || "Unknown"
@@ -256,11 +242,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 

@@ -8,8 +8,8 @@
  * - GraphQL errors should be parsed and presented nicely
  */
 
-import { ClientError } from "graphql-request"
 import chalk from "chalk"
+import { ClientError } from "graphql-request"
 import { isStderrTTY } from "./runtime.ts"
 
 /**
@@ -29,10 +29,7 @@ export class CliError extends Error {
   /** Suggestion for how to fix the issue (optional) */
   readonly suggestion?: string
 
-  constructor(
-    userMessage: string,
-    options?: { suggestion?: string; cause?: unknown },
-  ) {
+  constructor(userMessage: string, options?: { suggestion?: string; cause?: unknown }) {
     super(userMessage)
     this.name = "CliError"
     this.userMessage = userMessage
@@ -50,11 +47,7 @@ export class NotFoundError extends CliError {
   readonly entityType: string
   readonly identifier: string
 
-  constructor(
-    entityType: string,
-    identifier: string,
-    options?: { suggestion?: string },
-  ) {
+  constructor(entityType: string, identifier: string, options?: { suggestion?: string }) {
     const message = `${entityType} not found: ${identifier}`
     super(message, options)
     this.name = "NotFoundError"
@@ -79,8 +72,7 @@ export class ValidationError extends CliError {
 export class AuthError extends CliError {
   constructor(message: string, options?: { suggestion?: string }) {
     super(message, {
-      suggestion: options?.suggestion ??
-        "Run `linear auth login` to authenticate.",
+      suggestion: options?.suggestion ?? "Run `linear auth login` to authenticate.",
       ...options,
     })
     this.name = "AuthError"
@@ -226,10 +218,7 @@ function printDebugInfo(error: unknown): void {
  *   "Failed to fetch issue"
  * );
  */
-export async function withContext<T>(
-  fn: () => Promise<T>,
-  context: string,
-): Promise<T> {
+export async function withContext<T>(fn: () => Promise<T>, context: string): Promise<T> {
   try {
     return await fn()
   } catch (error) {
@@ -258,10 +247,7 @@ export async function withContext<T>(
  * const issue = await client.request(query, { id })
  *   .catch(handleNotFound("Issue", issueIdentifier));
  */
-export function handleNotFound(
-  entityType: string,
-  identifier: string,
-): (error: unknown) => never {
+export function handleNotFound(entityType: string, identifier: string): (error: unknown) => never {
   return (error: unknown) => {
     if (isClientError(error) && isNotFoundError(error)) {
       throw new NotFoundError(entityType, identifier)

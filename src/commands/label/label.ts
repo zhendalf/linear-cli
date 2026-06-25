@@ -1,7 +1,7 @@
 import { Command } from "commander"
-import { listCommand } from "./label-list.ts"
 import { createCommand } from "./label-create.ts"
 import { deleteCommand } from "./label-delete.ts"
+import { listCommand } from "./label-list.ts"
 
 export const labelCommand = new Command("label")
   .alias("l")

@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { deleteCommand } from "../../../src/commands/project/project-delete.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -18,10 +18,7 @@ await snapshotTest({
   name: "Project Delete Command - With Force Flag",
   meta: import.meta,
   colors: false,
-  args: [
-    "550e8400-e29b-41d4-a716-446655440000",
-    "--force",
-  ],
+  args: ["550e8400-e29b-41d4-a716-446655440000", "--force"],
   async fn() {
     const server = new MockLinearServer([
       {

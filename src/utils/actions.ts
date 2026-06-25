@@ -1,3 +1,5 @@
+import { getOption } from "../config.ts"
+import { LINEAR_WEB_BASE_URL } from "../const.ts"
 import {
   fetchIssueDetails,
   getIssueIdentifier,
@@ -5,9 +7,7 @@ import {
   getTeamKey,
   updateIssueState,
 } from "./linear.ts"
-import { getOption } from "../config.ts"
 import { getNoIssueFoundMessage, startVcsWork } from "./vcs.ts"
-import { LINEAR_WEB_BASE_URL } from "../const.ts"
 
 export async function openIssuePage(
   providedId?: string,
@@ -21,9 +21,7 @@ export async function openIssuePage(
 
   const workspace = getOption("workspace")
   if (!workspace) {
-    console.error(
-      "workspace is not set via command line, configuration file, or environment.",
-    )
+    console.error("workspace is not set via command line, configuration file, or environment.")
     process.exit(1)
   }
 
@@ -40,9 +38,7 @@ export async function openProjectPage(
 ) {
   const workspace = getOption("workspace")
   if (!workspace) {
-    console.error(
-      "workspace is not set via command line, configuration file, or environment.",
-    )
+    console.error("workspace is not set via command line, configuration file, or environment.")
     process.exit(1)
   }
 
@@ -56,29 +52,22 @@ export async function openProjectPage(
 export async function openTeamAssigneeView(options: { app?: boolean } = {}) {
   const teamId = getTeamKey()
   if (!teamId) {
-    console.error(
-      "Could not determine team id from configuration or directory name.",
-    )
+    console.error("Could not determine team id from configuration or directory name.")
     process.exit(1)
   }
 
   const workspace = getOption("workspace")
   if (!workspace) {
-    console.error(
-      "workspace is not set via command line, configuration file, or environment.",
-    )
+    console.error("workspace is not set via command line, configuration file, or environment.")
     process.exit(1)
   }
 
   const filterObj = {
-    "and": [{ "assignee": { "or": [{ "isMe": { "eq": true } }] } }],
+    and: [{ assignee: { or: [{ isMe: { eq: true } }] } }],
   }
   // Base64-encode without padding (matches Deno encodeBase64 + replace)
-  const filter = Buffer.from(JSON.stringify(filterObj))
-    .toString("base64")
-    .replace(/=/g, "")
-  const url =
-    `${LINEAR_WEB_BASE_URL}/${workspace}/team/${teamId}/active?filter=${filter}`
+  const filter = Buffer.from(JSON.stringify(filterObj)).toString("base64").replace(/=/g, "")
+  const url = `${LINEAR_WEB_BASE_URL}/${workspace}/team/${teamId}/active?filter=${filter}`
   const openMod = await import("open")
   await openMod.default(url, options.app ? { app: { name: "Linear" } } : undefined)
 }
@@ -89,10 +78,7 @@ export async function startWorkOnIssue(
   gitSourceRef?: string,
   customBranchName?: string,
 ) {
-  const { branchName: defaultBranchName } = await fetchIssueDetails(
-    issueId,
-    true,
-  )
+  const { branchName: defaultBranchName } = await fetchIssueDetails(issueId, true)
   const branchName = customBranchName || defaultBranchName
 
   // Start VCS work (git or jj)

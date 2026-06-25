@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { viewCommand } from "../../../src/commands/milestone/milestone-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -172,11 +172,7 @@ await snapshotTest({
                   title: `Feature ${i + 1}`,
                   state: {
                     name: i < 5 ? "Done" : i < 10 ? "In Progress" : "Todo",
-                    type: i < 5
-                      ? "completed"
-                      : i < 10
-                      ? "started"
-                      : "unstarted",
+                    type: i < 5 ? "completed" : i < 10 ? "started" : "unstarted",
                   },
                 })),
               },

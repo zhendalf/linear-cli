@@ -1,17 +1,12 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getAllTeams, getTeamIdByKey } from "../../utils/linear.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
-import { createSpinner } from "../../utils/spinner.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { select, confirm } from "../../utils/prompt.ts"
+import { getAllTeams, getTeamIdByKey } from "../../utils/linear.ts"
+import { confirm, select } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const GetTeamIssuesForMove = gql(`
   query GetTeamIssuesForMove($teamId: String!, $first: Int, $after: String) {
@@ -33,10 +28,7 @@ const GetTeamIssuesForMove = gql(`
 export const deleteCommand = new Command("delete")
   .description("Delete a Linear team")
   .argument("<teamKey>", "Team key to delete")
-  .option(
-    "--move-issues <targetTeam>",
-    "Move all issues to another team before deletion",
-  )
+  .option("--move-issues <targetTeam>", "Move all issues to another team before deletion")
   .option("-y, --force", "Skip confirmation prompt")
   .action(async (teamKey: string, options) => {
     const { moveIssues, force } = options
@@ -76,20 +68,13 @@ export const deleteCommand = new Command("delete")
 
       // If the team has issues, require --move-issues or prompt
       if (issueCount > 0 && !moveIssues) {
-        console.log(
-          `\n⚠️  Team ${team.key} (${team.name}) has ${issueCount} issue(s).`,
-        )
-        console.log(
-          "You must move these issues to another team before deletion.\n",
-        )
+        console.log(`\n⚠️  Team ${team.key} (${team.name}) has ${issueCount} issue(s).`)
+        console.log("You must move these issues to another team before deletion.\n")
 
         if (!isStdinTTY()) {
-          throw new ValidationError(
-            "Interactive selection required",
-            {
-              suggestion: "Use --move-issues <teamKey> to specify target team.",
-            },
-          )
+          throw new ValidationError("Interactive selection required", {
+            suggestion: "Use --move-issues <teamKey> to specify target team.",
+          })
         }
 
         const allTeams = await getAllTeams()
@@ -127,14 +112,12 @@ export const deleteCommand = new Command("delete")
       // Confirm deletion
       if (!force) {
         if (!isStdinTTY()) {
-          throw new ValidationError(
-            "Interactive confirmation required",
-            { suggestion: "Use --force to skip." },
-          )
+          throw new ValidationError("Interactive confirmation required", {
+            suggestion: "Use --force to skip.",
+          })
         }
         const confirmed = await confirm({
-          message:
-            `Are you sure you want to delete team "${team.key}: ${team.name}"?`,
+          message: `Are you sure you want to delete team "${team.key}: ${team.name}"?`,
           default: false,
         })
 
@@ -196,14 +179,11 @@ async function moveIssuesToTeam(
     let after: string | undefined = undefined
 
     while (hasNextPage) {
-      const result: TeamIssuesResult = await client.request(
-        GetTeamIssuesForMove,
-        {
-          teamId: sourceTeamId,
-          first: 100,
-          after,
-        },
-      )
+      const result: TeamIssuesResult = await client.request(GetTeamIssuesForMove, {
+        teamId: sourceTeamId,
+        first: 100,
+        after,
+      })
 
       const issues = result.team?.issues?.nodes || []
       allIssues.push(...issues)

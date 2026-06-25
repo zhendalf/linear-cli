@@ -39,51 +39,43 @@ it aims to be a complement to the web and desktop apps that lets you stay on the
 
 ## install
 
-### homebrew
+> **note:** this is a native Node/Bun fork of [schpet/linear-cli](https://github.com/schpet/linear-cli), rewritten without Deno or cargo-dist. if you previously used the original, you must re-run `linear auth login` — the OS-keyring token store has been replaced by a `~/.config/linear/credentials.json` file (0600 permissions).
 
-```
-brew install schpet/tap/linear
-```
-
-### deno via jsr
+### global install
 
 ```bash
-deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli
+# bun
+bun add -g @zhendalf/linear-cli
+
+# npm
+npm i -g @zhendalf/linear-cli
 ```
 
-### npm / bun / pnpm
-
-install as a dev dependency to pin a version in your project:
+### run without installing
 
 ```bash
-npm install -D @schpet/linear-cli
+bunx @zhendalf/linear-cli issue list
+npx @zhendalf/linear-cli issue list
+```
+
+### pin as a dev dependency
+
+```bash
+bun add -d @zhendalf/linear-cli
 # or
-bun add -D @schpet/linear-cli
-# or
-pnpm add -D @schpet/linear-cli
+npm install -D @zhendalf/linear-cli
 ```
 
-then run via your package manager:
-
-```bash
-npx linear issue list
-bunx linear issue list
-```
-
-> **note:** this package ships pre-built binaries
-
-package on npm: [@schpet/linear-cli](https://www.npmjs.com/package/@schpet/linear-cli)
-
-### binaries
-
-https://github.com/schpet/linear-cli/releases/latest
+package on npm: [@zhendalf/linear-cli](https://www.npmjs.com/package/@zhendalf/linear-cli)
 
 ### local dev
 
 ```bash
-git clone https://github.com/schpet/linear-cli
+git clone https://github.com/zhendalf/linear-cli
 cd linear-cli
-deno task install
+bun install
+bun run dev      # runs src/main.ts directly via bun
+bun run build    # produces dist/main.js (runs on Node >=20 and Bun)
 ```
 
 ## setup
@@ -288,7 +280,7 @@ view the skill at [skills.sh/schpet/linear-cli/linear-cli](https://skills.sh/sch
 the skill documentation in `skills/linear-cli/` is automatically generated from the CLI help text. after making changes to commands or help text, regenerate the docs:
 
 ```bash
-deno task generate-skill-docs
+bun run generate-skill-docs
 ```
 
 this will:
@@ -304,10 +296,10 @@ this will:
 ensure code is formatted consistently:
 
 ```bash
-deno fmt
+bunx biome check --write .
 ```
 
-the project uses deno's built-in formatter with configuration in `deno.json`. formatting is checked in CI.
+the project uses [biome](https://biomejs.dev/) for linting and formatting, with configuration in `biome.json`. formatting and lint are checked in CI.
 
 ## why
 

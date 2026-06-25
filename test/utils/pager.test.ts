@@ -11,10 +11,7 @@ test("shouldUsePager - returns false when not in terminal", () => {
   Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true })
 
   try {
-    const outputLines = Array.from(
-      { length: 100 },
-      (_, i) => `Line ${i + 1}`,
-    )
+    const outputLines = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}`)
     expect(shouldUsePager(outputLines, true)).toBe(false)
   } finally {
     Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, configurable: true })

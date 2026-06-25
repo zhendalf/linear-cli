@@ -1,12 +1,12 @@
 import { Command } from "commander"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
+import { NotFoundError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import { handleError, NotFoundError } from "../../utils/errors.ts"
 
 const GetAgentSessionDetails = gql(`
   query GetAgentSessionDetails($id: String!) {
@@ -115,9 +115,7 @@ export const agentSessionViewCommand = new Command("view")
       }
 
       if (session.issue) {
-        lines.push(
-          `**Issue:** ${session.issue.identifier} - ${session.issue.title}`,
-        )
+        lines.push(`**Issue:** ${session.issue.identifier} - ${session.issue.title}`)
       }
 
       lines.push("")

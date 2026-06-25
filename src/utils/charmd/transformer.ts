@@ -1,8 +1,8 @@
-import { colors } from "./deps.ts"
-import type { Options } from "./renderer.ts"
-import type { Node, TableNode, TextNode } from "./nodeTypes.ts"
-import { isMarkdownTable } from "./utils.ts"
 import { getConsoleSize } from "../runtime.ts"
+import { colors } from "./deps.ts"
+import type { Node, TableNode, TextNode } from "./nodeTypes.ts"
+import type { Options } from "./renderer.ts"
+import { isMarkdownTable } from "./utils.ts"
 
 /** The transformer function is used to recursively visit each node and make modifications to the AST */
 export function transformer(mdast: Node, options: Options) {
@@ -64,7 +64,10 @@ function transformNode(node: Node, parent: Node, options: Options) {
 
 function checkForTable(node: Node, _parent: Node, _options: Options) {
   if (node.type === "paragraph") {
-    const table = node.children?.map((c) => (c as TextNode).value).join("").trim()
+    const table = node.children
+      ?.map((c) => (c as TextNode).value)
+      .join("")
+      .trim()
     if (isMarkdownTable(table || "")) {
       ;(node as Node as TableNode).type = "table"
     }

@@ -6,8 +6,8 @@
  */
 
 import { readFile } from "node:fs/promises"
-import { shouldShowSpinner } from "./hyperlink.ts"
 import { NotFoundError } from "./errors.ts"
+import { shouldShowSpinner } from "./hyperlink.ts"
 import { isNotFoundError } from "./runtime.ts"
 
 /**
@@ -135,11 +135,7 @@ export async function executeBulkOperations<T extends BulkOperationResult>(
   operation: (id: string) => Promise<T>,
   options: BulkExecutionOptions = {},
 ): Promise<BulkOperationSummary> {
-  const {
-    showProgress = true,
-    colorEnabled = true,
-    concurrency = 5,
-  } = options
+  const { showProgress = true, colorEnabled = true, concurrency = 5 } = options
 
   const results: T[] = []
   let completed = 0
@@ -216,21 +212,20 @@ export function printBulkSummary(
     showDetails?: boolean
   },
 ): void {
-  const { entityName, operationName, colorEnabled = true, showDetails = true } =
-    options
+  const { entityName, operationName, colorEnabled = true, showDetails = true } = options
 
   console.log("")
 
   if (summary.failed === 0) {
-    const msg =
-      `✓ Successfully ${operationName} ${summary.succeeded} ${entityName}${
-        summary.succeeded !== 1 ? "s" : ""
-      }`
+    const msg = `✓ Successfully ${operationName} ${summary.succeeded} ${entityName}${
+      summary.succeeded !== 1 ? "s" : ""
+    }`
     console.log(colorEnabled ? msg : msg.replace("✓", "OK:"))
   } else if (summary.succeeded === 0) {
-    const msg = `✗ Failed to ${
-      operationName.replace(/ed$/, "")
-    } all ${summary.total} ${entityName}${summary.total !== 1 ? "s" : ""}`
+    const msg = `✗ Failed to ${operationName.replace(
+      /ed$/,
+      "",
+    )} all ${summary.total} ${entityName}${summary.total !== 1 ? "s" : ""}`
     console.log(colorEnabled ? msg : msg.replace("✗", "FAILED:"))
   } else {
     console.log(
@@ -248,9 +243,7 @@ export function printBulkSummary(
     for (const result of summary.results) {
       if (!result.success) {
         const name = result.name ? ` (${result.name})` : ""
-        console.log(
-          `  - ${result.id}${name}: ${result.error || "Unknown error"}`,
-        )
+        console.log(`  - ${result.id}${name}: ${result.error || "Unknown error"}`)
       }
     }
   }
@@ -264,9 +257,5 @@ export function isBulkMode(options: {
   bulkFile?: string
   bulkStdin?: boolean
 }): boolean {
-  return Boolean(
-    (options.bulk && options.bulk.length > 0) ||
-      options.bulkFile ||
-      options.bulkStdin,
-  )
+  return Boolean((options.bulk && options.bulk.length > 0) || options.bulkFile || options.bulkStdin)
 }

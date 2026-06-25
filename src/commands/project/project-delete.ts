@@ -1,12 +1,12 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import { resolveProjectId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
-import { createSpinner } from "../../utils/spinner.ts"
+import { resolveProjectId } from "../../utils/linear.ts"
 import { confirm } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const DeleteProject = gql(`
   mutation DeleteProject($id: String!) {

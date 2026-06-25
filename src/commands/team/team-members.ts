@@ -1,6 +1,6 @@
 import { Command } from "commander"
+import { ValidationError, handleError } from "../../utils/errors.ts"
 import { getTeamKey, getTeamMembers } from "../../utils/linear.ts"
-import { handleError, ValidationError } from "../../utils/errors.ts"
 
 export const membersCommand = new Command("members")
   .description("List team members")
@@ -10,10 +10,9 @@ export const membersCommand = new Command("members")
     try {
       const resolvedTeamKey = teamKey || getTeamKey()
       if (!resolvedTeamKey) {
-        throw new ValidationError(
-          "Could not determine team key from directory name",
-          { suggestion: "Please specify a team key as an argument." },
-        )
+        throw new ValidationError("Could not determine team key from directory name", {
+          suggestion: "Please specify a team key as an argument.",
+        })
       }
 
       const members = await getTeamMembers(resolvedTeamKey)
@@ -23,14 +22,10 @@ export const membersCommand = new Command("members")
         return
       }
 
-      const filteredMembers = options.all
-        ? members
-        : members.filter((member) => member.active)
+      const filteredMembers = options.all ? members : members.filter((member) => member.active)
 
       if (filteredMembers.length === 0) {
-        console.log(
-          "No active members found for this team. Use --all to include inactive members.",
-        )
+        console.log("No active members found for this team. Use --all to include inactive members.")
         return
       }
 
@@ -42,9 +37,7 @@ export const membersCommand = new Command("members")
         const guestStatus = member.guest ? " (guest)" : ""
         const assignableStatus = !member.isAssignable ? " (not assignable)" : ""
         const displayName = member.displayName || member.name
-        const fullName = member.name !== member.displayName
-          ? ` (${member.name})`
-          : ""
+        const fullName = member.name !== member.displayName ? ` (${member.name})` : ""
 
         console.log(
           `${displayName}${fullName} [${member.initials}]${status}${guestStatus}${assignableStatus}`,
@@ -59,9 +52,7 @@ export const membersCommand = new Command("members")
           console.log(`  Timezone: ${member.timezone}`)
         }
         if (member.statusEmoji && member.statusLabel) {
-          console.log(
-            `  Status: ${member.statusEmoji} ${member.statusLabel}`,
-          )
+          console.log(`  Status: ${member.statusEmoji} ${member.statusLabel}`)
         }
         if (member.lastSeen) {
           const lastSeenDate = new Date(member.lastSeen)

@@ -11,13 +11,13 @@
  * behaviour (config is ready by the time any command runs).
  */
 
-import { parse as parseToml } from "smol-toml"
-import { join } from "node:path"
 import { readFileSync } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
+import { join } from "node:path"
 import { parse as parseDotenv } from "dotenv"
+import { parse as parseToml } from "smol-toml"
 import * as v from "valibot"
-import { runCommand, isWindows } from "./utils/runtime.ts"
+import { isWindows, runCommand } from "./utils/runtime.ts"
 
 let config: Record<string, unknown> = {}
 
@@ -25,9 +25,7 @@ let config: Record<string, unknown> = {}
 // TOML file loading
 // ---------------------------------------------------------------------------
 
-async function loadConfigFromPath(
-  path: string,
-): Promise<Record<string, unknown> | null> {
+async function loadConfigFromPath(path: string): Promise<Record<string, unknown> | null> {
   try {
     const file = await readFile(path, "utf8")
     return parseToml(file) as Record<string, unknown>
@@ -62,10 +60,7 @@ async function loadConfig(): Promise<void> {
   }
 
   // Build list of project config paths (higher priority, overrides global)
-  const projectConfigPaths = [
-    "./linear.toml",
-    "./.linear.toml",
-  ]
+  const projectConfigPaths = ["./linear.toml", "./.linear.toml"]
   const gitResult = await runCommand("git", ["rev-parse", "--show-toplevel"])
   if (gitResult.success) {
     const gitRoot = gitResult.stdout.trim()
@@ -199,17 +194,10 @@ export type Options = v.InferOutput<typeof OptionsSchema>
 export type OptionName = keyof Options
 
 function getRawOption(optionName: OptionName, cliValue?: string): unknown {
-  return (
-    cliValue ??
-    process.env["LINEAR_" + optionName.toUpperCase()] ??
-    config[optionName]
-  )
+  return cliValue ?? process.env["LINEAR_" + optionName.toUpperCase()] ?? config[optionName]
 }
 
-export function getOption<T extends OptionName>(
-  optionName: T,
-  cliValue?: string,
-): Options[T] {
+export function getOption<T extends OptionName>(optionName: T, cliValue?: string): Options[T] {
   const raw = getRawOption(optionName, cliValue)
   const result = v.safeParse(OptionsSchema, { [optionName]: raw })
   if (result.success) {

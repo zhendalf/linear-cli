@@ -12,8 +12,8 @@
  *   %APPDATA%/linear
  */
 
-import envPaths from "env-paths"
 import { join } from "node:path"
+import envPaths from "env-paths"
 
 /**
  * Returns the config directory for the linear CLI.

@@ -1,15 +1,15 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
 import {
   CliError,
+  NotFoundError,
+  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
-  NotFoundError,
-  ValidationError,
 } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
 
 function looksLikeUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://")
@@ -20,11 +20,14 @@ export const linkCommand = new Command("link")
   .argument("<urlOrIssueId>")
   .argument("[url]")
   .option("-t, --title <title>", "Custom title for the link")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ linear issue link https://github.com/org/repo/pull/123
   $ linear issue link ENG-123 https://github.com/org/repo/pull/123
-  $ linear issue link ENG-123 https://example.com --title "Design doc"`)
+  $ linear issue link ENG-123 https://example.com --title "Design doc"`,
+  )
   .action(async (urlOrIssueId: string, url: string | undefined, options) => {
     const { title } = options
 
@@ -41,28 +44,23 @@ Examples:
         issueIdInput = undefined
         linkUrl = urlOrIssueId
       } else {
-        throw new ValidationError(
-          `Expected a URL but got '${urlOrIssueId}'`,
-          { suggestion: "Provide a URL starting with http:// or https://." },
-        )
+        throw new ValidationError(`Expected a URL but got '${urlOrIssueId}'`, {
+          suggestion: "Provide a URL starting with http:// or https://.",
+        })
       }
 
       if (!looksLikeUrl(linkUrl)) {
-        throw new ValidationError(
-          `Invalid URL: '${linkUrl}'`,
-          { suggestion: "Provide a URL starting with http:// or https://." },
-        )
+        throw new ValidationError(`Invalid URL: '${linkUrl}'`, {
+          suggestion: "Provide a URL starting with http:// or https://.",
+        })
       }
 
       const resolvedIdentifier = await getIssueIdentifier(issueIdInput)
       if (!resolvedIdentifier) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          {
-            suggestion:
-              "Please provide an issue ID like 'ENG-123', or run from a branch that contains an issue identifier.",
-          },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion:
+            "Please provide an issue ID like 'ENG-123', or run from a branch that contains an issue identifier.",
+        })
       }
 
       // attachmentLinkURL needs a UUID

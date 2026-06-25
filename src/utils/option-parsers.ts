@@ -20,9 +20,7 @@ export function collect(value: string, previous: string[] = []): string[] {
 export function collectEnum(allowed: readonly string[], label: string) {
   return (value: string, previous: string[] = []): string[] => {
     if (!allowed.includes(value)) {
-      throw new InvalidArgumentError(
-        `Invalid ${label} "${value}". Choices: ${allowed.join(", ")}.`,
-      )
+      throw new InvalidArgumentError(`Invalid ${label} "${value}". Choices: ${allowed.join(", ")}.`)
     }
     return [...previous, value]
   }

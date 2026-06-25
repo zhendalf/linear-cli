@@ -23,14 +23,7 @@ export function formatIssueDescription(
  */
 export async function isJjChangeEmpty(): Promise<boolean> {
   // Check if description is empty
-  const descResult = await runCommand("jj", [
-    "log",
-    "-r",
-    "@",
-    "-T",
-    "description",
-    "--no-graph",
-  ])
+  const descResult = await runCommand("jj", ["log", "-r", "@", "-T", "description", "--no-graph"])
 
   const description = descResult.stdout.trim()
   if (description !== "") {
@@ -38,14 +31,7 @@ export async function isJjChangeEmpty(): Promise<boolean> {
   }
 
   // Check if there are any file changes using log -p
-  const diffResult = await runCommand("jj", [
-    "log",
-    "-p",
-    "-r",
-    "@",
-    "--git",
-    "--no-graph",
-  ])
+  const diffResult = await runCommand("jj", ["log", "-p", "-r", "@", "--git", "--no-graph"])
 
   const diffOutput = diffResult.stdout
   // If there are file changes, the output will contain "diff --git"
@@ -96,9 +82,7 @@ export async function createJjNewChange(): Promise<void> {
  * - Old format: [ABC-123](https://linear.app/...)
  * Returns the issue identifier (e.g., "ABC-123") or null if not found
  */
-export function parseLinearIssueFromTrailer(
-  trailerValue: string,
-): string | null {
+export function parseLinearIssueFromTrailer(trailerValue: string): string | null {
   return findIssueIdentifierInText(trailerValue)?.identifier ?? null
 }
 

@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { updateCommand } from "../../../src/commands/document/document-update.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -84,8 +84,7 @@ await snapshotTest({
                 id: "doc-1",
                 slugId: "d4b93e3b2695",
                 title: "Delegation System Spec",
-                url:
-                  "https://linear.app/test/document/delegation-system-spec-d4b93e3b2695",
+                url: "https://linear.app/test/document/delegation-system-spec-d4b93e3b2695",
                 updatedAt: "2026-01-19T10:00:00Z",
               },
             },
@@ -113,15 +112,7 @@ await snapshotTest({
   name: "Document Update Command - Update Multiple Fields",
   meta: import.meta,
   colors: false,
-  args: [
-    "d4b93e3b2695",
-    "--title",
-    "Updated Title",
-    "--content",
-    "# New Content",
-    "--icon",
-    "📝",
-  ],
+  args: ["d4b93e3b2695", "--title", "Updated Title", "--content", "# New Content", "--icon", "📝"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -142,8 +133,7 @@ await snapshotTest({
                 id: "doc-1",
                 slugId: "d4b93e3b2695",
                 title: "Updated Title",
-                url:
-                  "https://linear.app/test/document/updated-title-d4b93e3b2695",
+                url: "https://linear.app/test/document/updated-title-d4b93e3b2695",
                 updatedAt: "2026-01-19T10:00:00Z",
               },
             },

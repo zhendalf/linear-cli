@@ -90,21 +90,29 @@ export function generateTable(markdownTable: string, borders?: boolean) {
   if (borders) {
     const top =
       tableChars.topLeft +
-      cellWidths.map((cw) => tableChars.middleMiddle.repeat(cw + cellPadding * 2)).join(tableChars.topMiddle) +
+      cellWidths
+        .map((cw) => tableChars.middleMiddle.repeat(cw + cellPadding * 2))
+        .join(tableChars.topMiddle) +
       tableChars.topRight
     const middle =
       tableChars.leftMiddle +
-      cellWidths.map((cw) => tableChars.middleMiddle.repeat(cw + cellPadding * 2)).join(tableChars.rowMiddle) +
+      cellWidths
+        .map((cw) => tableChars.middleMiddle.repeat(cw + cellPadding * 2))
+        .join(tableChars.rowMiddle) +
       tableChars.rightMiddle
     const bottom =
       tableChars.bottomLeft +
-      cellWidths.map((cw) => tableChars.middleMiddle.repeat(cw + cellPadding * 2)).join(tableChars.bottomMiddle) +
+      cellWidths
+        .map((cw) => tableChars.middleMiddle.repeat(cw + cellPadding * 2))
+        .join(tableChars.bottomMiddle) +
       tableChars.bottomRight
 
     grid.splice(1, 1) // remove alignment row
     return [
       top,
-      grid.map((row) => tableChars.left + row.join(tableChars.middle) + tableChars.right).join("\n" + middle + "\n"),
+      grid
+        .map((row) => tableChars.left + row.join(tableChars.middle) + tableChars.right)
+        .join("\n" + middle + "\n"),
       bottom,
     ].join("\n")
   } else {

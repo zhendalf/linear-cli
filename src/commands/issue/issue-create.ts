@@ -1,9 +1,14 @@
+import { readFile } from "node:fs/promises"
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getEditor, openEditor } from "../../utils/editor.ts"
+import { startWorkOnIssue } from "../../utils/actions.ts"
 import { getPriorityDisplay } from "../../utils/display.ts"
+import { getEditor, openEditor } from "../../utils/editor.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
+  type WorkflowState,
   fetchParentIssueData,
   getAllTeams,
   getCycleIdByNameOrNumber,
@@ -22,20 +27,10 @@ import {
   lookupUserId,
   searchTeamsByKeySubstring,
   selectOption,
-  type WorkflowState,
 } from "../../utils/linear.ts"
-import { startWorkOnIssue } from "../../utils/actions.ts"
-import { createSpinner } from "../../utils/spinner.ts"
-import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { checkbox, input, searchSelect, select } from "../../utils/prompt.ts"
 import { isStdoutTTY } from "../../utils/runtime.ts"
-import { select, searchSelect, checkbox, input } from "../../utils/prompt.ts"
-import { readFile } from "node:fs/promises"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 type IssueLabel = { id: string; name: string; color: string }
 
@@ -64,11 +59,10 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
         labels?: IssueLabel[]
       },
     ) => {
-      const states = preloaded?.states ?? await getWorkflowStates(teamKey)
+      const states = preloaded?.states ?? (await getWorkflowStates(teamKey))
       if (states.length === 0) return undefined
 
-      const defaultState = states.find((s) => s.type === "unstarted") ||
-        states[0]
+      const defaultState = states.find((s) => s.type === "unstarted") || states[0]
       return await select({
         message: "Which workflow state should this issue be in?",
         choices: states.map((state) => ({
@@ -123,7 +117,7 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
         labels?: IssueLabel[]
       },
     ) => {
-      const labels = preloaded?.labels ?? await getLabelsForTeam(teamKey)
+      const labels = preloaded?.labels ?? (await getLabelsForTeam(teamKey))
       if (labels.length === 0) return []
 
       // Note: cliffy's `search: true` on Checkbox has no inquirer equivalent.
@@ -167,8 +161,7 @@ async function promptAdditionalFields(
   // Build options that display defaults in parentheses for workflow state and assignee
   let defaultStateName: string | null = null
   if (states.length > 0) {
-    const defaultState = states.find((s) => s.type === "unstarted") ||
-      states[0]
+    const defaultState = states.find((s) => s.type === "unstarted") || states[0]
     defaultStateName = defaultState.name
   }
   const additionalFieldOptions = ADDITIONAL_FIELDS.map((field) => {
@@ -353,9 +346,7 @@ async function promptInteractiveIssueCreation(
     console.log(`Opening ${editorDisplayName}...`)
     finalDescription = await openEditor()
     if (finalDescription && finalDescription.length > 0) {
-      console.log(
-        `Description entered (${finalDescription.length} characters)`,
-      )
+      console.log(`Description entered (${finalDescription.length} characters)`)
     } else {
       console.log("No description entered")
       finalDescription = undefined
@@ -423,8 +414,7 @@ async function promptInteractiveIssueCreation(
 
   // Ask about starting work (always show this)
   const startVal = await select({
-    message:
-      "Start working on this issue now? (creates branch and updates status)",
+    message: "Start working on this issue now? (creates branch and updates status)",
     choices: [
       { name: "No", value: "no" },
       { name: "Yes", value: "yes" },
@@ -450,38 +440,21 @@ async function promptInteractiveIssueCreation(
 
 export const createCommand = new Command("create")
   .description("Create a linear issue")
-  .option(
-    "--start",
-    "Start the issue after creation",
-  )
+  .option("--start", "Start the issue after creation")
   .option(
     "-a, --assignee <assignee>",
     "Assign the issue to 'self' or someone (by username or name)",
   )
-  .option(
-    "--due-date <dueDate>",
-    "Due date of the issue",
-  )
-  .option(
-    "--parent <parent>",
-    "Parent issue (if any) as a team_number code",
-  )
+  .option("--due-date <dueDate>", "Due date of the issue")
+  .option("--parent <parent>", "Parent issue (if any) as a team_number code")
   .addOption(
     new Option(
       "-p, --priority <priority>",
       "Priority of the issue (1-4, descending priority)",
     ).argParser(Number),
   )
-  .addOption(
-    new Option(
-      "--estimate <estimate>",
-      "Points estimate of the issue",
-    ).argParser(Number),
-  )
-  .option(
-    "-d, --description <description>",
-    "Description of the issue",
-  )
+  .addOption(new Option("--estimate <estimate>", "Points estimate of the issue").argParser(Number))
+  .option("-d, --description <description>", "Description of the issue")
   .option(
     "--description-file <path>",
     "Read description from a file (preferred for markdown content)",
@@ -491,294 +464,72 @@ export const createCommand = new Command("create")
     "Issue label associated with the issue. May be repeated.",
     (val: string, prev: string[] = []) => [...prev, val],
   )
-  .option(
-    "--team <team>",
-    "Team associated with the issue (if not your default team)",
-  )
-  .option(
-    "--project <project>",
-    "Name or slug ID of the project with the issue",
-  )
-  .option(
-    "-s, --state <state>",
-    "Workflow state for the issue (by name or type)",
-  )
-  .option(
-    "--milestone <milestone>",
-    "Name of the project milestone",
-  )
-  .option(
-    "--cycle <cycle>",
-    "Cycle name, number, or 'active'",
-  )
-  .option(
-    "--no-use-default-template",
-    "Do not use default template for the issue",
-  )
+  .option("--team <team>", "Team associated with the issue (if not your default team)")
+  .option("--project <project>", "Name or slug ID of the project with the issue")
+  .option("-s, --state <state>", "Workflow state for the issue (by name or type)")
+  .option("--milestone <milestone>", "Name of the project milestone")
+  .option("--cycle <cycle>", "Cycle name, number, or 'active'")
+  .option("--no-use-default-template", "Do not use default template for the issue")
   .option("--no-interactive", "Disable interactive prompts")
   .option("-t, --title <title>", "Title of the issue")
-  .action(
-    async (options) => {
-      let {
-        start,
-        assignee,
-        dueDate,
-        useDefaultTemplate,
-        parent: parentIdentifier,
-        priority,
-        estimate,
-        description,
-        descriptionFile,
-        label: labels,
-        team,
-        project,
-        state,
-        milestone,
-        cycle,
-        interactive,
-        title,
-      } = options
+  .action(async (options) => {
+    let {
+      start,
+      assignee,
+      dueDate,
+      useDefaultTemplate,
+      parent: parentIdentifier,
+      priority,
+      estimate,
+      description,
+      descriptionFile,
+      label: labels,
+      team,
+      project,
+      state,
+      milestone,
+      cycle,
+      interactive,
+      title,
+    } = options
 
-      interactive = interactive && isStdoutTTY()
+    interactive = interactive && isStdoutTTY()
 
-      // Validate that description and descriptionFile are not both provided
-      if (description && descriptionFile) {
-        throw new ValidationError(
-          "Cannot specify both --description and --description-file",
-        )
-      }
+    // Validate that description and descriptionFile are not both provided
+    if (description && descriptionFile) {
+      throw new ValidationError("Cannot specify both --description and --description-file")
+    }
 
-      // Read description from file if provided
-      let finalDescription = description
-      if (descriptionFile) {
-        try {
-          finalDescription = await readFile(descriptionFile, "utf8")
-        } catch (error) {
-          throw new ValidationError(
-            `Failed to read description file: ${descriptionFile}`,
-            {
-              suggestion: `Error: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            },
-          )
-        }
-      }
-
-      // If no flags are provided (or only parent is provided), use interactive mode
-      const noFlagsProvided = !title && !assignee && !dueDate &&
-        priority === undefined && estimate === undefined && !finalDescription &&
-        (!labels || labels.length === 0) &&
-        !team && !project && !state && !milestone && !cycle && !start
-
-      if (noFlagsProvided && interactive) {
-        try {
-          // Convert parent identifier if provided and fetch parent data
-          let parentId: string | undefined
-          let parentData: {
-            title: string
-            identifier: string
-            projectId: string | null
-          } | null = null
-          if (parentIdentifier) {
-            const parentIdentifierResolved = await getIssueIdentifier(
-              parentIdentifier,
-            )
-            if (!parentIdentifierResolved) {
-              throw new ValidationError(
-                `Could not resolve parent issue identifier: ${parentIdentifier}`,
-              )
-            }
-            parentId = await getIssueId(parentIdentifierResolved)
-            if (!parentId) {
-              throw new NotFoundError("Parent issue", parentIdentifierResolved)
-            }
-
-            // Fetch parent issue data including project
-            parentData = await fetchParentIssueData(parentId)
-          }
-
-          const interactiveData = await promptInteractiveIssueCreation(
-            parentId,
-            parentData,
-          )
-
-          console.log(`Creating issue...`)
-          console.log()
-
-          const createIssueMutation = gql(`
-            mutation CreateIssue($input: IssueCreateInput!) {
-              issueCreate(input: $input) {
-                success
-                issue { id, identifier, url, team { key } }
-              }
-            }
-          `)
-
-          const client = getGraphQLClient()
-          const data = await client.request(createIssueMutation, {
-            input: {
-              title: interactiveData.title,
-              assigneeId: interactiveData.assigneeId,
-              dueDate: undefined,
-              parentId: interactiveData.parentId,
-              priority: interactiveData.priority,
-              estimate: interactiveData.estimate,
-              labelIds: interactiveData.labelIds,
-              teamId: interactiveData.teamId,
-              projectId: interactiveData.projectId,
-              stateId: interactiveData.stateId,
-              useDefaultTemplate,
-              description: interactiveData.description,
-            },
-          })
-
-          if (!data.issueCreate.success) {
-            throw new CliError("Issue creation failed")
-          }
-          const issue = data.issueCreate.issue
-          if (!issue) {
-            throw new CliError("Issue creation failed - no issue returned")
-          }
-          const issueId = issue.id
-          console.log(
-            `✓ Created issue ${issue.identifier}: ${interactiveData.title}`,
-          )
-          console.log(issue.url)
-
-          if (interactiveData.start) {
-            const teamKey = issue.team.key
-            const teamIdForStartWork = await getTeamIdByKey(teamKey)
-            if (teamIdForStartWork) {
-              await startWorkOnIssue(issueId, teamIdForStartWork)
-            }
-          }
-          return
-        } catch (error) {
-          handleError(error, "Failed to create issue")
-        }
-      }
-
-      // Fallback to flag-based mode
-      if (!title) {
-        throw new ValidationError(
-          "Title is required when not using interactive mode",
-          {
-            suggestion:
-              "Use --title or run without any flags (or only --parent) for interactive mode.",
-          },
-        )
-      }
-
-      const spinner = createSpinner("", shouldShowSpinner())
-      spinner.start()
+    // Read description from file if provided
+    let finalDescription = description
+    if (descriptionFile) {
       try {
-        team = (team == null) ? getTeamKey() : team.toUpperCase()
-        if (!team) {
-          throw new ValidationError("Could not determine team key")
-        }
+        finalDescription = await readFile(descriptionFile, "utf8")
+      } catch (error) {
+        throw new ValidationError(`Failed to read description file: ${descriptionFile}`, {
+          suggestion: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        })
+      }
+    }
 
-        // For functions that need actual team IDs (like createIssue), get the ID
-        let teamId = await getTeamIdByKey(team)
-        if (interactive && !teamId) {
-          const teamIds = await searchTeamsByKeySubstring(team)
-          spinner.stop()
-          teamId = await selectOption("Team", team, teamIds)
-          spinner.start()
-        }
-        if (!teamId) {
-          throw new NotFoundError("Team", team)
-        }
-        if (start && assignee === undefined) {
-          assignee = "self"
-        }
-        if (start && assignee !== undefined && assignee !== "self") {
-          throw new ValidationError(
-            "Cannot use --start and a non-self --assignee",
-          )
-        }
-        let stateId: string | undefined
-        if (state) {
-          const workflowState = await getWorkflowStateByNameOrType(
-            team,
-            state,
-          )
-          if (!workflowState) {
-            throw new NotFoundError(
-              "Workflow state",
-              `'${state}' for team ${team}`,
-            )
-          }
-          stateId = workflowState.id
-        }
+    // If no flags are provided (or only parent is provided), use interactive mode
+    const noFlagsProvided =
+      !title &&
+      !assignee &&
+      !dueDate &&
+      priority === undefined &&
+      estimate === undefined &&
+      !finalDescription &&
+      (!labels || labels.length === 0) &&
+      !team &&
+      !project &&
+      !state &&
+      !milestone &&
+      !cycle &&
+      !start
 
-        let assigneeId = undefined
-
-        if (assignee) {
-          assigneeId = await lookupUserId(assignee)
-          if (assigneeId == null) {
-            throw new NotFoundError("User", assignee)
-          }
-        }
-
-        const labelIds = []
-        if (labels != null && labels.length > 0) {
-          // sequential in case of questions
-          for (const label of labels) {
-            let labelId = await getIssueLabelIdByNameForTeam(label, team)
-            if (!labelId && interactive) {
-              const labelOptions = await getIssueLabelOptionsByNameForTeam(
-                label,
-                team,
-              )
-              spinner.stop()
-              labelId = await selectOption("Issue label", label, labelOptions)
-              spinner.start()
-            }
-            if (!labelId) {
-              throw new NotFoundError("Issue label", label)
-            }
-            labelIds.push(labelId)
-          }
-        }
-        let projectId: string | undefined = undefined
-        if (project !== undefined) {
-          projectId = await getProjectIdByName(project)
-          if (projectId === undefined && interactive) {
-            const projectIds = await getProjectOptionsByName(project)
-            spinner.stop()
-            projectId = await selectOption("Project", project, projectIds)
-            spinner.start()
-          }
-          if (projectId === undefined) {
-            throw new NotFoundError("Project", project)
-          }
-        }
-
-        let projectMilestoneId: string | undefined
-        if (milestone != null) {
-          if (projectId == null) {
-            throw new ValidationError(
-              "--milestone requires --project to be set",
-              {
-                suggestion:
-                  "Use --project to specify which project the milestone belongs to.",
-              },
-            )
-          }
-          projectMilestoneId = await getMilestoneIdByName(
-            milestone,
-            projectId,
-          )
-        }
-
-        let cycleId: string | undefined
-        if (cycle != null) {
-          cycleId = await getCycleIdByNameOrNumber(cycle, teamId)
-        }
-
-        // Date validation done at graphql level
-
+    if (noFlagsProvided && interactive) {
+      try {
         // Convert parent identifier if provided and fetch parent data
         let parentId: string | undefined
         let parentData: {
@@ -787,9 +538,7 @@ export const createCommand = new Command("create")
           projectId: string | null
         } | null = null
         if (parentIdentifier) {
-          const parentIdentifierResolved = await getIssueIdentifier(
-            parentIdentifier,
-          )
+          const parentIdentifierResolved = await getIssueIdentifier(parentIdentifier)
           if (!parentIdentifierResolved) {
             throw new ValidationError(
               `Could not resolve parent issue identifier: ${parentIdentifier}`,
@@ -804,38 +553,38 @@ export const createCommand = new Command("create")
           parentData = await fetchParentIssueData(parentId)
         }
 
-        const inputData = {
-          title,
-          assigneeId,
-          dueDate,
-          parentId,
-          priority,
-          estimate,
-          labelIds,
-          teamId: teamId,
-          projectId: projectId || parentData?.projectId,
-          projectMilestoneId,
-          cycleId,
-          stateId,
-          useDefaultTemplate,
-          description: finalDescription,
-        }
-        spinner.stop()
-        console.log(`Creating issue in ${team}`)
+        const interactiveData = await promptInteractiveIssueCreation(parentId, parentData)
+
+        console.log(`Creating issue...`)
         console.log()
-        spinner.start()
 
         const createIssueMutation = gql(`
-          mutation CreateIssue($input: IssueCreateInput!) {
-            issueCreate(input: $input) {
-              success
-              issue { id, identifier, url, team { key } }
+            mutation CreateIssue($input: IssueCreateInput!) {
+              issueCreate(input: $input) {
+                success
+                issue { id, identifier, url, team { key } }
+              }
             }
-          }
-        `)
+          `)
 
         const client = getGraphQLClient()
-        const data = await client.request(createIssueMutation, { input: inputData })
+        const data = await client.request(createIssueMutation, {
+          input: {
+            title: interactiveData.title,
+            assigneeId: interactiveData.assigneeId,
+            dueDate: undefined,
+            parentId: interactiveData.parentId,
+            priority: interactiveData.priority,
+            estimate: interactiveData.estimate,
+            labelIds: interactiveData.labelIds,
+            teamId: interactiveData.teamId,
+            projectId: interactiveData.projectId,
+            stateId: interactiveData.stateId,
+            useDefaultTemplate,
+            description: interactiveData.description,
+          },
+        })
+
         if (!data.issueCreate.success) {
           throw new CliError("Issue creation failed")
         }
@@ -844,15 +593,191 @@ export const createCommand = new Command("create")
           throw new CliError("Issue creation failed - no issue returned")
         }
         const issueId = issue.id
-        spinner.stop()
+        console.log(`✓ Created issue ${issue.identifier}: ${interactiveData.title}`)
         console.log(issue.url)
 
-        if (start) {
-          await startWorkOnIssue(issueId, issue.team.key)
+        if (interactiveData.start) {
+          const teamKey = issue.team.key
+          const teamIdForStartWork = await getTeamIdByKey(teamKey)
+          if (teamIdForStartWork) {
+            await startWorkOnIssue(issueId, teamIdForStartWork)
+          }
         }
+        return
       } catch (error) {
-        spinner.stop()
         handleError(error, "Failed to create issue")
       }
-    },
-  )
+    }
+
+    // Fallback to flag-based mode
+    if (!title) {
+      throw new ValidationError("Title is required when not using interactive mode", {
+        suggestion: "Use --title or run without any flags (or only --parent) for interactive mode.",
+      })
+    }
+
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
+    try {
+      team = team == null ? getTeamKey() : team.toUpperCase()
+      if (!team) {
+        throw new ValidationError("Could not determine team key")
+      }
+
+      // For functions that need actual team IDs (like createIssue), get the ID
+      let teamId = await getTeamIdByKey(team)
+      if (interactive && !teamId) {
+        const teamIds = await searchTeamsByKeySubstring(team)
+        spinner.stop()
+        teamId = await selectOption("Team", team, teamIds)
+        spinner.start()
+      }
+      if (!teamId) {
+        throw new NotFoundError("Team", team)
+      }
+      if (start && assignee === undefined) {
+        assignee = "self"
+      }
+      if (start && assignee !== undefined && assignee !== "self") {
+        throw new ValidationError("Cannot use --start and a non-self --assignee")
+      }
+      let stateId: string | undefined
+      if (state) {
+        const workflowState = await getWorkflowStateByNameOrType(team, state)
+        if (!workflowState) {
+          throw new NotFoundError("Workflow state", `'${state}' for team ${team}`)
+        }
+        stateId = workflowState.id
+      }
+
+      let assigneeId = undefined
+
+      if (assignee) {
+        assigneeId = await lookupUserId(assignee)
+        if (assigneeId == null) {
+          throw new NotFoundError("User", assignee)
+        }
+      }
+
+      const labelIds = []
+      if (labels != null && labels.length > 0) {
+        // sequential in case of questions
+        for (const label of labels) {
+          let labelId = await getIssueLabelIdByNameForTeam(label, team)
+          if (!labelId && interactive) {
+            const labelOptions = await getIssueLabelOptionsByNameForTeam(label, team)
+            spinner.stop()
+            labelId = await selectOption("Issue label", label, labelOptions)
+            spinner.start()
+          }
+          if (!labelId) {
+            throw new NotFoundError("Issue label", label)
+          }
+          labelIds.push(labelId)
+        }
+      }
+      let projectId: string | undefined = undefined
+      if (project !== undefined) {
+        projectId = await getProjectIdByName(project)
+        if (projectId === undefined && interactive) {
+          const projectIds = await getProjectOptionsByName(project)
+          spinner.stop()
+          projectId = await selectOption("Project", project, projectIds)
+          spinner.start()
+        }
+        if (projectId === undefined) {
+          throw new NotFoundError("Project", project)
+        }
+      }
+
+      let projectMilestoneId: string | undefined
+      if (milestone != null) {
+        if (projectId == null) {
+          throw new ValidationError("--milestone requires --project to be set", {
+            suggestion: "Use --project to specify which project the milestone belongs to.",
+          })
+        }
+        projectMilestoneId = await getMilestoneIdByName(milestone, projectId)
+      }
+
+      let cycleId: string | undefined
+      if (cycle != null) {
+        cycleId = await getCycleIdByNameOrNumber(cycle, teamId)
+      }
+
+      // Date validation done at graphql level
+
+      // Convert parent identifier if provided and fetch parent data
+      let parentId: string | undefined
+      let parentData: {
+        title: string
+        identifier: string
+        projectId: string | null
+      } | null = null
+      if (parentIdentifier) {
+        const parentIdentifierResolved = await getIssueIdentifier(parentIdentifier)
+        if (!parentIdentifierResolved) {
+          throw new ValidationError(
+            `Could not resolve parent issue identifier: ${parentIdentifier}`,
+          )
+        }
+        parentId = await getIssueId(parentIdentifierResolved)
+        if (!parentId) {
+          throw new NotFoundError("Parent issue", parentIdentifierResolved)
+        }
+
+        // Fetch parent issue data including project
+        parentData = await fetchParentIssueData(parentId)
+      }
+
+      const inputData = {
+        title,
+        assigneeId,
+        dueDate,
+        parentId,
+        priority,
+        estimate,
+        labelIds,
+        teamId: teamId,
+        projectId: projectId || parentData?.projectId,
+        projectMilestoneId,
+        cycleId,
+        stateId,
+        useDefaultTemplate,
+        description: finalDescription,
+      }
+      spinner.stop()
+      console.log(`Creating issue in ${team}`)
+      console.log()
+      spinner.start()
+
+      const createIssueMutation = gql(`
+          mutation CreateIssue($input: IssueCreateInput!) {
+            issueCreate(input: $input) {
+              success
+              issue { id, identifier, url, team { key } }
+            }
+          }
+        `)
+
+      const client = getGraphQLClient()
+      const data = await client.request(createIssueMutation, { input: inputData })
+      if (!data.issueCreate.success) {
+        throw new CliError("Issue creation failed")
+      }
+      const issue = data.issueCreate.issue
+      if (!issue) {
+        throw new CliError("Issue creation failed - no issue returned")
+      }
+      const issueId = issue.id
+      spinner.stop()
+      console.log(issue.url)
+
+      if (start) {
+        await startWorkOnIssue(issueId, issue.team.key)
+      }
+    } catch (error) {
+      spinner.stop()
+      handleError(error, "Failed to create issue")
+    }
+  })

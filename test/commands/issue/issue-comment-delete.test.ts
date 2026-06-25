@@ -1,5 +1,5 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { commentDeleteCommand } from "../../../src/commands/issue/issue-comment-delete.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test deleting a comment

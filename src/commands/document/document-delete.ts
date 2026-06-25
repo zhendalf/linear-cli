@@ -1,8 +1,5 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { confirm } from "../../utils/prompt.ts"
-import { isStdinTTY } from "../../utils/runtime.ts"
 import {
   type BulkOperationResult,
   collectBulkIds,
@@ -10,12 +7,10 @@ import {
   isBulkMode,
   printBulkSummary,
 } from "../../utils/bulk.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 
 interface DocumentDeleteResult extends BulkOperationResult {
   title?: string
@@ -26,48 +21,37 @@ export const deleteCommand = new Command("delete")
   .description("Delete a document (moves to trash)")
   .argument("[documentId]", "Document ID or slug")
   .option("-y, --yes", "Skip confirmation prompt")
-  .option(
-    "--bulk <ids...>",
-    "Delete multiple documents by slug or ID",
-  )
-  .option(
-    "--bulk-file <file>",
-    "Read document slugs/IDs from a file (one per line)",
-  )
+  .option("--bulk <ids...>", "Delete multiple documents by slug or ID")
+  .option("--bulk-file <file>", "Read document slugs/IDs from a file (one per line)")
   .option("--bulk-stdin", "Read document slugs/IDs from stdin")
-  .action(
-    async (
-      documentId: string | undefined,
-      options,
-    ) => {
-      const { yes, bulk, bulkFile, bulkStdin } = options
-      try {
-        const client = getGraphQLClient()
+  .action(async (documentId: string | undefined, options) => {
+    const { yes, bulk, bulkFile, bulkStdin } = options
+    try {
+      const client = getGraphQLClient()
 
-        // Check if bulk mode
-        if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
-          await handleBulkDelete(client, {
-            bulk,
-            bulkFile,
-            bulkStdin,
-            yes,
-          })
-          return
-        }
-
-        // Single mode requires documentId
-        if (!documentId) {
-          throw new ValidationError("Document ID required", {
-            suggestion: "Use --bulk for multiple documents.",
-          })
-        }
-
-        await handleSingleDelete(client, documentId, { yes })
-      } catch (error) {
-        handleError(error, "Failed to delete document")
+      // Check if bulk mode
+      if (isBulkMode({ bulk, bulkFile, bulkStdin })) {
+        await handleBulkDelete(client, {
+          bulk,
+          bulkFile,
+          bulkStdin,
+          yes,
+        })
+        return
       }
-    },
-  )
+
+      // Single mode requires documentId
+      if (!documentId) {
+        throw new ValidationError("Document ID required", {
+          suggestion: "Use --bulk for multiple documents.",
+        })
+      }
+
+      await handleSingleDelete(client, documentId, { yes })
+    } catch (error) {
+      handleError(error, "Failed to delete document")
+    }
+  })
 
 async function handleSingleDelete(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -176,9 +160,7 @@ async function handleBulkDelete(
   }
 
   // Define the delete operation
-  const deleteOperation = async (
-    docId: string,
-  ): Promise<DocumentDeleteResult> => {
+  const deleteOperation = async (docId: string): Promise<DocumentDeleteResult> => {
     // Get document details for display
     const detailsQuery = gql(`
       query GetDocumentForBulkDelete($id: String!) {

@@ -1,13 +1,13 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
-import { resolveProjectId } from "../../utils/linear.ts"
+import { NotFoundError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { handleError, NotFoundError } from "../../utils/errors.ts"
+import { resolveProjectId } from "../../utils/linear.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
-import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 
 const ListProjectUpdatesQuery = gql(`
   query ListProjectUpdates($id: String!, $first: Int) {
@@ -93,7 +93,7 @@ export const listCommand = new Command("list")
       )
 
       // Get author display name
-      const getAuthor = (update: typeof updates[0]) => {
+      const getAuthor = (update: (typeof updates)[0]) => {
         if (update.user?.displayName) return update.user.displayName
         if (update.user?.name) return update.user.name
         return "-"
@@ -105,8 +105,7 @@ export const listCommand = new Command("list")
       )
 
       const SPACE_WIDTH = 4 // spaces between columns
-      const fixed = ID_WIDTH + HEALTH_WIDTH + DATE_WIDTH + AUTHOR_WIDTH +
-        SPACE_WIDTH
+      const fixed = ID_WIDTH + HEALTH_WIDTH + DATE_WIDTH + AUTHOR_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const availableWidth = Math.max(columns - PADDING - fixed, 10)
 
@@ -151,22 +150,20 @@ export const listCommand = new Command("list")
         if (healthColor) {
           console.log(
             applyConsoleFormat(
-              `${padDisplay(shortId, ID_WIDTH)} %c${
-                padDisplay(health, HEALTH_WIDTH)
-              }%c ${padDisplay(date, DATE_WIDTH)} ${
-                padDisplay(author, AUTHOR_WIDTH)
-              }`,
+              `${padDisplay(shortId, ID_WIDTH)} %c${padDisplay(
+                health,
+                HEALTH_WIDTH,
+              )}%c ${padDisplay(date, DATE_WIDTH)} ${padDisplay(author, AUTHOR_WIDTH)}`,
               healthColor,
               "",
             ),
           )
         } else {
           console.log(
-            `${padDisplay(shortId, ID_WIDTH)} ${
-              padDisplay(health, HEALTH_WIDTH)
-            } ${padDisplay(date, DATE_WIDTH)} ${
-              padDisplay(author, AUTHOR_WIDTH)
-            }`,
+            `${padDisplay(shortId, ID_WIDTH)} ${padDisplay(
+              health,
+              HEALTH_WIDTH,
+            )} ${padDisplay(date, DATE_WIDTH)} ${padDisplay(author, AUTHOR_WIDTH)}`,
           )
         }
 

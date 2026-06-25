@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { viewCommand } from "../../../src/commands/cycle/cycle-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 await snapshotTest({
   name: "Cycle View Command - Help Text",
@@ -133,9 +133,7 @@ await snapshotTest({
           data: {
             team: {
               cycles: {
-                nodes: [
-                  { id: "cycle-3", number: 14, name: "Sprint 14" },
-                ],
+                nodes: [{ id: "cycle-3", number: 14, name: "Sprint 14" }],
               },
               activeCycle: null,
             },
@@ -211,9 +209,7 @@ await snapshotTest({
           data: {
             team: {
               cycles: {
-                nodes: [
-                  { id: "cycle-1", number: 12, name: "Sprint 12" },
-                ],
+                nodes: [{ id: "cycle-1", number: 12, name: "Sprint 12" }],
               },
               activeCycle: null,
             },
@@ -250,11 +246,7 @@ await snapshotTest({
                   title: `Task ${i + 1}`,
                   state: {
                     name: i < 8 ? "Done" : i < 12 ? "In Progress" : "Todo",
-                    type: i < 8
-                      ? "completed"
-                      : i < 12
-                      ? "started"
-                      : "unstarted",
+                    type: i < 8 ? "completed" : i < 12 ? "started" : "unstarted",
                   },
                 })),
               },

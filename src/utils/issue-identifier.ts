@@ -7,10 +7,7 @@ export interface ParsedIssueIdentifier {
   issueNumber: string
 }
 
-function buildParsedIssueIdentifier(
-  teamKey: string,
-  issueNumber: string,
-): ParsedIssueIdentifier {
+function buildParsedIssueIdentifier(teamKey: string, issueNumber: string): ParsedIssueIdentifier {
   const normalizedTeamKey = teamKey.toUpperCase()
 
   return {
@@ -20,9 +17,7 @@ function buildParsedIssueIdentifier(
   }
 }
 
-export function parseIssueIdentifier(
-  value: string,
-): ParsedIssueIdentifier | undefined {
+export function parseIssueIdentifier(value: string): ParsedIssueIdentifier | undefined {
   const match = value.match(LINEAR_IDENTIFIER_RE)
   if (!match) {
     return undefined
@@ -37,9 +32,7 @@ export function parseIssueIdentifier(
   return buildParsedIssueIdentifier(teamKey, issueNumber)
 }
 
-export function findIssueIdentifierInText(
-  value: string,
-): ParsedIssueIdentifier | undefined {
+export function findIssueIdentifierInText(value: string): ParsedIssueIdentifier | undefined {
   const match = value.match(LINEAR_IDENTIFIER_IN_TEXT_RE)
   if (!match) {
     return undefined
@@ -54,9 +47,7 @@ export function findIssueIdentifierInText(
   return buildParsedIssueIdentifier(teamKey, issueNumber)
 }
 
-export function getTeamKeyFromIssueIdentifier(
-  value: string,
-): string | undefined {
+export function getTeamKeyFromIssueIdentifier(value: string): string | undefined {
   return parseIssueIdentifier(value)?.teamKey
 }
 

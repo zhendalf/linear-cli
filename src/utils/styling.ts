@@ -79,7 +79,10 @@ function applyDirective(directive: string, text: string): string {
     if (colonIdx === -1) continue
 
     const prop = decl.slice(0, colonIdx).trim().toLowerCase()
-    const value = decl.slice(colonIdx + 1).trim().toLowerCase()
+    const value = decl
+      .slice(colonIdx + 1)
+      .trim()
+      .toLowerCase()
 
     if (prop === "color") {
       instance = applyColorDirective(instance, value)

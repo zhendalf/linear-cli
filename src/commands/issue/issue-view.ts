@@ -1,38 +1,27 @@
-import { Command } from "commander"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
-import type { Extension } from "../../utils/charmd/mod.ts"
-import {
-  fetchIssueDetails,
-  fetchIssueDetailsRaw,
-  getIssueIdentifier,
-} from "../../utils/linear.ts"
-import type {
-  FetchedIssueComment,
-  FetchedIssueDetails,
-} from "../../utils/linear.ts"
-import { openIssuePage } from "../../utils/actions.ts"
-import { formatRelativeTime, getPriorityDisplay } from "../../utils/display.ts"
-import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
-import chalk from "chalk"
 import { mkdir, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { getOption } from "../../config.ts"
-import { getResolvedApiKey } from "../../utils/graphql.ts"
+import chalk from "chalk"
+import { Command } from "commander"
 import sanitize from "sanitize-filename"
-import {
-  hyperlink,
-  shouldEnableHyperlinks,
-  shouldShowSpinner,
-} from "../../utils/hyperlink.ts"
-import { createHyperlinkExtension } from "../../utils/charmd-hyperlink-extension.ts"
-import { handleError, ValidationError } from "../../utils/errors.ts"
+import { getOption } from "../../config.ts"
 import { LINEAR_PRIVATE_UPLOAD_HOST } from "../../const.ts"
+import { openIssuePage } from "../../utils/actions.ts"
+import { createHyperlinkExtension } from "../../utils/charmd-hyperlink-extension.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
+import type { Extension } from "../../utils/charmd/mod.ts"
+import { formatRelativeTime, getPriorityDisplay } from "../../utils/display.ts"
+import { ValidationError, handleError } from "../../utils/errors.ts"
+import { getResolvedApiKey } from "../../utils/graphql.ts"
+import { hyperlink, shouldEnableHyperlinks, shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { fetchIssueDetails, fetchIssueDetailsRaw, getIssueIdentifier } from "../../utils/linear.ts"
+import type { FetchedIssueComment, FetchedIssueDetails } from "../../utils/linear.ts"
 import {
   downloadMarkdownImages,
   getLinearUploadHost,
   replaceImageUrls,
 } from "../../utils/markdown-images.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
+import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 
 export const viewCommand = new Command("view")
   .description("View issue details (default) or open in browser/app")
@@ -41,16 +30,12 @@ export const viewCommand = new Command("view")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
   .option("--no-comments", "Exclude comments from the output")
-  .option(
-    "--show-resolved-threads",
-    "Include resolved comment threads in the output",
-  )
+  .option("--show-resolved-threads", "Include resolved comment threads in the output")
   .option("--no-pager", "Disable automatic paging for long output")
   .option("-j, --json", "Output issue data as JSON")
   .option("--no-download", "Keep remote URLs instead of downloading files")
   .action(async (issueId: string | undefined, options) => {
-    const { web, app, comments, showResolvedThreads, pager, json, download } =
-      options
+    const { web, app, comments, showResolvedThreads, pager, json, download } = options
     const showComments = comments !== false
     const usePager = pager !== false
 
@@ -62,10 +47,9 @@ export const viewCommand = new Command("view")
     try {
       const resolvedId = await getIssueIdentifier(issueId)
       if (!resolvedId) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          { suggestion: "Please provide an issue ID like 'ENG-123'." },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID like 'ENG-123'.",
+        })
       }
 
       if (json) {
@@ -74,22 +58,14 @@ export const viewCommand = new Command("view")
         return
       }
 
-      const issueData = await fetchIssueDetails(
-        resolvedId,
-        shouldShowSpinner(),
-        showComments,
-      )
+      const issueData = await fetchIssueDetails(resolvedId, shouldShowSpinner(), showComments)
 
-      let issueComments = "comments" in issueData
-        ? issueData.comments
-        : undefined
+      let issueComments = "comments" in issueData ? issueData.comments : undefined
 
       let urlToPath: Map<string, string> | undefined
       const shouldDownload = download && getOption("download_images") !== false
       if (shouldDownload) {
-        const sources: Array<string | null | undefined> = [
-          issueData.description,
-        ]
+        const sources: Array<string | null | undefined> = [issueData.description]
         if (issueComments) {
           for (const comment of issueComments) {
             sources.push(comment.body)
@@ -99,16 +75,10 @@ export const viewCommand = new Command("view")
       }
 
       let attachmentPaths: Map<string, string> | undefined
-      const shouldDownloadAttachments = shouldDownload &&
-        getOption("auto_download_attachments") !== false
-      if (
-        shouldDownloadAttachments && issueData.attachments &&
-        issueData.attachments.length > 0
-      ) {
-        attachmentPaths = await downloadAttachments(
-          issueData.identifier,
-          issueData.attachments,
-        )
+      const shouldDownloadAttachments =
+        shouldDownload && getOption("auto_download_attachments") !== false
+      if (shouldDownloadAttachments && issueData.attachments && issueData.attachments.length > 0) {
+        attachmentPaths = await downloadAttachments(issueData.identifier, issueData.attachments)
       }
 
       let { description } = issueData
@@ -146,9 +116,8 @@ export const viewCommand = new Command("view")
         metaParts.push(`**State:** ${issueData.state.name}`)
       }
       metaParts.push(`**Priority:** ${getPriorityDisplay(issueData.priority)}`)
-      const assigneeDisplay = issueData.assignee != null
-        ? `@${issueData.assignee.displayName}`
-        : "Unassigned"
+      const assigneeDisplay =
+        issueData.assignee != null ? `@${issueData.assignee.displayName}` : "Unassigned"
       metaParts.push(`**Assignee:** ${assigneeDisplay}`)
       if (issueData.project) {
         metaParts.push(`**Project:** ${issueData.project.name}`)
@@ -157,13 +126,10 @@ export const viewCommand = new Command("view")
         metaParts.push(`**Milestone:** ${issueData.projectMilestone.name}`)
       }
       if (issueData.cycle) {
-        const cycleName = issueData.cycle.name ??
-          `Cycle ${issueData.cycle.number}`
+        const cycleName = issueData.cycle.name ?? `Cycle ${issueData.cycle.number}`
         metaParts.push(`**Cycle:** ${cycleName}`)
       }
-      const metaLine = metaParts.length > 0
-        ? "\n\n" + metaParts.join(" | ")
-        : ""
+      const metaLine = metaParts.length > 0 ? "\n\n" + metaParts.join(" | ") : ""
 
       let markdown = `# ${identifier}: ${title}${metaLine}${
         description ? "\n\n" + description : ""
@@ -171,9 +137,7 @@ export const viewCommand = new Command("view")
 
       if (isStdoutTTY()) {
         const { columns: terminalWidth } = getConsoleSize()
-        const extensions = hyperlinkFormat
-          ? [createHyperlinkExtension(hyperlinkFormat)]
-          : []
+        const extensions = hyperlinkFormat ? [createHyperlinkExtension(hyperlinkFormat)] : []
 
         const renderedMarkdown = renderMarkdown(markdown, {
           lineWidth: terminalWidth,
@@ -208,9 +172,7 @@ export const viewCommand = new Command("view")
         }
 
         if (issueData.documents && issueData.documents.length > 0) {
-          const documentsMarkdown = formatDocumentsAsMarkdown(
-            issueData.documents,
-          )
+          const documentsMarkdown = formatDocumentsAsMarkdown(issueData.documents)
           const renderedDocuments = renderMarkdown(documentsMarkdown, {
             lineWidth: terminalWidth,
             extensions,
@@ -218,10 +180,7 @@ export const viewCommand = new Command("view")
           outputLines.push(...renderedDocuments.split("\n"))
         }
 
-        if (
-          showComments && derivedComments &&
-          derivedComments.visibleRootComments.length > 0
-        ) {
+        if (showComments && derivedComments && derivedComments.visibleRootComments.length > 0) {
           outputLines.push("")
           outputLines.push("## Comments")
           outputLines.push("")
@@ -235,16 +194,9 @@ export const viewCommand = new Command("view")
           )
         }
 
-        if (
-          showComments && derivedComments &&
-          derivedComments.hiddenResolvedThreadCount > 0
-        ) {
+        if (showComments && derivedComments && derivedComments.hiddenResolvedThreadCount > 0) {
           outputLines.push("")
-          outputLines.push(
-            formatResolvedThreadsSummary(
-              derivedComments.hiddenResolvedThreadCount,
-            ),
-          )
+          outputLines.push(formatResolvedThreadsSummary(derivedComments.hiddenResolvedThreadCount))
         }
 
         const finalOutput = outputLines.join("\n")
@@ -255,26 +207,17 @@ export const viewCommand = new Command("view")
           console.log(finalOutput)
         }
       } else {
-        markdown += formatIssueHierarchyAsMarkdown(
-          issueData.parent,
-          issueData.children,
-        )
+        markdown += formatIssueHierarchyAsMarkdown(issueData.parent, issueData.children)
 
         if (issueData.attachments && issueData.attachments.length > 0) {
-          markdown += formatAttachmentsAsMarkdown(
-            issueData.attachments,
-            attachmentPaths,
-          )
+          markdown += formatAttachmentsAsMarkdown(issueData.attachments, attachmentPaths)
         }
 
         if (issueData.documents && issueData.documents.length > 0) {
           markdown += formatDocumentsAsMarkdown(issueData.documents)
         }
 
-        if (
-          showComments && derivedComments &&
-          derivedComments.visibleRootComments.length > 0
-        ) {
+        if (showComments && derivedComments && derivedComments.visibleRootComments.length > 0) {
           markdown += "\n\n## Comments\n\n"
           markdown += formatCommentsAsMarkdown(
             derivedComments.visibleRootComments,
@@ -282,14 +225,9 @@ export const viewCommand = new Command("view")
           )
         }
 
-        if (
-          showComments && derivedComments &&
-          derivedComments.hiddenResolvedThreadCount > 0
-        ) {
-          markdown += "\n\n" +
-            formatResolvedThreadsSummary(
-              derivedComments.hiddenResolvedThreadCount,
-            )
+        if (showComments && derivedComments && derivedComments.hiddenResolvedThreadCount > 0) {
+          markdown +=
+            "\n\n" + formatResolvedThreadsSummary(derivedComments.hiddenResolvedThreadCount)
         }
 
         console.log(markdown)
@@ -309,31 +247,24 @@ function formatIssueHierarchyAsMarkdown(
 
   if (parent) {
     markdownStr += `\n\n## Parent\n\n`
-    markdownStr +=
-      `- **${parent.identifier}**: ${parent.title} _[${parent.state.name}]_\n`
+    markdownStr += `- **${parent.identifier}**: ${parent.title} _[${parent.state.name}]_\n`
   }
 
   if (children && children.length > 0) {
     markdownStr += `\n\n## Sub-issues\n\n`
     for (const child of children) {
-      markdownStr +=
-        `- **${child.identifier}**: ${child.title} _[${child.state.name}]_\n`
+      markdownStr += `- **${child.identifier}**: ${child.title} _[${child.state.name}]_\n`
     }
   }
 
   return markdownStr
 }
 
-function deriveCommentView(
-  comments: FetchedIssueComment[],
-  showResolvedThreads: boolean,
-) {
+function deriveCommentView(comments: FetchedIssueComment[], showResolvedThreads: boolean) {
   const rootComments = comments
     .filter((comment) => comment.parent == null)
     .slice()
-    .sort((a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
   const commentsById = new Map(comments.map((comment) => [comment.id, comment]))
   const rootIdByCommentId = new Map<string, string>()
@@ -371,9 +302,7 @@ function deriveCommentView(
   }
 
   for (const replies of repliesByRootId.values()) {
-    replies.sort((a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
+    replies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   }
 
   const visibleRootComments = showResolvedThreads
@@ -387,24 +316,21 @@ function deriveCommentView(
   }
 }
 
-function formatCommentHeader(
-  author: string,
-  date: string,
-  suffix = "",
-  indent = "",
-): string {
+function formatCommentHeader(author: string, date: string, suffix = "", indent = ""): string {
   const suffixText = suffix ? ` ${suffix}` : ""
-  return `${indent}${chalk.underline(chalk.bold(`@${author}`))} ${
-    chalk.underline(`commented ${date}`)
-  }${suffixText}`
+  return `${indent}${chalk.underline(chalk.bold(`@${author}`))} ${chalk.underline(
+    `commented ${date}`,
+  )}${suffixText}`
 }
 
 function getCommentAuthor(comment: FetchedIssueComment): string {
-  return comment.user?.displayName ||
+  return (
+    comment.user?.displayName ||
     comment.user?.name ||
     comment.externalUser?.displayName ||
     comment.externalUser?.name ||
     "Unknown"
+  )
 }
 
 export function formatThreadIdLabel(
@@ -420,13 +346,7 @@ function getThreadHeaderSuffix(
   rootComment: FetchedIssueComment,
   enableHyperlinks: boolean,
 ): string {
-  const parts = [
-    formatThreadIdLabel(
-      rootComment.id,
-      rootComment.url,
-      enableHyperlinks,
-    ),
-  ]
+  const parts = [formatThreadIdLabel(rootComment.id, rootComment.url, enableHyperlinks)]
   if (rootComment.resolvedAt != null) {
     parts.push("[resolved]")
   }
@@ -503,9 +423,7 @@ function captureCommentsForTerminal(
         lineWidth: width - 2,
         extensions,
       })
-      outputLines.push(
-        ...renderedReplyBody.split("\n").map((line: string) => "  " + line),
-      )
+      outputLines.push(...renderedReplyBody.split("\n").map((line: string) => "  " + line))
     }
 
     if (index < rootComments.length - 1) {
@@ -517,9 +435,10 @@ function captureCommentsForTerminal(
 }
 
 function formatResolvedThreadsSummary(hiddenCount: number): string {
-  const noun = hiddenCount == 1 ? "thread" : "threads"
-  return "Resolved " + noun + " hidden: " + hiddenCount +
-    ". Use --show-resolved-threads to show them."
+  const noun = hiddenCount === 1 ? "thread" : "threads"
+  return (
+    "Resolved " + noun + " hidden: " + hiddenCount + ". Use --show-resolved-threads to show them."
+  )
 }
 
 // Type for attachments and documents
@@ -532,8 +451,7 @@ function getAttachmentCacheDir(): string {
     return configuredDir as string
   }
   return join(
-    process.env["TMPDIR"] || process.env["TMP"] || process.env["TEMP"] ||
-      "/tmp",
+    process.env["TMPDIR"] || process.env["TMP"] || process.env["TEMP"] || "/tmp",
     "linear-cli-attachments",
   )
 }
@@ -581,9 +499,7 @@ async function downloadAttachments(
 
       const response = await fetch(attachment.url, { headers })
       if (!response.ok) {
-        throw new Error(
-          `Failed to download: ${response.status} ${response.statusText}`,
-        )
+        throw new Error(`Failed to download: ${response.status} ${response.statusText}`)
       }
 
       const data = new Uint8Array(await response.arrayBuffer())
@@ -616,9 +532,7 @@ function formatAttachmentsAsMarkdown(
 
   for (const attachment of attachments) {
     const localPath = localPaths?.get(attachment.url)
-    const sourceLabel = attachment.sourceType
-      ? ` _[${attachment.sourceType}]_`
-      : ""
+    const sourceLabel = attachment.sourceType ? ` _[${attachment.sourceType}]_` : ""
 
     if (localPath) {
       markdownStr += `- **${attachment.title}**: ${localPath}${sourceLabel}\n`

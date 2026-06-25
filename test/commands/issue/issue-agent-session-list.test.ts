@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { agentSessionListCommand } from "../../../src/commands/issue/issue-agent-session-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 await snapshotTest({
   name: "Issue Agent Session List Command - Help Text",
@@ -92,10 +92,7 @@ await snapshotTest({
           data: {
             issue: {
               comments: {
-                nodes: [
-                  { agentSession: null },
-                  { agentSession: null },
-                ],
+                nodes: [{ agentSession: null }, { agentSession: null }],
               },
             },
           },

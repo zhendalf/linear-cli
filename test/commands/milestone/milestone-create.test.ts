@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { createCommand } from "../../../src/commands/milestone/milestone-create.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -35,10 +35,12 @@ await snapshotTest({
         response: {
           data: {
             projects: {
-              nodes: [{
-                id: "project-123",
-                slugId: "project-123",
-              }],
+              nodes: [
+                {
+                  id: "project-123",
+                  slugId: "project-123",
+                },
+              ],
             },
           },
         },
@@ -83,12 +85,7 @@ await snapshotTest({
   name: "Milestone Create Command - Minimal Fields",
   meta: import.meta,
   colors: false,
-  args: [
-    "--project",
-    "project-456",
-    "--name",
-    "Simple Milestone",
-  ],
+  args: ["--project", "project-456", "--name", "Simple Milestone"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -96,10 +93,12 @@ await snapshotTest({
         response: {
           data: {
             projects: {
-              nodes: [{
-                id: "project-456",
-                slugId: "project-456",
-              }],
+              nodes: [
+                {
+                  id: "project-456",
+                  slugId: "project-456",
+                },
+              ],
             },
           },
         },

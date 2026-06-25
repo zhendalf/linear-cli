@@ -1,16 +1,12 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import {
-  formatRelativeTime,
-  padDisplay,
-  truncateText,
-} from "../../utils/display.ts"
-import { handleError, NotFoundError } from "../../utils/errors.ts"
+import { formatRelativeTime, padDisplay, truncateText } from "../../utils/display.ts"
+import { NotFoundError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
-import { applyConsoleFormat } from "../../utils/styling.ts"
 import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
 
 /**
  * Resolve initiative ID from UUID, slug, or name
@@ -21,11 +17,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 
@@ -93,9 +85,7 @@ export const listCommand = new Command("list")
   .alias("ls")
   .argument("<initiativeId>")
   .option("-j, --json", "Output as JSON")
-  .addOption(
-    new Option("--limit <limit>", "Limit results").argParser(Number).default(10),
-  )
+  .addOption(new Option("--limit <limit>", "Limit results").argParser(Number).default(10))
   .action(async (initiativeId: string, options) => {
     const { json, limit } = options
     const showSpinner = shouldShowSpinner() && !json
@@ -160,9 +150,7 @@ export const listCommand = new Command("list")
       console.log(`Status updates for: ${initiative.name}\n`)
 
       // Calculate column widths
-      const { columns } = isStdoutTTY()
-        ? getConsoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
       // ID column - show first 8 chars of UUID
       const ID_WIDTH = 8
@@ -171,7 +159,7 @@ export const listCommand = new Command("list")
       const HEALTH_WIDTH = Math.max(
         6,
         ...updates.map((u: { health?: string }) =>
-          u.health ? (HEALTH_DISPLAY[u.health] || u.health).length : 1
+          u.health ? (HEALTH_DISPLAY[u.health] || u.health).length : 1,
         ),
       )
 
@@ -188,8 +176,7 @@ export const listCommand = new Command("list")
       )
 
       const SPACE_WIDTH = 4 // spaces between columns
-      const fixed = ID_WIDTH + HEALTH_WIDTH + DATE_WIDTH + AUTHOR_WIDTH +
-        SPACE_WIDTH
+      const fixed = ID_WIDTH + HEALTH_WIDTH + DATE_WIDTH + AUTHOR_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const availableWidth = Math.max(columns - PADDING - fixed, 10)
 
@@ -223,22 +210,17 @@ export const listCommand = new Command("list")
         user?: { name: string }
       }>) {
         const shortId = update.id.slice(0, 8)
-        const healthDisplay = update.health
-          ? (HEALTH_DISPLAY[update.health] || update.health)
-          : "-"
-        const healthColor = update.health
-          ? (HEALTH_COLORS[update.health] || "#6B6F76")
-          : "#6B6F76"
+        const healthDisplay = update.health ? HEALTH_DISPLAY[update.health] || update.health : "-"
+        const healthColor = update.health ? HEALTH_COLORS[update.health] || "#6B6F76" : "#6B6F76"
         const date = formatRelativeTime(update.createdAt)
         const author = update.user?.name || "-"
 
         console.log(
           applyConsoleFormat(
-            `${padDisplay(shortId, ID_WIDTH)} %c${
-              padDisplay(healthDisplay, HEALTH_WIDTH)
-            }%c %c${padDisplay(date, DATE_WIDTH)}%c ${
-              padDisplay(author, AUTHOR_WIDTH)
-            }`,
+            `${padDisplay(shortId, ID_WIDTH)} %c${padDisplay(
+              healthDisplay,
+              HEALTH_WIDTH,
+            )}%c %c${padDisplay(date, DATE_WIDTH)}%c ${padDisplay(author, AUTHOR_WIDTH)}`,
             `color: ${healthColor}`,
             "",
             "color: gray",
@@ -248,10 +230,7 @@ export const listCommand = new Command("list")
 
         // Print body preview if available (indented, on next line)
         if (update.body) {
-          const bodyPreview = truncateText(
-            update.body.replace(/\n/g, " ").trim(),
-            availableWidth,
-          )
+          const bodyPreview = truncateText(update.body.replace(/\n/g, " ").trim(), availableWidth)
           console.log(applyConsoleFormat(`  %c${bodyPreview}%c`, "color: gray", ""))
         }
       }

@@ -1,20 +1,16 @@
-import { Command } from "commander"
 import chalk from "chalk"
+import { Command } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay } from "../../utils/display.ts"
-import { getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
+import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
 import { muted } from "../../utils/styling.ts"
-import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
-import {
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 const GetTeamCycles = gql(`
   query GetTeamCycles($teamId: String!) {
@@ -63,9 +59,7 @@ export const listCommand = new Command("list")
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
-        throw new ValidationError(
-          "Could not determine team key from directory name or team flag",
-        )
+        throw new ValidationError("Could not determine team key from directory name or team flag")
       }
 
       const teamId = await getTeamIdByKey(teamKey)
@@ -87,25 +81,17 @@ export const listCommand = new Command("list")
         return
       }
 
-      const sortedCycles = [...cycles].sort((a, b) =>
-        b.startsAt.localeCompare(a.startsAt)
-      )
+      const sortedCycles = [...cycles].sort((a, b) => b.startsAt.localeCompare(a.startsAt))
 
-      const { columns } = isStdoutTTY()
-        ? getConsoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
-      const NUMBER_WIDTH = Math.max(
-        1,
-        ...sortedCycles.map((c) => String(c.number).length),
-      )
+      const NUMBER_WIDTH = Math.max(1, ...sortedCycles.map((c) => String(c.number).length))
       const START_WIDTH = 10
       const END_WIDTH = 10
       const STATUS_WIDTH = 9
       const SPACE_WIDTH = 4
 
-      const fixed = NUMBER_WIDTH + START_WIDTH + END_WIDTH + STATUS_WIDTH +
-        SPACE_WIDTH
+      const fixed = NUMBER_WIDTH + START_WIDTH + END_WIDTH + STATUS_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const maxNameWidth = Math.max(
         4,
@@ -126,9 +112,10 @@ export const listCommand = new Command("list")
 
       for (const cycle of sortedCycles) {
         const name = cycle.name || `Cycle ${cycle.number}`
-        const truncName = name.length > nameWidth
-          ? name.slice(0, nameWidth - 3) + "..."
-          : padDisplay(name, nameWidth)
+        const truncName =
+          name.length > nameWidth
+            ? name.slice(0, nameWidth - 3) + "..."
+            : padDisplay(name, nameWidth)
 
         const status = getCycleStatus(cycle)
         const statusStr = padDisplay(status, STATUS_WIDTH)
@@ -141,11 +128,13 @@ export const listCommand = new Command("list")
           statusDisplay = statusStr
         }
 
-        const line = `${
-          padDisplay(String(cycle.number), NUMBER_WIDTH)
-        } ${truncName} ${padDisplay(formatDate(cycle.startsAt), START_WIDTH)} ${
-          padDisplay(formatDate(cycle.endsAt), END_WIDTH)
-        } ${statusDisplay}`
+        const line = `${padDisplay(
+          String(cycle.number),
+          NUMBER_WIDTH,
+        )} ${truncName} ${padDisplay(formatDate(cycle.startsAt), START_WIDTH)} ${padDisplay(
+          formatDate(cycle.endsAt),
+          END_WIDTH,
+        )} ${statusDisplay}`
         console.log(line)
       }
     } catch (error) {

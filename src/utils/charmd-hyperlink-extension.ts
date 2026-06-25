@@ -16,11 +16,7 @@ export function createHyperlinkExtension(hyperlinkFormat: string): Extension {
 
   return {
     generateNode(
-      _generatorFn: (
-        node: Node,
-        parent: Node,
-        options: Options,
-      ) => string | undefined,
+      _generatorFn: (node: Node, parent: Node, options: Options) => string | undefined,
       node: Node,
       _parent: Node | undefined,
       _options: Options,

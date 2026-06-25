@@ -1,18 +1,15 @@
-import { mkdir, stat, writeFile } from "node:fs/promises"
-import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { createHash } from "node:crypto"
-import sanitize from "sanitize-filename"
-import { unified } from "unified"
+import { mkdir, stat, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import type { Image, Link, Root } from "mdast"
+import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
 import remarkStringify from "remark-stringify"
-import remarkGfm from "remark-gfm"
+import sanitize from "sanitize-filename"
+import { unified } from "unified"
 import { visit } from "unist-util-visit"
-import type { Image, Link, Root } from "mdast"
-import {
-  LINEAR_PRIVATE_UPLOAD_HOST,
-  LINEAR_UPLOAD_HOSTNAMES,
-} from "../const.ts"
+import { LINEAR_PRIVATE_UPLOAD_HOST, LINEAR_UPLOAD_HOSTNAMES } from "../const.ts"
 import { getResolvedApiKey } from "./graphql.ts"
 
 export const IMAGE_CACHE_DIR = join(
@@ -30,9 +27,7 @@ export interface LinkInfo {
   text: string | null
 }
 
-export function extractImageInfo(
-  content: string | null | undefined,
-): ImageInfo[] {
+export function extractImageInfo(content: string | null | undefined): ImageInfo[] {
   if (!content) return []
 
   const images: ImageInfo[] = []
@@ -47,9 +42,7 @@ export function extractImageInfo(
   return images
 }
 
-export function extractLinearLinkInfo(
-  content: string | null | undefined,
-): LinkInfo[] {
+export function extractLinearLinkInfo(content: string | null | undefined): LinkInfo[] {
   if (!content) return []
 
   const links: LinkInfo[] = []
@@ -112,10 +105,7 @@ async function ensureDir(dirPath: string): Promise<void> {
   await mkdir(dirPath, { recursive: true })
 }
 
-async function downloadImage(
-  url: string,
-  altText: string | null,
-): Promise<string> {
+async function downloadImage(url: string, altText: string | null): Promise<string> {
   const urlHash = await getUrlHash(url)
   const imageDir = join(IMAGE_CACHE_DIR, urlHash)
   await ensureDir(imageDir)
@@ -142,9 +132,7 @@ async function downloadImage(
 
   const response = await fetch(url, { headers })
   if (!response.ok) {
-    throw new Error(
-      `Failed to download image: ${response.status} ${response.statusText}`,
-    )
+    throw new Error(`Failed to download image: ${response.status} ${response.statusText}`)
   }
 
   const data = new Uint8Array(await response.arrayBuffer())
@@ -181,11 +169,7 @@ export async function downloadMarkdownImages(
       const path = await downloadImage(url, alt)
       urlToPath.set(url, path)
     } catch (error) {
-      console.error(
-        `Failed to download ${url}: ${
-          error instanceof Error ? error.message : error
-        }`,
-      )
+      console.error(`Failed to download ${url}: ${error instanceof Error ? error.message : error}`)
     }
   }
 

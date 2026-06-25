@@ -1,12 +1,12 @@
-import { Command } from "commander"
+import { stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { writeFile, stat } from "node:fs/promises"
+import { Command } from "commander"
 import { gql } from "../__codegen__/gql.ts"
-import { getGraphQLClient } from "../utils/graphql.ts"
-import { getDefaultWorkspace, getWorkspaces } from "../credentials.ts"
 import { getCliWorkspace, getOption, setCliWorkspace } from "../config.ts"
-import { AuthError, handleError, NotFoundError } from "../utils/errors.ts"
-import { select, searchSelect } from "../utils/prompt.ts"
+import { getDefaultWorkspace, getWorkspaces } from "../credentials.ts"
+import { AuthError, NotFoundError, handleError } from "../utils/errors.ts"
+import { getGraphQLClient } from "../utils/graphql.ts"
+import { searchSelect, select } from "../utils/prompt.ts"
 import { runCommand } from "../utils/runtime.ts"
 
 const configQuery = gql(`
@@ -39,9 +39,8 @@ export const configCommand = new Command("config")
 `)
 
       // Check for explicit API key sources (env var, config, or --workspace flag)
-      const hasExplicitApiKey = process.env["LINEAR_API_KEY"] ||
-        getOption("api_key") ||
-        getCliWorkspace()
+      const hasExplicitApiKey =
+        process.env["LINEAR_API_KEY"] || getOption("api_key") || getCliWorkspace()
 
       if (!hasExplicitApiKey) {
         const workspaces = getWorkspaces()
@@ -74,9 +73,7 @@ export const configCommand = new Command("config")
       const workspace = result.viewer.organization.urlKey
       const teams = result.teams.nodes
       // Sort teams alphabetically by name (case insensitive)
-      teams.sort((a, b) =>
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-      )
+      teams.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 
       // searchSelect replaces Select.prompt({ search: true })
       const selectedTeamId = await searchSelect({
@@ -106,10 +103,7 @@ export const configCommand = new Command("config")
       // Determine file path for .linear.toml: prefer git root .config dir, then git root, then cwd.
       let filePath: string
       try {
-        const gitRootResult = await runCommand("git", [
-          "rev-parse",
-          "--show-toplevel",
-        ])
+        const gitRootResult = await runCommand("git", ["rev-parse", "--show-toplevel"])
         if (!gitRootResult.success) {
           throw new Error("git rev-parse failed")
         }

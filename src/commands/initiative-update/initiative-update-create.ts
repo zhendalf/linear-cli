@@ -1,19 +1,14 @@
+import { readFile } from "node:fs/promises"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
 import { getEditor, openEditor } from "../../utils/editor.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { input, select } from "../../utils/prompt.ts"
 import { isStdinTTY, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { select, input } from "../../utils/prompt.ts"
-import { readFile } from "node:fs/promises"
 
 const HEALTH_VALUES = ["onTrack", "atRisk", "offTrack"] as const
 type HealthValue = (typeof HEALTH_VALUES)[number]
@@ -46,11 +41,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 
@@ -105,10 +96,7 @@ export const createCommand = new Command("create")
   .argument("<initiativeId>")
   .option("--body <body>", "Update content (markdown)")
   .option("--body-file <path>", "Read content from file")
-  .option(
-    "--health <health>",
-    "Health status (onTrack, atRisk, offTrack)",
-  )
+  .option("--health <health>", "Health status (onTrack, atRisk, offTrack)")
   .option("-i, --interactive", "Interactive mode with prompts")
   .action(async (initiativeId: string, options) => {
     const { body, bodyFile, health, interactive } = options
@@ -177,9 +165,7 @@ export const createCommand = new Command("create")
             throw new NotFoundError("File", bodyFile)
           }
           throw new CliError(
-            `Failed to read body file: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
+            `Failed to read body file: ${error instanceof Error ? error.message : String(error)}`,
             { cause: error },
           )
         }
@@ -237,9 +223,7 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
     default: "skip",
   })
 
-  const health = healthChoice === "skip"
-    ? undefined
-    : (healthChoice as HealthValue)
+  const health = healthChoice === "skip" ? undefined : (healthChoice as HealthValue)
 
   // Prompt for body entry method
   const editorName = await getEditor()
@@ -250,9 +234,7 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
     choices: [
       { name: "Skip (no content)", value: "skip" },
       { name: "Enter inline", value: "inline" },
-      ...(editorDisplayName
-        ? [{ name: `Open ${editorDisplayName}`, value: "editor" }]
-        : []),
+      ...(editorDisplayName ? [{ name: `Open ${editorDisplayName}`, value: "editor" }] : []),
       { name: "Read from file", value: "file" },
     ],
     default: "skip",
@@ -280,9 +262,7 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
       body = await readFile(filePath, "utf8")
     } catch (error) {
       throw new CliError(
-        `Failed to read file: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error },
       )
     }

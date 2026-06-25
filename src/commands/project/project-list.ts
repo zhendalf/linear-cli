@@ -1,20 +1,17 @@
 import { Command } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
-import type {
-  GetProjectsQuery,
-  ProjectStatusType,
-} from "../../__codegen__/graphql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getTimeAgo, padDisplay } from "../../utils/display.ts"
-import { LINEAR_WEB_BASE_URL } from "../../const.ts"
-import { getTeamKey } from "../../utils/linear.ts"
+import type { GetProjectsQuery, ProjectStatusType } from "../../__codegen__/graphql.ts"
 import { getOption } from "../../config.ts"
+import { LINEAR_WEB_BASE_URL } from "../../const.ts"
+import { getTimeAgo, padDisplay } from "../../utils/display.ts"
+import { ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { handleError, ValidationError } from "../../utils/errors.ts"
+import { getTeamKey } from "../../utils/linear.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
-import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 
 const GetProjects = gql(`
   query GetProjects($filter: ProjectFilter, $first: Int, $after: String) {
@@ -91,7 +88,7 @@ export const listCommand = new Command("list")
       }
 
       // Determine team to filter by for URL construction
-      const teamKey = allTeams ? null : (team?.toUpperCase() || getTeamKey())
+      const teamKey = allTeams ? null : team?.toUpperCase() || getTeamKey()
       const url = teamKey
         ? `${LINEAR_WEB_BASE_URL}/${workspace}/team/${teamKey}/projects/all`
         : `${LINEAR_WEB_BASE_URL}/${workspace}/projects/all`
@@ -108,13 +105,11 @@ export const listCommand = new Command("list")
     try {
       // Validate conflicting flags
       if (team && allTeams) {
-        throw new ValidationError(
-          "Cannot use both --team and --all-teams flags",
-        )
+        throw new ValidationError("Cannot use both --team and --all-teams flags")
       }
 
       // Determine team to filter by
-      const teamKey = allTeams ? null : (team?.toUpperCase() || getTeamKey())
+      const teamKey = allTeams ? null : team?.toUpperCase() || getTeamKey()
 
       let filter: Record<string, unknown> = {}
       if (teamKey) {
@@ -164,14 +159,16 @@ export const listCommand = new Command("list")
 
       if (projects.length === 0) {
         if (json) {
-          console.log(JSON.stringify(
-            {
-              nodes: allProjects,
-              pageInfo,
-            },
-            null,
-            2,
-          ))
+          console.log(
+            JSON.stringify(
+              {
+                nodes: allProjects,
+                pageInfo,
+              },
+              null,
+              2,
+            ),
+          )
         } else {
           console.log("No projects found.")
         }
@@ -180,20 +177,18 @@ export const listCommand = new Command("list")
 
       // Sort projects logically by status then by relevant date
       const statusOrder: Record<ProjectStatusType, number> = {
-        "started": 1,
-        "planned": 2,
-        "backlog": 3,
-        "paused": 4,
-        "completed": 5,
-        "canceled": 6,
+        started: 1,
+        planned: 2,
+        backlog: 3,
+        paused: 4,
+        completed: 5,
+        canceled: 6,
       }
 
       projects = projects.sort((a, b) => {
         // First sort by status type priority
-        const statusA =
-          statusOrder[a.status.type as keyof typeof statusOrder] || 999
-        const statusB =
-          statusOrder[b.status.type as keyof typeof statusOrder] || 999
+        const statusA = statusOrder[a.status.type as keyof typeof statusOrder] || 999
+        const statusB = statusOrder[b.status.type as keyof typeof statusOrder] || 999
 
         if (statusA !== statusB) {
           return statusA - statusB
@@ -204,28 +199,28 @@ export const listCommand = new Command("list")
       })
 
       if (json) {
-        console.log(JSON.stringify(
-          {
-            nodes: projects,
-            pageInfo,
-          },
-          null,
-          2,
-        ))
+        console.log(
+          JSON.stringify(
+            {
+              nodes: projects,
+              pageInfo,
+            },
+            null,
+            2,
+          ),
+        )
         return
       }
 
       // Helper function to get the most relevant date to display
-      const getDisplayDate = (
-        project: GetProjectsQuery["projects"]["nodes"][0],
-      ) => {
+      const getDisplayDate = (project: GetProjectsQuery["projects"]["nodes"][0]) => {
         switch (project.status.type) {
           case "started":
             return project.startedAt
               ? `Started ${getTimeAgo(new Date(project.startedAt))}`
               : project.startDate
-              ? `Start: ${project.startDate}`
-              : `Created ${getTimeAgo(new Date(project.createdAt))}`
+                ? `Start: ${project.startDate}`
+                : `Created ${getTimeAgo(new Date(project.createdAt))}`
           case "completed":
             return project.completedAt
               ? `Done ${getTimeAgo(new Date(project.completedAt))}`
@@ -238,8 +233,8 @@ export const listCommand = new Command("list")
             return project.startDate
               ? `Start: ${project.startDate}`
               : project.targetDate
-              ? `Target: ${project.targetDate}`
-              : `Created ${getTimeAgo(new Date(project.createdAt))}`
+                ? `Target: ${project.targetDate}`
+                : `Created ${getTimeAgo(new Date(project.createdAt))}`
           case "backlog":
           case "paused":
           default:
@@ -269,8 +264,7 @@ export const listCommand = new Command("list")
       const PRIORITY_WIDTH = Math.max(
         8, // minimum width for "PRIORITY" header
         ...projects.map((project) => {
-          const priority =
-            priorityMap[project.priority as keyof typeof priorityMap] || "None"
+          const priority = priorityMap[project.priority as keyof typeof priorityMap] || "None"
           return priority.length
         }),
       )
@@ -299,12 +293,17 @@ export const listCommand = new Command("list")
       )
       const SPACE_WIDTH = 4
 
-      const fixed = SLUG_WIDTH + STATUS_WIDTH + PRIORITY_WIDTH + HEALTH_WIDTH +
-        LEAD_WIDTH + TEAMS_WIDTH + DATE_WIDTH + SPACE_WIDTH
+      const fixed =
+        SLUG_WIDTH +
+        STATUS_WIDTH +
+        PRIORITY_WIDTH +
+        HEALTH_WIDTH +
+        LEAD_WIDTH +
+        TEAMS_WIDTH +
+        DATE_WIDTH +
+        SPACE_WIDTH
       const PADDING = 1
-      const maxNameWidth = Math.max(
-        ...projects.map((project) => stringWidth(project.name)),
-      )
+      const maxNameWidth = Math.max(...projects.map((project) => stringWidth(project.name)))
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
 
@@ -335,26 +334,29 @@ export const listCommand = new Command("list")
 
       // Print each project
       for (const project of projects) {
-        const priorityLabel =
-          priorityMap[project.priority as keyof typeof priorityMap] || "None"
+        const priorityLabel = priorityMap[project.priority as keyof typeof priorityMap] || "None"
         const health = project.health || "Unknown"
         const lead = project.lead?.initials || "-"
         const teams = project.teams.nodes.map((t) => t.key).join(",") || "-"
         const dateDisplay = getDisplayDate(project)
 
-        const truncName = project.name.length > nameWidth
-          ? project.name.slice(0, nameWidth - 3) + "..."
-          : padDisplay(project.name, nameWidth)
+        const truncName =
+          project.name.length > nameWidth
+            ? project.name.slice(0, nameWidth - 3) + "..."
+            : padDisplay(project.name, nameWidth)
 
         console.log(
           applyConsoleFormat(
-            `${padDisplay(project.slugId, SLUG_WIDTH)} ${truncName} %c${
-              padDisplay(project.status.name, STATUS_WIDTH)
-            }%c ${padDisplay(priorityLabel, PRIORITY_WIDTH)} ${
-              padDisplay(health, HEALTH_WIDTH)
-            } ${padDisplay(lead, LEAD_WIDTH)} ${
-              padDisplay(teams, TEAMS_WIDTH)
-            } %c${padDisplay(dateDisplay, DATE_WIDTH)}%c`,
+            `${padDisplay(project.slugId, SLUG_WIDTH)} ${truncName} %c${padDisplay(
+              project.status.name,
+              STATUS_WIDTH,
+            )}%c ${padDisplay(priorityLabel, PRIORITY_WIDTH)} ${padDisplay(
+              health,
+              HEALTH_WIDTH,
+            )} ${padDisplay(lead, LEAD_WIDTH)} ${padDisplay(
+              teams,
+              TEAMS_WIDTH,
+            )} %c${padDisplay(dateDisplay, DATE_WIDTH)}%c`,
             `color: ${project.status.color}`,
             "",
             "color: gray",

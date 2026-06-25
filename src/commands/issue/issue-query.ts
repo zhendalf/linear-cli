@@ -1,14 +1,10 @@
+import chalk from "chalk"
 import { Command, Option } from "commander"
 import stringWidth from "string-width"
-import chalk from "chalk"
 import { getOption } from "../../config.ts"
-import { collectEnum, ISSUE_STATE_TYPES } from "../../utils/option-parsers.ts"
-import {
-  getPriorityDisplay,
-  getTimeAgo,
-  padDisplay,
-  truncateText,
-} from "../../utils/display.ts"
+import { getPriorityDisplay, getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
+import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
   fetchIssuesForQuery,
   getCycleIdByNameOrNumber,
@@ -21,29 +17,18 @@ import {
   searchIssuesByTerm,
   selectOption,
 } from "../../utils/linear.ts"
+import { ISSUE_STATE_TYPES, collectEnum } from "../../utils/option-parsers.ts"
 import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
-import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getConsoleSize, isStdinTTY, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { header, muted, warning } from "../../utils/styling.ts"
-import { isStdoutTTY, isStdinTTY, getConsoleSize } from "../../utils/runtime.ts"
-import {
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 import type { SpinnerHandle } from "../../utils/spinner.ts"
+import { header, muted, warning } from "../../utils/styling.ts"
 
 export const queryCommand = new Command("query")
   .alias("q")
   .description("Query issues with structured filters")
-  .option(
-    "--search <term>",
-    "Full-text search term",
-  )
-  .option(
-    "--search-comments",
-    "Also search inside issue comments (requires --search)",
-  )
+  .option("--search <term>", "Full-text search term")
+  .option("--search-comments", "Also search inside issue comments (requires --search)")
   .option(
     "--team <team>",
     "Filter by team key (can be repeated for multiple teams)",
@@ -58,10 +43,7 @@ export const queryCommand = new Command("query")
   )
   .option("--all-states", "Show issues from all states (this is the default)")
   .option("--assignee <assignee>", "Filter by assignee (username)")
-  .option(
-    "-A, --all-assignees",
-    "Show issues for all assignees (this is the default)",
-  )
+  .option("-A, --all-assignees", "Show issues for all assignees (this is the default)")
   .option("-U, --unassigned", "Show only unassigned issues")
   .addOption(
     new Option(
@@ -69,22 +51,13 @@ export const queryCommand = new Command("query")
       "Sort order: manual or priority (default: priority, not available with --search)",
     ).choices(["manual", "priority"]),
   )
-  .option(
-    "--project <project>",
-    "Filter by project name",
-  )
+  .option("--project <project>", "Filter by project name")
   .option(
     "--project-label <projectLabel>",
     "Filter by project label name (shows issues from all projects with this label)",
   )
-  .option(
-    "--cycle <cycle>",
-    "Filter by cycle name, number, or 'active'",
-  )
-  .option(
-    "--milestone <milestone>",
-    "Filter by project milestone name (requires --project)",
-  )
+  .option("--cycle <cycle>", "Filter by cycle name, number, or 'active'")
+  .option("--milestone <milestone>", "Filter by project milestone name (requires --project)")
   .option(
     "-l, --label <label>",
     "Filter by label name (can be repeated for multiple labels)",
@@ -140,81 +113,58 @@ export const queryCommand = new Command("query")
       // --- Validation ---
 
       const teamKeys = teamFlags
-        ? (Array.isArray(teamFlags) ? teamFlags.flat() : [teamFlags]).map((
-          t: string,
-        ) => t.toUpperCase())
+        ? (Array.isArray(teamFlags) ? teamFlags.flat() : [teamFlags]).map((t: string) =>
+            t.toUpperCase(),
+          )
         : undefined
 
       if (teamKeys && teamKeys.length > 0 && allTeams) {
-        throw new ValidationError(
-          "Cannot use both --team and --all-teams flags",
-        )
+        throw new ValidationError("Cannot use both --team and --all-teams flags")
       }
 
-      const assigneeFilterCount =
-        [assignee, allAssignees, unassigned].filter(Boolean).length
+      const assigneeFilterCount = [assignee, allAssignees, unassigned].filter(Boolean).length
       if (assigneeFilterCount > 1) {
         throw new ValidationError(
           "Cannot specify multiple assignee filters (--assignee, --all-assignees, --unassigned)",
         )
       }
 
-      const stateArray = state
-        ? (Array.isArray(state) ? state.flat() : [state])
-        : undefined
+      const stateArray = state ? (Array.isArray(state) ? state.flat() : [state]) : undefined
 
       if (allStates && stateArray && stateArray.length > 0) {
         throw new ValidationError("Cannot use --all-states with --state flag")
       }
 
       if (project != null && projectLabel != null) {
-        throw new ValidationError(
-          "Cannot use --project and --project-label together",
-          {
-            suggestion:
-              "Use --project to filter by a single project, or --project-label to filter by all projects with a given label.",
-          },
-        )
+        throw new ValidationError("Cannot use --project and --project-label together", {
+          suggestion:
+            "Use --project to filter by a single project, or --project-label to filter by all projects with a given label.",
+        })
       }
 
       if (milestone != null && project == null) {
-        throw new ValidationError(
-          "--milestone requires --project to be set",
-          {
-            suggestion:
-              "Use --project to specify which project the milestone belongs to.",
-          },
-        )
+        throw new ValidationError("--milestone requires --project to be set", {
+          suggestion: "Use --project to specify which project the milestone belongs to.",
+        })
       }
 
       if (milestone != null && projectLabel != null) {
-        throw new ValidationError(
-          "--milestone cannot be used with --project-label",
-          {
-            suggestion:
-              "Use --project to specify a single project when filtering by milestone.",
-          },
-        )
+        throw new ValidationError("--milestone cannot be used with --project-label", {
+          suggestion: "Use --project to specify a single project when filtering by milestone.",
+        })
       }
 
       if (searchComments && !search) {
-        throw new ValidationError(
-          "--search-comments requires --search to be set",
-          {
-            suggestion:
-              'Use --search to provide a search term, e.g. --search "oauth timeout" --search-comments.',
-          },
-        )
+        throw new ValidationError("--search-comments requires --search to be set", {
+          suggestion:
+            'Use --search to provide a search term, e.g. --search "oauth timeout" --search-comments.',
+        })
       }
 
       if (sortFlag && search) {
-        throw new ValidationError(
-          "--sort cannot be used with --search",
-          {
-            suggestion:
-              "Search results use relevance ordering. Remove --sort when using --search.",
-          },
-        )
+        throw new ValidationError("--sort cannot be used with --search", {
+          suggestion: "Search results use relevance ordering. Remove --sort when using --search.",
+        })
       }
 
       if (limit < 0) {
@@ -235,13 +185,10 @@ export const queryCommand = new Command("query")
       } else {
         const defaultTeam = getTeamKey()
         if (!defaultTeam) {
-          throw new ValidationError(
-            "No default team configured and no team scope provided",
-            {
-              suggestion:
-                "Use --team <key> to specify a team, or --all-teams to query the whole workspace.",
-            },
-          )
+          throw new ValidationError("No default team configured and no team scope provided", {
+            suggestion:
+              "Use --team <key> to specify a team, or --all-teams to query the whole workspace.",
+          })
         }
         console.error(
           `Note: using default team ${defaultTeam}. Pass --team <key> or --all-teams to be explicit.`,
@@ -261,9 +208,9 @@ export const queryCommand = new Command("query")
           }
           if (!isStdinTTY()) {
             throw new ValidationError(
-              `Project "${project}" not found. Similar projects: ${
-                Object.values(projectOptions).join(", ")
-              }`,
+              `Project "${project}" not found. Similar projects: ${Object.values(
+                projectOptions,
+              ).join(", ")}`,
             )
           }
           projectId = await selectOption("Project", project, projectOptions)
@@ -274,13 +221,9 @@ export const queryCommand = new Command("query")
       if (cycle != null) {
         // Cycle lookup requires a single team
         if (isMultiTeam || !resolvedTeamKeys || resolvedTeamKeys.length !== 1) {
-          throw new ValidationError(
-            "--cycle requires a single team scope",
-            {
-              suggestion:
-                "Use --team <key> to specify exactly one team when filtering by cycle.",
-            },
-          )
+          throw new ValidationError("--cycle requires a single team scope", {
+            suggestion: "Use --team <key> to specify exactly one team when filtering by cycle.",
+          })
         }
         const teamId = await getTeamIdByKey(resolvedTeamKeys[0])
         if (!teamId) {
@@ -294,9 +237,8 @@ export const queryCommand = new Command("query")
         milestoneId = await getMilestoneIdByName(milestone, projectId)
       }
 
-      const labelNames = label && label.length > 0
-        ? (Array.isArray(label) ? label.flat() : [label])
-        : undefined
+      const labelNames =
+        label && label.length > 0 ? (Array.isArray(label) ? label.flat() : [label]) : undefined
 
       // --- Fetch ---
 
@@ -305,9 +247,9 @@ export const queryCommand = new Command("query")
       spinner.start()
 
       // Resolve sort for non-search mode
-      const sort = search ? undefined : (sortFlag ||
-        (getOption("issue_sort") as "manual" | "priority" | undefined) ||
-        "priority")
+      const sort = search
+        ? undefined
+        : sortFlag || (getOption("issue_sort") as "manual" | "priority" | undefined) || "priority"
 
       if (search) {
         // --- Search mode: use searchIssues() backend ---
@@ -344,11 +286,7 @@ export const queryCommand = new Command("query")
         }
 
         const showAssignee = assignee == null && !unassigned
-        const outputLines = formatIssueTable(
-          result.nodes,
-          isMultiTeam,
-          showAssignee,
-        )
+        const outputLines = formatIssueTable(result.nodes, isMultiTeam, showAssignee)
         outputPaged(outputLines, pager !== false)
       } else {
         // --- Filter mode: use issues() backend ---
@@ -383,11 +321,7 @@ export const queryCommand = new Command("query")
         }
 
         const showAssignee = assignee == null && !unassigned
-        const outputLines = formatIssueTable(
-          result.nodes,
-          isMultiTeam,
-          showAssignee,
-        )
+        const outputLines = formatIssueTable(result.nodes, isMultiTeam, showAssignee)
         outputPaged(outputLines, pager !== false)
       }
     } catch (error) {
@@ -396,10 +330,7 @@ export const queryCommand = new Command("query")
     }
   })
 
-async function outputPaged(
-  outputLines: string[],
-  usePager: boolean,
-): Promise<void> {
+async function outputPaged(outputLines: string[], usePager: boolean): Promise<void> {
   if (shouldUsePager(outputLines, usePager)) {
     await pipeToUserPager(outputLines.join("\n"))
   } else {
@@ -431,34 +362,21 @@ function formatIssueTable(
   showTeamColumn: boolean,
   showAssigneeColumn: boolean,
 ): string[] {
-  const { columns } = isStdoutTTY()
-    ? getConsoleSize()
-    : { columns: 120 }
+  const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
   const priorityWidth = 3
   const blockedWidth = 1
   const idWidth = Math.max(2, ...issues.map((i) => i.identifier.length))
   const teamWidth = showTeamColumn
-    ? Math.max(
-      4,
-      ...issues.map((i) => stringWidth(i.team?.key ?? "")),
-    )
+    ? Math.max(4, ...issues.map((i) => stringWidth(i.team?.key ?? "")))
     : 0
   const labelWidth = Math.min(
     25,
-    Math.max(
-      6,
-      ...issues.map((i) =>
-        stringWidth(i.labels.nodes.map((l) => l.name).join(", "))
-      ),
-    ),
+    Math.max(6, ...issues.map((i) => stringWidth(i.labels.nodes.map((l) => l.name).join(", ")))),
   )
   const estimateWidth = 1
   const assigneeWidth = showAssigneeColumn ? 2 : 0
-  const stateWidth = Math.min(
-    20,
-    Math.max(5, ...issues.map((i) => stringWidth(i.state.name))),
-  )
+  const stateWidth = Math.min(20, Math.max(5, ...issues.map((i) => stringWidth(i.state.name))))
   const updatedHeader = "UPDATED"
   const updatedWidth = Math.max(
     stringWidth(updatedHeader),
@@ -477,8 +395,7 @@ function formatIssueTable(
     updatedWidth,
   ]
   const interCellSpacing = fixedCells.length + 1
-  const fixedWidth = fixedCells.reduce((sum, w) => sum + w, 0) +
-    interCellSpacing
+  const fixedWidth = fixedCells.reduce((sum, w) => sum + w, 0) + interCellSpacing
   const maxTitleWidth = Math.max(...issues.map((i) => stringWidth(i.title)))
   const titleWidth = Math.max(10, Math.min(maxTitleWidth, columns - fixedWidth))
 
@@ -498,17 +415,11 @@ function formatIssueTable(
   const outputLines = [header(headerCells.join(" "))]
 
   for (const issue of issues) {
-    const title = padDisplay(
-      truncateText(issue.title, titleWidth),
-      titleWidth,
-    )
+    const title = padDisplay(truncateText(issue.title, titleWidth), titleWidth)
     const stateName = truncateText(issue.state.name, stateWidth)
     const coloredState = chalk.hex(issue.state.color)(stateName)
-    const state = coloredState +
-      " ".repeat(Math.max(0, stateWidth - stringWidth(stateName)))
-    const timeAgo = muted(
-      padDisplay(getTimeAgo(new Date(issue.updatedAt)), updatedWidth),
-    )
+    const state = coloredState + " ".repeat(Math.max(0, stateWidth - stringWidth(stateName)))
+    const timeAgo = muted(padDisplay(getTimeAgo(new Date(issue.updatedAt)), updatedWidth))
     const blockedCell = isIssueBlocked(issue) ? warning("⊘") : " "
     const cells = [
       padDisplay(getPriorityDisplay(issue.priority), priorityWidth),
@@ -519,12 +430,7 @@ function formatIssueTable(
       padDisplay(blockedCell, blockedWidth),
       padDisplay(issue.estimate?.toString() || "-", estimateWidth),
       ...(showAssigneeColumn
-        ? [
-          padDisplay(
-            issue.assignee?.initials?.slice(0, 2) || "-",
-            assigneeWidth,
-          ),
-        ]
+        ? [padDisplay(issue.assignee?.initials?.slice(0, 2) || "-", assigneeWidth)]
         : []),
       state,
       timeAgo,
@@ -535,10 +441,7 @@ function formatIssueTable(
   return outputLines
 }
 
-function formatLabels(
-  labels: Array<{ name: string; color: string }>,
-  labelWidth: number,
-): string {
+function formatLabels(labels: Array<{ name: string; color: string }>, labelWidth: number): string {
   if (labels.length === 0) {
     return " ".repeat(labelWidth)
   }
@@ -555,13 +458,8 @@ function formatLabels(
     if (currentWidth + stringWidth(testText) > labelWidth) {
       const remainingWidth = labelWidth - currentWidth
       if (remainingWidth >= 4) {
-        const truncatedName = truncateText(
-          currentLabel.name,
-          remainingWidth - separator.length,
-        )
-        coloredLabels.push(
-          separator + chalk.hex(currentLabel.color)(truncatedName),
-        )
+        const truncatedName = truncateText(currentLabel.name, remainingWidth - separator.length)
+        coloredLabels.push(separator + chalk.hex(currentLabel.color)(truncatedName))
       }
       break
     }

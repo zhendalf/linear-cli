@@ -1,9 +1,9 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { LINEAR_WEB_BASE_URL } from "../../const.ts"
 import { getCredentialsPath } from "../../credentials.ts"
 import { handleError } from "../../utils/errors.ts"
 import { getGraphQLClient, getResolvedApiKey } from "../../utils/graphql.ts"
-import { LINEAR_WEB_BASE_URL } from "../../const.ts"
 
 const viewerQuery = gql(`
   query AuthStatus {

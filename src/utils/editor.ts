@@ -1,17 +1,13 @@
-import { readFile, rm, mkdtemp } from "node:fs/promises"
-import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { spawn } from "node:child_process"
+import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { runCommand } from "./runtime.ts"
 
 export async function getEditor(): Promise<string | null> {
   // Try git config first
   try {
-    const { success, stdout } = await runCommand("git", [
-      "config",
-      "--global",
-      "core.editor",
-    ])
+    const { success, stdout } = await runCommand("git", ["config", "--global", "core.editor"])
     if (success) {
       const editor = stdout.trim()
       if (editor) return editor
@@ -68,10 +64,7 @@ export async function openEditor(): Promise<string | undefined> {
 
     return cleaned.length > 0 ? cleaned : undefined
   } catch (error) {
-    console.error(
-      "Failed to open editor:",
-      error instanceof Error ? error.message : String(error),
-    )
+    console.error("Failed to open editor:", error instanceof Error ? error.message : String(error))
     return undefined
   } finally {
     // Clean up the temporary file

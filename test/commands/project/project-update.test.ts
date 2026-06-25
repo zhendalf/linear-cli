@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { updateCommand } from "../../../src/commands/project/project-update.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -18,11 +18,7 @@ await snapshotTest({
   name: "Project Update Command - Update Name",
   meta: import.meta,
   colors: false,
-  args: [
-    "550e8400-e29b-41d4-a716-446655440000",
-    "--name",
-    "Updated Project Name",
-  ],
+  args: ["550e8400-e29b-41d4-a716-446655440000", "--name", "Updated Project Name"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -64,11 +60,7 @@ await snapshotTest({
   name: "Project Update Command - Update Description",
   meta: import.meta,
   colors: false,
-  args: [
-    "550e8400-e29b-41d4-a716-446655440001",
-    "--description",
-    "New project description",
-  ],
+  args: ["550e8400-e29b-41d4-a716-446655440001", "--description", "New project description"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -110,11 +102,7 @@ await snapshotTest({
   name: "Project Update Command - Update Status",
   meta: import.meta,
   colors: false,
-  args: [
-    "550e8400-e29b-41d4-a716-446655440002",
-    "--status",
-    "completed",
-  ],
+  args: ["550e8400-e29b-41d4-a716-446655440002", "--status", "completed"],
   async fn() {
     const server = new MockLinearServer([
       {

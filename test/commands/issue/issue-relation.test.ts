@@ -1,5 +1,5 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { relationCommand } from "../../../src/commands/issue/issue-relation.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output

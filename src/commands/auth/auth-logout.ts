@@ -5,8 +5,8 @@ import {
   hasWorkspace,
   removeCredential,
 } from "../../credentials.ts"
-import { AuthError, handleError, NotFoundError } from "../../utils/errors.ts"
-import { select, confirm } from "../../utils/prompt.ts"
+import { AuthError, NotFoundError, handleError } from "../../utils/errors.ts"
+import { confirm, select } from "../../utils/prompt.ts"
 
 export const logoutCommand = new Command("logout")
   .description("Remove a workspace credential")

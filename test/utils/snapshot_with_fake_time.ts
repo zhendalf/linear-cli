@@ -14,7 +14,7 @@
  *   })
  */
 
-import { test, expect, setSystemTime } from "bun:test"
+import { expect, setSystemTime, test } from "bun:test"
 
 // Mutex to serialize snapshot tests - they modify process globals (argv, env, stdout)
 // and must not run concurrently even when bun:test runs tests in parallel
@@ -23,7 +23,10 @@ let snapshotMutex: Promise<void> = Promise.resolve()
 function withMutex<T>(fn: () => Promise<T>): Promise<T> {
   const result = snapshotMutex.then(fn)
   // Allow errors to propagate to caller but not block subsequent tests
-  snapshotMutex = result.then(() => {}, () => {})
+  snapshotMutex = result.then(
+    () => {},
+    () => {},
+  )
   return result
 }
 
@@ -175,51 +178,60 @@ export async function captureOutput(
  * Register a snapshot test using bun:test.
  * The old cliffy harness spawned a subprocess per test; this runs in-process.
  */
-export async function snapshotTest(
-  options: SnapshotTestWithFakeTimeOptions,
-): Promise<void> {
-  const { name, fn, fakeTime, colors = false, ignore = false, only = false, canFail = false } = options
+export async function snapshotTest(options: SnapshotTestWithFakeTimeOptions): Promise<void> {
+  const {
+    name,
+    fn,
+    fakeTime,
+    colors = false,
+    ignore = false,
+    only = false,
+    canFail = false,
+  } = options
 
-  const testFn = only ? test.only : (ignore ? test.skip : test)
+  const testFn = only ? test.only : ignore ? test.skip : test
 
-  testFn(name, () => withMutex(async () => {
-    // Set up fake time if requested
-    if (fakeTime != null) {
-      const fakeTimeValue = fakeTime instanceof Date
-        ? fakeTime
-        : new Date(typeof fakeTime === "number" ? fakeTime : fakeTime)
-      setSystemTime(fakeTimeValue)
-    }
-
-    // Disable colors for snapshot tests unless explicitly enabled
-    const chalk = (await import("chalk")).default
-    const origChalkLevel = chalk.level
-    if (!colors) {
-      chalk.level = 0
-    }
-
-    // Set process.argv so commander's .parse() (without args) reads the test args
-    const origArgv = process.argv
-    const testArgs = options.args ?? []
-    process.argv = ["node", "test-file.ts", ...testArgs]
-
-    try {
-      const { stdout, stderr } = await captureOutput(fn, { canFail })
-      const cleanStdout = colors ? stdout : stripAnsi(stdout)
-      const cleanStderr = colors ? stderr : stripAnsi(stderr)
-
-      // Format output like the old cliffy harness: stdout + stderr combined
-      const output = `stdout:\n"${cleanStdout}"\nstderr:\n"${cleanStderr}"`
-
-      expect(output).toMatchSnapshot()
-    } finally {
-      process.argv = origArgv
-      // Restore fake time
+  testFn(name, () =>
+    withMutex(async () => {
+      // Set up fake time if requested
       if (fakeTime != null) {
-        setSystemTime()
+        const fakeTimeValue =
+          fakeTime instanceof Date
+            ? fakeTime
+            : new Date(typeof fakeTime === "number" ? fakeTime : fakeTime)
+        setSystemTime(fakeTimeValue)
       }
-      // Restore chalk
-      chalk.level = origChalkLevel
-    }
-  }))
+
+      // Disable colors for snapshot tests unless explicitly enabled
+      const chalk = (await import("chalk")).default
+      const origChalkLevel = chalk.level
+      if (!colors) {
+        chalk.level = 0
+      }
+
+      // Set process.argv so commander's .parse() (without args) reads the test args
+      const origArgv = process.argv
+      const testArgs = options.args ?? []
+      process.argv = ["node", "test-file.ts", ...testArgs]
+
+      try {
+        const { stdout, stderr } = await captureOutput(fn, { canFail })
+        const cleanStdout = colors ? stdout : stripAnsi(stdout)
+        const cleanStderr = colors ? stderr : stripAnsi(stderr)
+
+        // Format output like the old cliffy harness: stdout + stderr combined
+        const output = `stdout:\n"${cleanStdout}"\nstderr:\n"${cleanStderr}"`
+
+        expect(output).toMatchSnapshot()
+      } finally {
+        process.argv = origArgv
+        // Restore fake time
+        if (fakeTime != null) {
+          setSystemTime()
+        }
+        // Restore chalk
+        chalk.level = origChalkLevel
+      }
+    }),
+  )
 }

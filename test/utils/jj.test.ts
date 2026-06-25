@@ -1,19 +1,14 @@
 import { expect, test } from "bun:test"
-import {
-  parseJjTrailersOutput,
-  parseLinearIssueFromTrailer,
-} from "../../src/utils/jj.ts"
+import { parseJjTrailersOutput, parseLinearIssueFromTrailer } from "../../src/utils/jj.ts"
 
 test("parseLinearIssueFromTrailer - extracts issue ID from standard format", () => {
-  const trailer =
-    "[ABC-123](https://linear.app/workspace/issue/ABC-123/some-title)"
+  const trailer = "[ABC-123](https://linear.app/workspace/issue/ABC-123/some-title)"
   const result = parseLinearIssueFromTrailer(trailer)
   expect(result).toBe("ABC-123")
 })
 
 test("parseLinearIssueFromTrailer - handles lowercase issue IDs", () => {
-  const trailer =
-    "[abc-456](https://linear.app/workspace/issue/abc-456/some-title)"
+  const trailer = "[abc-456](https://linear.app/workspace/issue/abc-456/some-title)"
   const result = parseLinearIssueFromTrailer(trailer)
   expect(result).toBe("ABC-456")
 })
@@ -26,22 +21,19 @@ test("parseLinearIssueFromTrailer - extracts from Tanookilabs format", () => {
 })
 
 test("parseLinearIssueFromTrailer - handles multi-character team prefix", () => {
-  const trailer =
-    "[TEAM-1](https://linear.app/workspace/issue/TEAM-1/some-title)"
+  const trailer = "[TEAM-1](https://linear.app/workspace/issue/TEAM-1/some-title)"
   const result = parseLinearIssueFromTrailer(trailer)
   expect(result).toBe("TEAM-1")
 })
 
 test("parseLinearIssueFromTrailer - handles alphanumeric team keys", () => {
-  const trailer =
-    "[PLA4-16916](https://linear.app/workspace/issue/PLA4-16916/some-title)"
+  const trailer = "[PLA4-16916](https://linear.app/workspace/issue/PLA4-16916/some-title)"
   const result = parseLinearIssueFromTrailer(trailer)
   expect(result).toBe("PLA4-16916")
 })
 
 test("parseLinearIssueFromTrailer - handles large issue numbers", () => {
-  const trailer =
-    "[CLI-12345](https://linear.app/workspace/issue/CLI-12345/some-title)"
+  const trailer = "[CLI-12345](https://linear.app/workspace/issue/CLI-12345/some-title)"
   const result = parseLinearIssueFromTrailer(trailer)
   expect(result).toBe("CLI-12345")
 })
@@ -65,20 +57,14 @@ test("parseLinearIssueFromTrailer - extracts issue ID from bare format", () => {
 })
 
 test("parseLinearIssueFromTrailer - returns null for issue starting with zero", () => {
-  const trailer =
-    "[ABC-0123](https://linear.app/workspace/issue/ABC-0123/some-title)"
+  const trailer = "[ABC-0123](https://linear.app/workspace/issue/ABC-0123/some-title)"
   const result = parseLinearIssueFromTrailer(trailer)
   // The regex should not match issue numbers starting with 0
   expect(result).toBeNull()
 })
 
 test("parseLinearIssueFromTrailer - extracts issue ID with various magic words", () => {
-  const testCases = [
-    "Closes ABC-456",
-    "Resolves XYZ-789",
-    "Ref TEAM-42",
-    "Part of PROJ-100",
-  ]
+  const testCases = ["Closes ABC-456", "Resolves XYZ-789", "Ref TEAM-42", "Part of PROJ-100"]
 
   for (const trailer of testCases) {
     const result = parseLinearIssueFromTrailer(trailer)

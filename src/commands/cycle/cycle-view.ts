@@ -1,21 +1,13 @@
 import { Command } from "commander"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
-import {
-  getCycleIdByNameOrNumber,
-  getTeamIdByKey,
-  getTeamKey,
-} from "../../utils/linear.ts"
+import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getCycleIdByNameOrNumber, getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import {
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 const GetCycleDetails = gql(`
   query GetCycleDetails($id: String!) {
@@ -62,9 +54,7 @@ export const viewCommand = new Command("view")
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
-        throw new ValidationError(
-          "Could not determine team key from directory name or team flag",
-        )
+        throw new ValidationError("Could not determine team key from directory name or team flag")
       }
 
       const teamId = await getTeamIdByKey(teamKey)
@@ -103,9 +93,7 @@ export const viewCommand = new Command("view")
       else if (cycle.isPast) status = "Past"
       lines.push(`**Status:** ${status}`)
 
-      lines.push(
-        `**Team:** ${cycle.team.name} (${cycle.team.key})`,
-      )
+      lines.push(`**Team:** ${cycle.team.name} (${cycle.team.key})`)
 
       lines.push("")
       lines.push(`**Created:** ${formatRelativeTime(cycle.createdAt)}`)
@@ -155,16 +143,12 @@ export const viewCommand = new Command("view")
         lines.push("**Issues:**")
         lines.push("")
         cycle.issues.nodes.slice(0, 10).forEach((issue) => {
-          lines.push(
-            `- ${issue.identifier}: ${issue.title} (${issue.state.name})`,
-          )
+          lines.push(`- ${issue.identifier}: ${issue.title} (${issue.state.name})`)
         })
 
         if (cycle.issues.nodes.length > 10) {
           lines.push("")
-          lines.push(
-            `_...and ${cycle.issues.nodes.length - 10} more issues_`,
-          )
+          lines.push(`_...and ${cycle.issues.nodes.length - 10} more issues_`)
         }
       } else {
         lines.push("")

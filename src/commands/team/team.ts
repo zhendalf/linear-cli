@@ -1,11 +1,11 @@
 import { Command } from "commander"
 
-import { idCommand } from "./team-id.ts"
 import { autolinksCommand } from "./team-autolinks.ts"
-import { membersCommand } from "./team-members.ts"
-import { listCommand } from "./team-list.ts"
 import { createCommand } from "./team-create.ts"
 import { deleteCommand } from "./team-delete.ts"
+import { idCommand } from "./team-id.ts"
+import { listCommand } from "./team-list.ts"
+import { membersCommand } from "./team-members.ts"
 
 export const teamCommand = new Command("team")
   .alias("t")

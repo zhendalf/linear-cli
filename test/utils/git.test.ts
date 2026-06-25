@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
+import { execFileSync } from "node:child_process"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { execFileSync } from "node:child_process"
-import { getCurrentBranch, getRepoDir } from "../../src/utils/git.ts"
 import { CliError } from "../../src/utils/errors.ts"
+import { getCurrentBranch, getRepoDir } from "../../src/utils/git.ts"
 
 test("getCurrentBranch - handles errors when not in a git repository", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "linear-git-test-"))
@@ -48,7 +48,9 @@ test("getCurrentBranch - returns null for detached HEAD", async () => {
     execFileSync("git", ["commit", "-m", "initial commit"], { cwd: tempDir })
 
     // Get the commit hash
-    const commitHash = execFileSync("git", ["rev-parse", "HEAD"], { cwd: tempDir }).toString().trim()
+    const commitHash = execFileSync("git", ["rev-parse", "HEAD"], { cwd: tempDir })
+      .toString()
+      .trim()
 
     // Checkout the commit to create detached HEAD
     execFileSync("git", ["checkout", commitHash], { cwd: tempDir, stdio: "pipe" })

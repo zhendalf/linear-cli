@@ -1,6 +1,6 @@
 import { colors } from "./deps.ts"
-import type { Options } from "./renderer.ts"
 import type { Node } from "./nodeTypes.ts"
+import type { Options } from "./renderer.ts"
 import { generateTable, getHeaderFormatter } from "./utils.ts"
 
 /** The generator function recursively visits each node and generates the string representation */
@@ -36,28 +36,38 @@ export function generator(node: Node, parent: Node, options: Options): string | 
       return colors.cyan(link)
     }
     case "strong": {
-      const strongContent = node.children?.map((child: Node) => generator(child, node, options)).join("")
+      const strongContent = node.children
+        ?.map((child: Node) => generator(child, node, options))
+        .join("")
       return colors.bold(strongContent || "")
     }
     case "emphasis": {
-      const emphasisContent = node.children?.map((child: Node) => generator(child, node, options)).join("")
+      const emphasisContent = node.children
+        ?.map((child: Node) => generator(child, node, options))
+        .join("")
       return colors.italic(emphasisContent || "")
     }
     case "delete": {
-      const strikeContent = node.children?.map((child: Node) => generator(child, node, options)).join("")
+      const strikeContent = node.children
+        ?.map((child: Node) => generator(child, node, options))
+        .join("")
       return colors.strikethrough(strikeContent || "")
     }
     case "heading":
       return (
         getHeaderFormatter(node.depth || 0)(
-          "#".repeat(node.depth!) + " " + node.children?.map((ch: Node) => generator(ch, node, options)).join(""),
+          "#".repeat(node.depth!) +
+            " " +
+            node.children?.map((ch: Node) => generator(ch, node, options)).join(""),
         ) + "\n"
       )
 
     case "linkReference":
       return colors.cyan(
         colors.italic(
-          "[" + (node.children?.map((child: Node) => generator(child, node, options)).join("") ?? "") + "]",
+          "[" +
+            (node.children?.map((child: Node) => generator(child, node, options)).join("") ?? "") +
+            "]",
         ),
       )
 
@@ -107,7 +117,9 @@ export function generator(node: Node, parent: Node, options: Options): string | 
     }
 
     case "listItem":
-      return node.children?.map((ch: Node) => generator(ch, parent, options)).join(node.spread ? "\n" : "")
+      return node.children
+        ?.map((ch: Node) => generator(ch, parent, options))
+        .join(node.spread ? "\n" : "")
 
     case "code": {
       let codeBlock = ""
@@ -120,7 +132,8 @@ export function generator(node: Node, parent: Node, options: Options): string | 
 
       codeBlock +=
         colors.bgWhite(
-          colors.black(colors.italic(title)) + colors.white(" ".repeat(max - title.length + xPadding * 2)),
+          colors.black(colors.italic(title)) +
+            colors.white(" ".repeat(max - title.length + xPadding * 2)),
         ) + "\n"
 
       codeBlock += colors.bgBrightBlack(" ") + padString(max + 2 * xPadding - 1) + "\n"

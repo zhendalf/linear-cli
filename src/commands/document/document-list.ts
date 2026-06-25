@@ -1,12 +1,12 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getTimeAgo, padDisplay } from "../../utils/display.ts"
+import { handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import { handleError } from "../../utils/errors.ts"
 
 const ListDocuments = gql(`
   query ListDocuments($filter: DocumentFilter, $first: Int) {
@@ -95,9 +95,7 @@ export const listCommand = new Command("list")
       }
 
       // Calculate column widths based on actual data
-      const { columns } = isStdoutTTY()
-        ? getConsoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
       const SLUG_WIDTH = Math.max(
         4, // minimum width for "SLUG" header
@@ -105,7 +103,7 @@ export const listCommand = new Command("list")
       )
 
       // Get attachment column (project name or issue identifier)
-      const getAttachment = (doc: typeof documents[0]) => {
+      const getAttachment = (doc: (typeof documents)[0]) => {
         if (doc.project?.name) return doc.project.name
         if (doc.issue?.identifier) return doc.issue.identifier
         return "-"
@@ -125,9 +123,7 @@ export const listCommand = new Command("list")
       const fixed = SLUG_WIDTH + ATTACHMENT_WIDTH + UPDATED_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const availableWidth = Math.max(columns - PADDING - fixed, 10)
-      const maxTitleWidth = Math.max(
-        ...documents.map((doc) => doc.title.length),
-      )
+      const maxTitleWidth = Math.max(...documents.map((doc) => doc.title.length))
       const titleWidth = Math.min(maxTitleWidth, availableWidth)
 
       // Print header
@@ -153,18 +149,20 @@ export const listCommand = new Command("list")
 
       // Print each document
       for (const doc of documents) {
-        const truncTitle = doc.title.length > titleWidth
-          ? doc.title.slice(0, titleWidth - 3) + "..."
-          : padDisplay(doc.title, titleWidth)
+        const truncTitle =
+          doc.title.length > titleWidth
+            ? doc.title.slice(0, titleWidth - 3) + "..."
+            : padDisplay(doc.title, titleWidth)
 
         const attachment = getAttachment(doc)
         const updated = getTimeAgo(new Date(doc.updatedAt))
 
         console.log(
           applyConsoleFormat(
-            `${padDisplay(doc.slugId, SLUG_WIDTH)} ${truncTitle} ${
-              padDisplay(attachment, ATTACHMENT_WIDTH)
-            } %c${padDisplay(updated, UPDATED_WIDTH)}%c`,
+            `${padDisplay(doc.slugId, SLUG_WIDTH)} ${truncTitle} ${padDisplay(
+              attachment,
+              ATTACHMENT_WIDTH,
+            )} %c${padDisplay(updated, UPDATED_WIDTH)}%c`,
             "color: gray",
             "",
           ),

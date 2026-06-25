@@ -9,9 +9,7 @@
   "engines": {
     "node": ">=20"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "dev": "bun src/main.ts",
     "build": "bun run codegen && bun run scripts/build.ts",
@@ -59,7 +57,5 @@
     "lefthook": "^1.11.13",
     "typescript": "^5.8.3"
   },
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ]
+  "trustedDependencies": ["@biomejs/biome"]
 }

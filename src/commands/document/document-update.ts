@@ -1,26 +1,19 @@
-import { Command } from "commander"
-import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises"
-import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { spawn } from "node:child_process"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getEditor } from "../../utils/editor.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
+import { getEditor } from "../../utils/editor.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 /**
  * Open editor with initial content and return the edited content
  */
-async function openEditorWithContent(
-  initialContent: string,
-): Promise<string | undefined> {
+async function openEditorWithContent(initialContent: string): Promise<string | undefined> {
   const editor = await getEditor()
   if (!editor) {
     throw new ValidationError("No editor found", {
@@ -61,9 +54,7 @@ async function openEditorWithContent(
       throw error
     }
     throw new CliError(
-      `Failed to open editor: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to open editor: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     )
   } finally {
@@ -108,59 +99,52 @@ export const updateCommand = new Command("update")
   .argument("<documentId>", "Document ID or slug")
   .option("-t, --title <title>", "New title for the document")
   .option("-c, --content <content>", "New markdown content (inline)")
-  .option(
-    "-f, --content-file <path>",
-    "Read new content from file",
-  )
+  .option("-f, --content-file <path>", "Read new content from file")
   .option("--icon <icon>", "New icon (emoji)")
   .option("-e, --edit", "Open current content in $EDITOR for editing")
-  .action(
-    async (
-      documentId: string,
-      options,
-    ) => {
-      const { title, content, contentFile, icon, edit } = options
-      try {
-        const client = getGraphQLClient()
+  .action(async (documentId: string, options) => {
+    const { title, content, contentFile, icon, edit } = options
+    try {
+      const client = getGraphQLClient()
 
-        // Build the update input
-        const inputData: Record<string, string> = {}
+      // Build the update input
+      const inputData: Record<string, string> = {}
 
-        // Add title if provided
-        if (title) {
-          inputData.title = title
-        }
+      // Add title if provided
+      if (title) {
+        inputData.title = title
+      }
 
-        // Add icon if provided
-        if (icon) {
-          inputData.icon = icon
-        }
+      // Add icon if provided
+      if (icon) {
+        inputData.icon = icon
+      }
 
-        // Resolve content from various sources
-        let finalContent: string | undefined
+      // Resolve content from various sources
+      let finalContent: string | undefined
 
-        if (content) {
-          // Content provided inline
-          finalContent = content
-        } else if (contentFile) {
-          // Content from file
-          try {
-            finalContent = await readFile(contentFile, "utf8")
-          } catch (error) {
-            const nodeErr = error as NodeJS.ErrnoException
-            if (nodeErr?.code === "ENOENT") {
-              throw new NotFoundError("File", contentFile)
-            }
-            throw new CliError(
-              `Failed to read content file: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-              { cause: error },
-            )
+      if (content) {
+        // Content provided inline
+        finalContent = content
+      } else if (contentFile) {
+        // Content from file
+        try {
+          finalContent = await readFile(contentFile, "utf8")
+        } catch (error) {
+          const nodeErr = error as NodeJS.ErrnoException
+          if (nodeErr?.code === "ENOENT") {
+            throw new NotFoundError("File", contentFile)
           }
-        } else if (edit) {
-          // Edit mode: fetch current content and open in editor
-          const getDocumentQuery = gql(`
+          throw new CliError(
+            `Failed to read content file: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+            { cause: error },
+          )
+        }
+      } else if (edit) {
+        // Edit mode: fetch current content and open in editor
+        const getDocumentQuery = gql(`
           query GetDocumentForEdit($id: String!) {
             document(id: $id) {
               id
@@ -170,55 +154,52 @@ export const updateCommand = new Command("update")
           }
         `)
 
-          const documentData = await client.request(getDocumentQuery, {
-            id: documentId,
-          })
+        const documentData = await client.request(getDocumentQuery, {
+          id: documentId,
+        })
 
-          if (!documentData?.document) {
-            throw new NotFoundError("Document", documentId)
-          }
-
-          const currentContent = documentData.document.content || ""
-          console.log(`Opening ${documentData.document.title} in editor...`)
-
-          finalContent = await openEditorWithContent(currentContent)
-
-          if (finalContent === undefined) {
-            console.log("No changes made, update cancelled.")
-            return
-          }
-
-          // Check if content actually changed
-          if (finalContent === currentContent) {
-            console.log("No changes detected, update cancelled.")
-            return
-          }
-        } else if (
-          !isStdinTTY() && Object.keys(inputData).length === 0
-        ) {
-          // Only try reading from stdin if no other update fields were provided
-          // This avoids hanging when stdin is piped but has no data (e.g., in test environments)
-          const stdinContent = await readContentFromStdin()
-          if (stdinContent) {
-            finalContent = stdinContent
-          }
+        if (!documentData?.document) {
+          throw new NotFoundError("Document", documentId)
         }
 
-        // Add content to input if resolved
-        if (finalContent !== undefined) {
-          inputData.content = finalContent
+        const currentContent = documentData.document.content || ""
+        console.log(`Opening ${documentData.document.title} in editor...`)
+
+        finalContent = await openEditorWithContent(currentContent)
+
+        if (finalContent === undefined) {
+          console.log("No changes made, update cancelled.")
+          return
         }
 
-        // Validate that at least one field is being updated
-        if (Object.keys(inputData).length === 0) {
-          throw new ValidationError("No update fields provided", {
-            suggestion:
-              "Use --title, --content, --content-file, --icon, or --edit.",
-          })
+        // Check if content actually changed
+        if (finalContent === currentContent) {
+          console.log("No changes detected, update cancelled.")
+          return
         }
+      } else if (!isStdinTTY() && Object.keys(inputData).length === 0) {
+        // Only try reading from stdin if no other update fields were provided
+        // This avoids hanging when stdin is piped but has no data (e.g., in test environments)
+        const stdinContent = await readContentFromStdin()
+        if (stdinContent) {
+          finalContent = stdinContent
+        }
+      }
 
-        // Execute the update
-        const updateMutation = gql(`
+      // Add content to input if resolved
+      if (finalContent !== undefined) {
+        inputData.content = finalContent
+      }
+
+      // Validate that at least one field is being updated
+      if (Object.keys(inputData).length === 0) {
+        throw new ValidationError("No update fields provided", {
+          suggestion: "Use --title, --content, --content-file, --icon, or --edit.",
+        })
+      }
+
+      // Execute the update
+      const updateMutation = gql(`
         mutation UpdateDocument($id: String!, $input: DocumentUpdateInput!) {
           documentUpdate(id: $id, input: $input) {
             success
@@ -233,24 +214,23 @@ export const updateCommand = new Command("update")
         }
       `)
 
-        const result = await client.request(updateMutation, {
-          id: documentId,
-          input: inputData,
-        })
+      const result = await client.request(updateMutation, {
+        id: documentId,
+        input: inputData,
+      })
 
-        if (!result.documentUpdate.success) {
-          throw new CliError("Document update failed")
-        }
-
-        const document = result.documentUpdate.document
-        if (!document) {
-          throw new CliError("Document update failed - no document returned")
-        }
-
-        console.log(`✓ Updated document: ${document.title}`)
-        console.log(document.url)
-      } catch (error) {
-        handleError(error, "Failed to update document")
+      if (!result.documentUpdate.success) {
+        throw new CliError("Document update failed")
       }
-    },
-  )
+
+      const document = result.documentUpdate.document
+      if (!document) {
+        throw new CliError("Document update failed - no document returned")
+      }
+
+      console.log(`✓ Updated document: ${document.title}`)
+      console.log(document.url)
+    } catch (error) {
+      handleError(error, "Failed to update document")
+    }
+  })

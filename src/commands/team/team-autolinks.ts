@@ -1,22 +1,19 @@
 import { Command } from "commander"
-import { getTeamKey } from "../../utils/linear.ts"
 import { getOption } from "../../config.ts"
-import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
+import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getTeamKey } from "../../utils/linear.ts"
 import { runCommand } from "../../utils/runtime.ts"
 
 export const autolinksCommand = new Command("autolinks")
-  .description(
-    "Configure GitHub repository autolinks for Linear issues with this team prefix",
-  )
+  .description("Configure GitHub repository autolinks for Linear issues with this team prefix")
   .action(async () => {
     try {
       const teamId = getTeamKey()
       if (!teamId) {
-        throw new ValidationError(
-          "Could not determine team id from directory name",
-          { suggestion: "Run `linear configure` to set a team." },
-        )
+        throw new ValidationError("Could not determine team id from directory name", {
+          suggestion: "Run `linear configure` to set a team.",
+        })
       }
 
       const workspace = getOption("workspace")

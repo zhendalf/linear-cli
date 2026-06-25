@@ -1,15 +1,15 @@
+import chalk from "chalk"
 import { Command, Option } from "commander"
 import stringWidth from "string-width"
-import chalk from "chalk"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay, truncateText } from "../../utils/display.ts"
-import { getIssueIdentifier } from "../../utils/linear.ts"
+import { ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getIssueIdentifier } from "../../utils/linear.ts"
+import { getConsoleSize } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { header, muted } from "../../utils/styling.ts"
-import { getConsoleSize } from "../../utils/runtime.ts"
-import { handleError, ValidationError } from "../../utils/errors.ts"
 
 const GetIssueAgentSessions = gql(`
   query GetIssueAgentSessions($issueId: String!) {
@@ -83,10 +83,9 @@ export const agentSessionListCommand = new Command("list")
     try {
       const resolvedIdentifier = await getIssueIdentifier(issueId)
       if (!resolvedIdentifier) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          { suggestion: "Please provide an issue ID like 'ENG-123'." },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID like 'ENG-123'.",
+        })
       }
 
       const spinner = createSpinner("", shouldShowSpinner() && !json)
@@ -112,11 +111,9 @@ export const agentSessionListCommand = new Command("list")
 
       const jsonComments = status
         ? {
-          ...comments,
-          nodes: comments.nodes.filter((comment) =>
-            comment.agentSession?.status === status
-          ),
-        }
+            ...comments,
+            nodes: comments.nodes.filter((comment) => comment.agentSession?.status === status),
+          }
         : comments
 
       if (status) {
@@ -137,10 +134,7 @@ export const agentSessionListCommand = new Command("list")
 
       const STATUS_WIDTH = 13
       const DATE_WIDTH = 10
-      const AGENT_WIDTH = Math.max(
-        5,
-        ...sessions.map((s) => stringWidth(s.appUser.name)),
-      )
+      const AGENT_WIDTH = Math.max(5, ...sessions.map((s) => stringWidth(s.appUser.name)))
       const SPACE_WIDTH = 3
 
       const fixed = STATUS_WIDTH + DATE_WIDTH + AGENT_WIDTH + SPACE_WIDTH
@@ -158,17 +152,13 @@ export const agentSessionListCommand = new Command("list")
 
       for (const session of sessions) {
         const summaryText = session.summary
-          ? truncateText(
-            session.summary.replace(/\n/g, " "),
-            availableWidth,
-          )
+          ? truncateText(session.summary.replace(/\n/g, " "), availableWidth)
           : muted("--")
 
-        const line = `${formatStatus(session.status)} ${
-          padDisplay(session.appUser.name, AGENT_WIDTH)
-        } ${
-          padDisplay(formatDate(session.createdAt), DATE_WIDTH)
-        } ${summaryText}`
+        const line = `${formatStatus(session.status)} ${padDisplay(
+          session.appUser.name,
+          AGENT_WIDTH,
+        )} ${padDisplay(formatDate(session.createdAt), DATE_WIDTH)} ${summaryText}`
         console.log(line)
       }
     } catch (error) {

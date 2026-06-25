@@ -1,15 +1,15 @@
-import { select } from "./prompt.ts"
 import { getOption } from "../config.ts"
 import { CliError } from "./errors.ts"
 import { getCurrentBranch } from "./git.ts"
 import { findIssueIdentifierInText } from "./issue-identifier.ts"
-import { fetchIssueDetails } from "./linear.ts"
 import {
   formatIssueDescription,
   getJjLinearIssue,
   prepareJjWorkingState,
   setJjDescription,
 } from "./jj.ts"
+import { fetchIssueDetails } from "./linear.ts"
+import { select } from "./prompt.ts"
 import { runCommand } from "./runtime.ts"
 
 export type VcsType = "git" | "jj"
@@ -38,17 +38,11 @@ export function getNoIssueFoundMessage(): string {
  */
 async function gitBranchExists(branchName: string): Promise<boolean> {
   try {
-    const result = await runCommand("git", [
-      "rev-parse",
-      "--verify",
-      branchName,
-    ])
+    const result = await runCommand("git", ["rev-parse", "--verify", branchName])
     return result.success
   } catch (error) {
     throw new CliError(
-      `Failed to check if branch exists: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to check if branch exists: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     )
   }
@@ -94,8 +88,7 @@ export async function startVcsWork(
       // Check if branch exists
       if (await gitBranchExists(branchName)) {
         const answer = await select({
-          message:
-            `Branch ${branchName} already exists. What would you like to do?`,
+          message: `Branch ${branchName} already exists. What would you like to do?`,
           choices: [
             { name: "Switch to existing branch", value: "switch" },
             { name: "Create new branch with suffix", value: "create" },
@@ -103,14 +96,9 @@ export async function startVcsWork(
         })
 
         if (answer === "switch") {
-          const { success, stderr } = await runCommand("git", [
-            "checkout",
-            branchName,
-          ])
+          const { success, stderr } = await runCommand("git", ["checkout", branchName])
           if (!success) {
-            throw new CliError(
-              `Failed to switch to branch '${branchName}': ${stderr.trim()}`,
-            )
+            throw new CliError(`Failed to switch to branch '${branchName}': ${stderr.trim()}`)
           }
           console.log(`✓ Switched to '${branchName}'`)
         } else {
@@ -129,9 +117,7 @@ export async function startVcsWork(
             gitSourceRef || "HEAD",
           ])
           if (!success) {
-            throw new CliError(
-              `Failed to create branch '${newBranch}': ${stderr.trim()}`,
-            )
+            throw new CliError(`Failed to create branch '${newBranch}': ${stderr.trim()}`)
           }
           console.log(`✓ Created and switched to branch '${newBranch}'`)
         }
@@ -144,9 +130,7 @@ export async function startVcsWork(
           gitSourceRef || "HEAD",
         ])
         if (!success) {
-          throw new CliError(
-            `Failed to create branch '${branchName}': ${stderr.trim()}`,
-          )
+          throw new CliError(`Failed to create branch '${branchName}': ${stderr.trim()}`)
         }
         console.log(`✓ Created and switched to branch '${branchName}'`)
       }

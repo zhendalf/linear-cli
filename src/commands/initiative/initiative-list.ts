@@ -1,19 +1,15 @@
 import { Command } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { padDisplay, truncateText } from "../../utils/display.ts"
 import { getOption } from "../../config.ts"
+import { LINEAR_WEB_BASE_URL } from "../../const.ts"
+import { padDisplay, truncateText } from "../../utils/display.ts"
+import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { applyConsoleFormat } from "../../utils/styling.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { LINEAR_WEB_BASE_URL } from "../../const.ts"
-import {
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
 
 const GetInitiatives = gql(`
   query GetInitiatives($filter: InitiativeFilter, $includeArchived: Boolean) {
@@ -56,31 +52,28 @@ const GetInitiatives = gql(`
 // Initiative status display names and order
 // Note: InitiativeStatus enum values are: Planned, Active, Completed
 const INITIATIVE_STATUS_ORDER: Record<string, number> = {
-  "Active": 1,
-  "Planned": 2,
-  "Completed": 3,
+  Active: 1,
+  Planned: 2,
+  Completed: 3,
 }
 
 const INITIATIVE_STATUS_DISPLAY: Record<string, string> = {
-  "Active": "Active",
-  "Planned": "Planned",
-  "Completed": "Completed",
+  Active: "Active",
+  Planned: "Planned",
+  Completed: "Completed",
 }
 
 // Map user input (lowercase) to API values (capitalized)
 const STATUS_INPUT_MAP: Record<string, string> = {
-  "active": "Active",
-  "planned": "Planned",
-  "completed": "Completed",
+  active: "Active",
+  planned: "Planned",
+  completed: "Completed",
 }
 
 export const listCommand = new Command("list")
   .alias("ls")
   .description("List initiatives")
-  .option(
-    "-s, --status <status>",
-    "Filter by status (active, planned, completed)",
-  )
+  .option("-s, --status <status>", "Filter by status (active, planned, completed)")
   .option("--all-statuses", "Show all statuses (default: active only)")
   .option("-o, --owner <owner>", "Filter by owner (username or email)")
   .option("-w, --web", "Open initiatives page in web browser")
@@ -133,9 +126,7 @@ export const listCommand = new Command("list")
         if (!apiStatus) {
           spinner.stop()
           throw new ValidationError(
-            `Invalid status: ${status}. Valid values: ${
-              Object.keys(STATUS_INPUT_MAP).join(", ")
-            }`,
+            `Invalid status: ${status}. Valid values: ${Object.keys(STATUS_INPUT_MAP).join(", ")}`,
           )
         }
         filter.status = { eq: apiStatus }
@@ -194,47 +185,38 @@ export const listCommand = new Command("list")
       })
 
       if (json) {
-        console.log(JSON.stringify(
-          {
-            ...initiativesConnection,
-            nodes: initiatives,
-          },
-          null,
-          2,
-        ))
+        console.log(
+          JSON.stringify(
+            {
+              ...initiativesConnection,
+              nodes: initiatives,
+            },
+            null,
+            2,
+          ),
+        )
         return
       }
 
       // Table output
-      const { columns } = isStdoutTTY()
-        ? getConsoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
       // Calculate column widths
-      const SLUG_WIDTH = Math.max(
-        4,
-        ...initiatives.map((init) => init.slugId.length),
-      )
+      const SLUG_WIDTH = Math.max(4, ...initiatives.map((init) => init.slugId.length))
       const STATUS_WIDTH = Math.max(
         6,
         ...initiatives.map(
-          (init) =>
-            (INITIATIVE_STATUS_DISPLAY[init.status] || init.status).length,
+          (init) => (INITIATIVE_STATUS_DISPLAY[init.status] || init.status).length,
         ),
       )
-      const HEALTH_WIDTH = Math.max(
-        6,
-        ...initiatives.map((init) => (init.health || "-").length),
-      )
+      const HEALTH_WIDTH = Math.max(6, ...initiatives.map((init) => (init.health || "-").length))
       const OWNER_WIDTH = Math.max(
         5,
         ...initiatives.map((init) => (init.owner?.initials || "-").length),
       )
       const PROJECTS_WIDTH = Math.max(
         4,
-        ...initiatives.map((init) =>
-          String(init.projects?.nodes?.length || 0).length
-        ),
+        ...initiatives.map((init) => String(init.projects?.nodes?.length || 0).length),
       )
       const TARGET_WIDTH = Math.max(
         10,
@@ -242,7 +224,8 @@ export const listCommand = new Command("list")
       )
 
       const SPACE_WIDTH = 6 // Space between columns
-      const fixed = SLUG_WIDTH +
+      const fixed =
+        SLUG_WIDTH +
         STATUS_WIDTH +
         HEALTH_WIDTH +
         OWNER_WIDTH +
@@ -250,9 +233,7 @@ export const listCommand = new Command("list")
         TARGET_WIDTH +
         SPACE_WIDTH
       const PADDING = 1
-      const maxNameWidth = Math.max(
-        ...initiatives.map((init) => stringWidth(init.name)),
-      )
+      const maxNameWidth = Math.max(...initiatives.map((init) => stringWidth(init.name)))
       const availableWidth = Math.max(columns - PADDING - fixed, 10)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
 
@@ -282,8 +263,7 @@ export const listCommand = new Command("list")
 
       // Print each initiative
       for (const init of initiatives) {
-        const statusDisplay = INITIATIVE_STATUS_DISPLAY[init.status] ||
-          init.status
+        const statusDisplay = INITIATIVE_STATUS_DISPLAY[init.status] || init.status
         const health = init.health || "-"
         const ownerInitials = init.owner?.initials || "-"
         const projectCount = String(init.projects?.nodes?.length || 0)
@@ -302,13 +282,13 @@ export const listCommand = new Command("list")
 
         console.log(
           applyConsoleFormat(
-            `${padDisplay(init.slugId, SLUG_WIDTH)} ${paddedName} %c${
-              padDisplay(statusDisplay, STATUS_WIDTH)
-            }%c ${padDisplay(health, HEALTH_WIDTH)} ${
-              padDisplay(ownerInitials, OWNER_WIDTH)
-            } ${padDisplay(projectCount, PROJECTS_WIDTH)} %c${
-              padDisplay(target, TARGET_WIDTH)
-            }%c`,
+            `${padDisplay(init.slugId, SLUG_WIDTH)} ${paddedName} %c${padDisplay(
+              statusDisplay,
+              STATUS_WIDTH,
+            )}%c ${padDisplay(health, HEALTH_WIDTH)} ${padDisplay(
+              ownerInitials,
+              OWNER_WIDTH,
+            )} ${padDisplay(projectCount, PROJECTS_WIDTH)} %c${padDisplay(target, TARGET_WIDTH)}%c`,
             `color: ${statusColor}`,
             "",
             "color: gray",

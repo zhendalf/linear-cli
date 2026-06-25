@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
+import { execFileSync } from "node:child_process"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { execFileSync } from "node:child_process"
-import { getCurrentIssueFromVcs, startVcsWork } from "../../src/utils/vcs.ts"
 import { CliError } from "../../src/utils/errors.ts"
+import { getCurrentIssueFromVcs, startVcsWork } from "../../src/utils/vcs.ts"
 
 test("getCurrentIssueFromVcs - handles git errors gracefully", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "linear-vcs-test-"))
@@ -99,7 +99,9 @@ test("startVcsWork - propagates git checkout errors when not in a git repo", asy
     process.env["LINEAR_VCS"] = "git"
     process.chdir(tempDir)
 
-    await expect(startVcsWork("ABC-123", "feature/ABC-123-test")).rejects.toThrow("Failed to create branch")
+    await expect(startVcsWork("ABC-123", "feature/ABC-123-test")).rejects.toThrow(
+      "Failed to create branch",
+    )
   } finally {
     process.chdir(originalCwd)
     if (originalVcs !== undefined) {
@@ -129,7 +131,9 @@ test("startVcsWork - propagates git checkout errors when source ref doesn't exis
     execFileSync("git", ["commit", "-m", "initial commit"], { cwd: tempDir })
 
     // Try to create a branch from a non-existent ref
-    await expect(startVcsWork("ABC-123", "feature/ABC-123-test", "nonexistent")).rejects.toThrow("Failed to create branch")
+    await expect(startVcsWork("ABC-123", "feature/ABC-123-test", "nonexistent")).rejects.toThrow(
+      "Failed to create branch",
+    )
   } finally {
     process.chdir(originalCwd)
     if (originalVcs !== undefined) {

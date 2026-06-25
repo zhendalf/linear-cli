@@ -1,7 +1,7 @@
-import { snapshotTest } from "../utils/snapshot_with_fake_time.ts"
 import { apiCommand } from "../../src/commands/api.ts"
 import { loadCredentials } from "../../src/credentials.ts"
 import { MockLinearServer } from "../utils/mock_linear_server.ts"
+import { snapshotTest } from "../utils/snapshot_with_fake_time.ts"
 
 await snapshotTest({
   name: "API Command - Help Text",
@@ -104,10 +104,7 @@ await snapshotTest({
         response: {
           data: {
             issues: {
-              nodes: [
-                { title: "Issue One" },
-                { title: "Issue Two" },
-              ],
+              nodes: [{ title: "Issue One" }, { title: "Issue Two" }],
             },
           },
         },
@@ -199,10 +196,7 @@ await snapshotTest({
   name: "API Command - Silent Flag",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetViewer { viewer { id } }",
-    "--silent",
-  ],
+  args: ["query GetViewer { viewer { id } }", "--silent"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -282,10 +276,7 @@ await snapshotTest({
         response: {
           data: {
             issues: {
-              nodes: [
-                { title: "Issue 1" },
-                { title: "Issue 2" },
-              ],
+              nodes: [{ title: "Issue 1" }, { title: "Issue 2" }],
               pageInfo: {
                 hasNextPage: true,
                 endCursor: "cursor-1",
@@ -300,9 +291,7 @@ await snapshotTest({
         response: {
           data: {
             issues: {
-              nodes: [
-                { title: "Issue 3" },
-              ],
+              nodes: [{ title: "Issue 3" }],
               pageInfo: {
                 hasNextPage: false,
                 endCursor: null,
@@ -444,9 +433,7 @@ await snapshotTest({
         response: {
           data: {
             issues: {
-              nodes: [
-                { title: "Only Issue" },
-              ],
+              nodes: [{ title: "Only Issue" }],
               pageInfo: {
                 hasNextPage: false,
                 endCursor: null,
@@ -475,10 +462,7 @@ await snapshotTest({
   name: "API Command - Paginate Non-Connection Query",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetViewer($after: String) { viewer { id name } }",
-    "--paginate",
-  ],
+  args: ["query GetViewer($after: String) { viewer { id name } }", "--paginate"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -509,11 +493,7 @@ await snapshotTest({
   name: "API Command - File Not Found For Variable",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetTeam { team { name } }",
-    "--variable",
-    "filter=@/nonexistent/path.json",
-  ],
+  args: ["query GetTeam { team { name } }", "--variable", "filter=@/nonexistent/path.json"],
   canFail: true,
   async fn() {
     process.env["LINEAR_API_KEY"] = "Bearer test-token"
@@ -542,10 +522,7 @@ await snapshotTest({
         response: {
           data: {
             issues: {
-              nodes: [
-                { title: "Issue One" },
-                { title: "Issue Two" },
-              ],
+              nodes: [{ title: "Issue One" }, { title: "Issue Two" }],
             },
           },
         },
@@ -570,11 +547,7 @@ await snapshotTest({
   name: "API Command - Variables JSON Malformed",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetViewer { viewer { id } }",
-    "--variables-json",
-    "{bad json",
-  ],
+  args: ["query GetViewer { viewer { id } }", "--variables-json", "{bad json"],
   canFail: true,
   async fn() {
     process.env["LINEAR_API_KEY"] = "Bearer test-token"
@@ -590,11 +563,7 @@ await snapshotTest({
   name: "API Command - Variables JSON Non-Object",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetViewer { viewer { id } }",
-    "--variables-json",
-    "[1, 2, 3]",
-  ],
+  args: ["query GetViewer { viewer { id } }", "--variables-json", "[1, 2, 3]"],
   canFail: true,
   async fn() {
     process.env["LINEAR_API_KEY"] = "Bearer test-token"
@@ -610,10 +579,7 @@ await snapshotTest({
   name: "API Command - Silent Flag With HTTP Error",
   meta: import.meta,
   colors: false,
-  args: [
-    "query BadQuery { nonexistent { id } }",
-    "--silent",
-  ],
+  args: ["query BadQuery { nonexistent { id } }", "--silent"],
   canFail: true,
   async fn() {
     const server = new MockLinearServer([
@@ -621,10 +587,12 @@ await snapshotTest({
         queryName: "BadQuery",
         status: 400,
         response: {
-          errors: [{
-            message: "Cannot query field 'nonexistent' on type 'Query'",
-            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
-          }],
+          errors: [
+            {
+              message: "Cannot query field 'nonexistent' on type 'Query'",
+              extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+            },
+          ],
         },
       },
     ])
@@ -647,11 +615,7 @@ await snapshotTest({
   name: "API Command - Variable Coercion Preserves Leading Zeros",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetIssue($id: String!) { issue(id: $id) { title } }",
-    "--variable",
-    "id=007",
-  ],
+  args: ["query GetIssue($id: String!) { issue(id: $id) { title } }", "--variable", "id=007"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -683,11 +647,7 @@ await snapshotTest({
   name: "API Command - Variable Coercion Preserves Scientific Notation",
   meta: import.meta,
   colors: false,
-  args: [
-    "query GetIssue($id: String!) { issue(id: $id) { title } }",
-    "--variable",
-    "id=1e5",
-  ],
+  args: ["query GetIssue($id: String!) { issue(id: $id) { title } }", "--variable", "id=1e5"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -823,9 +783,7 @@ await snapshotTest({
         response: {
           data: {
             issues: {
-              nodes: [
-                { title: "Issue One" },
-              ],
+              nodes: [{ title: "Issue One" }],
             },
           },
         },

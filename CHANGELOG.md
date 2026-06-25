@@ -6,6 +6,25 @@
 
 - issue view now orders comment threads chronologically (oldest first), matching Linear's UI
 
+## [2.0.0] - 2026-06-25 (native Node/Bun rewrite)
+
+### Breaking Changes
+
+- **runtime**: rewritten from Deno to native Node.js (>=20) + Bun. no longer requires Deno or cargo-dist. distributed as a standard npm package (`@zhendalf/linear-cli`).
+- **token storage**: OS-keyring storage removed. tokens are now stored in `~/.config/linear/credentials.json` (0600). existing users must re-run `linear auth login` to re-authenticate.
+- **installation**: homebrew (`brew install schpet/tap/linear`) and Deno/JSR (`deno install jsr:@schpet/linear-cli`) installers removed. install via `bun add -g @zhendalf/linear-cli`, `npm i -g @zhendalf/linear-cli`, `bunx @zhendalf/linear-cli`, or `npx @zhendalf/linear-cli`.
+- **shell completions**: `completions` command removed (to be revisited).
+- **auth migrate / --plaintext**: `auth migrate` command and `--plaintext` flag removed (clean 2.0 break).
+- **cliffy → commander**: CLI framework migrated from cliffy to commander. help text formatting differs slightly.
+
+### Changed
+
+- package name: `@schpet/linear-cli` → `@zhendalf/linear-cli`
+- toolchain: Deno + cargo-dist (144 MB binary) → Bun (package manager + bundler), single bundled `dist/main.js` runs on both Node >=20 and Bun
+- code formatter: `deno fmt` → biome (`biome.json`)
+- linter: `deno lint` → biome
+- type checker: `deno check` → `tsc --noEmit`
+
 ## [2.0.0] - 2026-04-03
 
 ### Fixed

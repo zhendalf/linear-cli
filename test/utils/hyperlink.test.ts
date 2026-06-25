@@ -1,8 +1,5 @@
 import { expect, test } from "bun:test"
-import {
-  shouldEnableHyperlinks,
-  shouldShowSpinner,
-} from "../../src/utils/hyperlink.ts"
+import { shouldEnableHyperlinks, shouldShowSpinner } from "../../src/utils/hyperlink.ts"
 
 // Tests for shouldShowSpinner
 

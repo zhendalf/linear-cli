@@ -1,9 +1,9 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { CliError, handleError, NotFoundError } from "../../utils/errors.ts"
 
 const AddProjectToInitiative = gql(`
   mutation AddProjectToInitiative($input: InitiativeToProjectCreateInput!) {
@@ -22,11 +22,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<{ id: string; name: string } | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     // Get the name for display
     const nameQuery = gql(`
       query GetInitiativeNameById($id: String!) {
@@ -101,11 +97,7 @@ async function resolveProjectId(
   idOrSlugOrName: string,
 ): Promise<{ id: string; name: string } | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     // Get the name for display
     const nameQuery = gql(`
       query GetProjectNameById($id: String!) {
@@ -181,63 +173,52 @@ export const addProjectCommand = new Command("add-project")
   .addOption(
     new Option("--sort-order <sortOrder>", "Sort order within initiative").argParser(Number),
   )
-  .action(
-    async (
-      initiativeArg: string,
-      projectArg: string,
-      options,
-    ) => {
-      const { sortOrder } = options
-      const client = getGraphQLClient()
+  .action(async (initiativeArg: string, projectArg: string, options) => {
+    const { sortOrder } = options
+    const client = getGraphQLClient()
 
-      // Resolve initiative
-      const initiative = await resolveInitiativeId(client, initiativeArg)
-      if (!initiative) {
-        throw new NotFoundError("Initiative", initiativeArg)
+    // Resolve initiative
+    const initiative = await resolveInitiativeId(client, initiativeArg)
+    if (!initiative) {
+      throw new NotFoundError("Initiative", initiativeArg)
+    }
+
+    // Resolve project
+    const project = await resolveProjectId(client, projectArg)
+    if (!project) {
+      throw new NotFoundError("Project", projectArg)
+    }
+
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
+
+    // Build input
+    const inputPayload = {
+      initiativeId: initiative.id,
+      projectId: project.id,
+      ...(sortOrder !== undefined && { sortOrder }),
+    }
+
+    try {
+      const result = await client.request(AddProjectToInitiative, { input: inputPayload })
+
+      spinner.stop()
+
+      if (!result.initiativeToProjectCreate.success) {
+        throw new CliError("Failed to add project to initiative")
       }
 
-      // Resolve project
-      const project = await resolveProjectId(client, projectArg)
-      if (!project) {
-        throw new NotFoundError("Project", projectArg)
-      }
-
-      const spinner = createSpinner("", shouldShowSpinner())
-      spinner.start()
-
-      // Build input
-      const inputPayload = {
-        initiativeId: initiative.id,
-        projectId: project.id,
-        ...(sortOrder !== undefined && { sortOrder }),
-      }
-
-      try {
-        const result = await client.request(AddProjectToInitiative, { input: inputPayload })
-
-        spinner.stop()
-
-        if (!result.initiativeToProjectCreate.success) {
-          throw new CliError("Failed to add project to initiative")
-        }
-
+      console.log(`✓ Added "${project.name}" to initiative "${initiative.name}"`)
+    } catch (error) {
+      spinner.stop()
+      // Check if the error is because the link already exists
+      const errorMessage = String(error)
+      if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
         console.log(
-          `✓ Added "${project.name}" to initiative "${initiative.name}"`,
+          `Project "${project.name}" is already linked to initiative "${initiative.name}"`,
         )
-      } catch (error) {
-        spinner.stop()
-        // Check if the error is because the link already exists
-        const errorMessage = String(error)
-        if (
-          errorMessage.includes("already exists") ||
-          errorMessage.includes("duplicate")
-        ) {
-          console.log(
-            `Project "${project.name}" is already linked to initiative "${initiative.name}"`,
-          )
-        } else {
-          handleError(error, "Failed to add project to initiative")
-        }
+      } else {
+        handleError(error, "Failed to add project to initiative")
       }
-    },
-  )
+    }
+  })

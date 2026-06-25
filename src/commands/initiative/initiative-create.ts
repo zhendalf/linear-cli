@@ -1,18 +1,13 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import type { InitiativeStatus } from "../../__codegen__/graphql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import { lookupUserId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { lookupUserId } from "../../utils/linear.ts"
+import { input, select } from "../../utils/prompt.ts"
 import { isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { select, input } from "../../utils/prompt.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 const CreateInitiative = gql(`
   mutation CreateInitiative($input: InitiativeCreateInput!) {
@@ -53,24 +48,12 @@ export const createCommand = new Command("create")
   .description("Create a new Linear initiative")
   .option("-n, --name <name>", "Initiative name (required)")
   .option("-d, --description <description>", "Initiative description")
-  .option(
-    "-s, --status <status>",
-    "Status: planned, active, completed (default: planned)",
-  )
-  .option(
-    "-o, --owner <owner>",
-    "Owner (username, email, or @me for yourself)",
-  )
-  .option(
-    "--target-date <targetDate>",
-    "Target completion date (YYYY-MM-DD)",
-  )
+  .option("-s, --status <status>", "Status: planned, active, completed (default: planned)")
+  .option("-o, --owner <owner>", "Owner (username, email, or @me for yourself)")
+  .option("--target-date <targetDate>", "Target completion date (YYYY-MM-DD)")
   .option("-c, --color <color>", "Color hex code (e.g., #5E6AD2)")
   .option("--icon <icon>", "Icon name")
-  .option(
-    "-i, --interactive",
-    "Interactive mode (default if no flags provided)",
-  )
+  .option("-i, --interactive", "Interactive mode (default if no flags provided)")
   .action(async (options) => {
     const {
       name: providedName,
@@ -95,8 +78,7 @@ export const createCommand = new Command("create")
 
     // Determine if we should run in interactive mode
     const noFlagsProvided = !name
-    const isInteractive = (noFlagsProvided || interactiveFlag) &&
-      isStdoutTTY()
+    const isInteractive = (noFlagsProvided || interactiveFlag) && isStdoutTTY()
 
     if (isInteractive) {
       console.log("\nCreate a new initiative\n")
@@ -166,9 +148,7 @@ export const createCommand = new Command("create")
           })
           // Validate after input since inquirer input wrapper doesn't have inline validate
           if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
-            throw new ValidationError(
-              "Color must be a valid hex code (e.g., #5E6AD2)",
-            )
+            throw new ValidationError("Color must be a valid hex code (e.g., #5E6AD2)")
           }
         } else if (selectedColor !== "__skip__") {
           color = selectedColor
@@ -178,22 +158,18 @@ export const createCommand = new Command("create")
 
     // Validate required fields
     if (!name) {
-      throw new ValidationError(
-        "Initiative name is required. Use --name or -n flag.",
-      )
+      throw new ValidationError("Initiative name is required. Use --name or -n flag.")
     }
 
     // Validate status if provided (user can input lowercase, we convert to API format)
     if (status) {
       const statusLower = status.toLowerCase()
-      const statusEntry = INITIATIVE_STATUSES.find(
-        (s) => s.value.toLowerCase() === statusLower,
-      )
+      const statusEntry = INITIATIVE_STATUSES.find((s) => s.value.toLowerCase() === statusLower)
       if (!statusEntry) {
         throw new ValidationError(
-          `Invalid status: ${status}. Valid values: ${
-            INITIATIVE_STATUSES.map((s) => s.value.toLowerCase()).join(", ")
-          }`,
+          `Invalid status: ${status}. Valid values: ${INITIATIVE_STATUSES.map((s) =>
+            s.value.toLowerCase(),
+          ).join(", ")}`,
         )
       }
       status = statusEntry.value
@@ -201,9 +177,7 @@ export const createCommand = new Command("create")
 
     // Validate color format if provided
     if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
-      throw new ValidationError(
-        "Color must be a valid hex code (e.g., #5E6AD2)",
-      )
+      throw new ValidationError("Color must be a valid hex code (e.g., #5E6AD2)")
     }
 
     // Validate target date format if provided

@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { listCommand } from "../../../src/commands/project/project-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -59,17 +59,13 @@ await snapshotTest({
                   updatedAt: "2024-01-20T15:30:00Z",
                   url: "https://linear.app/test/project/auth-sys",
                   teams: {
-                    nodes: [
-                      { key: "BACKEND" },
-                      { key: "SECURITY" },
-                    ],
+                    nodes: [{ key: "BACKEND" }, { key: "SECURITY" }],
                   },
                 },
                 {
                   id: "project-2",
                   name: "Mobile App UI Redesign",
-                  description:
-                    "Complete redesign of the mobile application interface",
+                  description: "Complete redesign of the mobile application interface",
                   slugId: "mobile-ui",
                   icon: "📱",
                   color: "#ef4444",
@@ -95,10 +91,7 @@ await snapshotTest({
                   updatedAt: "2024-01-18T11:15:00Z",
                   url: "https://linear.app/test/project/mobile-ui",
                   teams: {
-                    nodes: [
-                      { key: "DESIGN" },
-                      { key: "MOBILE" },
-                    ],
+                    nodes: [{ key: "DESIGN" }, { key: "MOBILE" }],
                   },
                 },
                 {
@@ -126,9 +119,7 @@ await snapshotTest({
                   updatedAt: "2023-12-20T17:30:00Z",
                   url: "https://linear.app/test/project/api-docs",
                   teams: {
-                    nodes: [
-                      { key: "DOCS" },
-                    ],
+                    nodes: [{ key: "DOCS" }],
                   },
                 },
               ],

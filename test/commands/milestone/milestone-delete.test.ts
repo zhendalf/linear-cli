@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { deleteCommand } from "../../../src/commands/milestone/milestone-delete.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -18,10 +18,7 @@ await snapshotTest({
   name: "Milestone Delete Command - With Force Flag",
   meta: import.meta,
   colors: false,
-  args: [
-    "milestone-123",
-    "--force",
-  ],
+  args: ["milestone-123", "--force"],
   async fn() {
     const server = new MockLinearServer([
       {

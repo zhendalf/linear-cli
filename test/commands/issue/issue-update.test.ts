@@ -1,5 +1,5 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { updateCommand } from "../../../src/commands/issue/issue-update.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
@@ -32,50 +32,52 @@ await snapshotTest({
     "5",
   ],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      // Mock response for getTeamIdByKey() - converting team key to ID
-      {
-        queryName: "GetTeamIdByKey",
-        variables: { team: "ENG" },
-        response: {
-          data: {
-            teams: {
-              nodes: [{ id: "team-eng-id" }],
-            },
-          },
-        },
-      },
-      // Mock response for lookupUserId("self") - resolves to viewer
-      {
-        queryName: "GetViewerId",
-        variables: {},
-        response: {
-          data: {
-            viewer: {
-              id: "user-self-123",
-            },
-          },
-        },
-      },
-      // Mock response for the update issue mutation
-      {
-        queryName: "UpdateIssue",
-        response: {
-          data: {
-            issueUpdate: {
-              success: true,
-              issue: {
-                id: "issue-existing-123",
-                identifier: "ENG-123",
-                url:
-                  "https://linear.app/test-team/issue/ENG-123/updated-authentication-bug-fix",
-                title: "Updated authentication bug fix",
+    const { cleanup } = await setupMockLinearServer(
+      [
+        // Mock response for getTeamIdByKey() - converting team key to ID
+        {
+          queryName: "GetTeamIdByKey",
+          variables: { team: "ENG" },
+          response: {
+            data: {
+              teams: {
+                nodes: [{ id: "team-eng-id" }],
               },
             },
           },
         },
-      },
-    ], { LINEAR_TEAM_ID: "ENG" })
+        // Mock response for lookupUserId("self") - resolves to viewer
+        {
+          queryName: "GetViewerId",
+          variables: {},
+          response: {
+            data: {
+              viewer: {
+                id: "user-self-123",
+              },
+            },
+          },
+        },
+        // Mock response for the update issue mutation
+        {
+          queryName: "UpdateIssue",
+          response: {
+            data: {
+              issueUpdate: {
+                success: true,
+                issue: {
+                  id: "issue-existing-123",
+                  identifier: "ENG-123",
+                  url: "https://linear.app/test-team/issue/ENG-123/updated-authentication-bug-fix",
+                  title: "Updated authentication bug fix",
+                },
+              },
+            },
+          },
+        },
+      ],
+      { LINEAR_TEAM_ID: "ENG" },
+    )
 
     try {
       await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
@@ -90,11 +92,7 @@ await snapshotTest({
   name: "Issue Update Command - Alphanumeric Team Key",
   meta: import.meta,
   colors: false,
-  args: [
-    "PLA4-16916",
-    "--description",
-    "new description",
-  ],
+  args: ["PLA4-16916", "--description", "new description"],
   async fn() {
     const { cleanup } = await setupMockLinearServer([
       // Mock response for getTeamIdByKey() - team keys may contain digits
@@ -141,74 +139,71 @@ await snapshotTest({
   name: "Issue Update Command - With Milestone",
   meta: import.meta,
   colors: false,
-  args: [
-    "ENG-123",
-    "--project",
-    "My Project",
-    "--milestone",
-    "Phase 1",
-  ],
+  args: ["ENG-123", "--project", "My Project", "--milestone", "Phase 1"],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      // Mock response for getTeamIdByKey()
-      {
-        queryName: "GetTeamIdByKey",
-        variables: { team: "ENG" },
-        response: {
-          data: {
-            teams: {
-              nodes: [{ id: "team-eng-id" }],
-            },
-          },
-        },
-      },
-      // Mock response for getProjectIdByName()
-      {
-        queryName: "GetProjectIdByName",
-        variables: { name: "My Project" },
-        response: {
-          data: {
-            projects: {
-              nodes: [{ id: "project-123" }],
-            },
-          },
-        },
-      },
-      // Mock response for getMilestoneIdByName()
-      {
-        queryName: "GetProjectMilestonesForLookup",
-        variables: { projectId: "project-123" },
-        response: {
-          data: {
-            project: {
-              projectMilestones: {
-                nodes: [
-                  { id: "milestone-1", name: "Phase 1" },
-                  { id: "milestone-2", name: "Phase 2" },
-                ],
+    const { cleanup } = await setupMockLinearServer(
+      [
+        // Mock response for getTeamIdByKey()
+        {
+          queryName: "GetTeamIdByKey",
+          variables: { team: "ENG" },
+          response: {
+            data: {
+              teams: {
+                nodes: [{ id: "team-eng-id" }],
               },
             },
           },
         },
-      },
-      // Mock response for the update issue mutation
-      {
-        queryName: "UpdateIssue",
-        response: {
-          data: {
-            issueUpdate: {
-              success: true,
-              issue: {
-                id: "issue-existing-123",
-                identifier: "ENG-123",
-                url: "https://linear.app/test-team/issue/ENG-123/test-issue",
-                title: "Test Issue",
+        // Mock response for getProjectIdByName()
+        {
+          queryName: "GetProjectIdByName",
+          variables: { name: "My Project" },
+          response: {
+            data: {
+              projects: {
+                nodes: [{ id: "project-123" }],
               },
             },
           },
         },
-      },
-    ], { LINEAR_TEAM_ID: "ENG" })
+        // Mock response for getMilestoneIdByName()
+        {
+          queryName: "GetProjectMilestonesForLookup",
+          variables: { projectId: "project-123" },
+          response: {
+            data: {
+              project: {
+                projectMilestones: {
+                  nodes: [
+                    { id: "milestone-1", name: "Phase 1" },
+                    { id: "milestone-2", name: "Phase 2" },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        // Mock response for the update issue mutation
+        {
+          queryName: "UpdateIssue",
+          response: {
+            data: {
+              issueUpdate: {
+                success: true,
+                issue: {
+                  id: "issue-existing-123",
+                  identifier: "ENG-123",
+                  url: "https://linear.app/test-team/issue/ENG-123/test-issue",
+                  title: "Test Issue",
+                },
+              },
+            },
+          },
+        },
+      ],
+      { LINEAR_TEAM_ID: "ENG" },
+    )
 
     try {
       await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
@@ -229,52 +224,57 @@ await snapshotTest({
     "FRONTEND", // uppercase label that should match "frontend" label
   ],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      // Mock response for getTeamIdByKey() - converting team key to ID
-      {
-        queryName: "GetTeamIdByKey",
-        variables: { team: "ENG" },
-        response: {
-          data: {
-            teams: {
-              nodes: [{ id: "team-eng-id" }],
-            },
-          },
-        },
-      },
-      // Mock response for getIssueLabelIdByNameForTeam("FRONTEND", "ENG") - case insensitive
-      {
-        queryName: "GetIssueLabelIdByNameForTeam",
-        variables: { name: "FRONTEND", teamKey: "ENG" },
-        response: {
-          data: {
-            issueLabels: {
-              nodes: [{
-                id: "label-frontend-456",
-                name: "frontend", // actual label is lowercase
-              }],
-            },
-          },
-        },
-      },
-      // Mock response for the update issue mutation
-      {
-        queryName: "UpdateIssue",
-        response: {
-          data: {
-            issueUpdate: {
-              success: true,
-              issue: {
-                id: "issue-existing-123",
-                identifier: "ENG-123",
-                url: "https://linear.app/test-team/issue/ENG-123/test-issue",
-                title: "Test Issue",
+    const { cleanup } = await setupMockLinearServer(
+      [
+        // Mock response for getTeamIdByKey() - converting team key to ID
+        {
+          queryName: "GetTeamIdByKey",
+          variables: { team: "ENG" },
+          response: {
+            data: {
+              teams: {
+                nodes: [{ id: "team-eng-id" }],
               },
             },
           },
         },
-      },
-    ], { LINEAR_TEAM_ID: "ENG" })
+        // Mock response for getIssueLabelIdByNameForTeam("FRONTEND", "ENG") - case insensitive
+        {
+          queryName: "GetIssueLabelIdByNameForTeam",
+          variables: { name: "FRONTEND", teamKey: "ENG" },
+          response: {
+            data: {
+              issueLabels: {
+                nodes: [
+                  {
+                    id: "label-frontend-456",
+                    name: "frontend", // actual label is lowercase
+                  },
+                ],
+              },
+            },
+          },
+        },
+        // Mock response for the update issue mutation
+        {
+          queryName: "UpdateIssue",
+          response: {
+            data: {
+              issueUpdate: {
+                success: true,
+                issue: {
+                  id: "issue-existing-123",
+                  identifier: "ENG-123",
+                  url: "https://linear.app/test-team/issue/ENG-123/test-issue",
+                  title: "Test Issue",
+                },
+              },
+            },
+          },
+        },
+      ],
+      { LINEAR_TEAM_ID: "ENG" },
+    )
 
     try {
       await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
@@ -289,57 +289,54 @@ await snapshotTest({
   name: "Issue Update Command - Short Flag -p Is Priority",
   meta: import.meta,
   colors: false,
-  args: [
-    "ENG-123",
-    "-p",
-    "2",
-    "--parent",
-    "ENG-220",
-  ],
+  args: ["ENG-123", "-p", "2", "--parent", "ENG-220"],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      // Mock response for getTeamIdByKey()
-      {
-        queryName: "GetTeamIdByKey",
-        variables: { team: "ENG" },
-        response: {
-          data: {
-            teams: {
-              nodes: [{ id: "team-eng-id" }],
-            },
-          },
-        },
-      },
-      // Mock response for getIssueId("ENG-220") - resolves parent identifier to ID
-      {
-        queryName: "GetIssueId",
-        variables: { id: "ENG-220" },
-        response: {
-          data: {
-            issue: {
-              id: "parent-issue-id",
-            },
-          },
-        },
-      },
-      // Mock response for the update issue mutation
-      {
-        queryName: "UpdateIssue",
-        response: {
-          data: {
-            issueUpdate: {
-              success: true,
-              issue: {
-                id: "issue-existing-123",
-                identifier: "ENG-123",
-                url: "https://linear.app/test-team/issue/ENG-123/test-issue",
-                title: "Test Issue",
+    const { cleanup } = await setupMockLinearServer(
+      [
+        // Mock response for getTeamIdByKey()
+        {
+          queryName: "GetTeamIdByKey",
+          variables: { team: "ENG" },
+          response: {
+            data: {
+              teams: {
+                nodes: [{ id: "team-eng-id" }],
               },
             },
           },
         },
-      },
-    ], { LINEAR_TEAM_ID: "ENG" })
+        // Mock response for getIssueId("ENG-220") - resolves parent identifier to ID
+        {
+          queryName: "GetIssueId",
+          variables: { id: "ENG-220" },
+          response: {
+            data: {
+              issue: {
+                id: "parent-issue-id",
+              },
+            },
+          },
+        },
+        // Mock response for the update issue mutation
+        {
+          queryName: "UpdateIssue",
+          response: {
+            data: {
+              issueUpdate: {
+                success: true,
+                issue: {
+                  id: "issue-existing-123",
+                  identifier: "ENG-123",
+                  url: "https://linear.app/test-team/issue/ENG-123/test-issue",
+                  title: "Test Issue",
+                },
+              },
+            },
+          },
+        },
+      ],
+      { LINEAR_TEAM_ID: "ENG" },
+    )
 
     try {
       await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })
@@ -354,61 +351,60 @@ await snapshotTest({
   name: "Issue Update Command - With Cycle",
   meta: import.meta,
   colors: false,
-  args: [
-    "ENG-123",
-    "--cycle",
-    "Sprint 7",
-  ],
+  args: ["ENG-123", "--cycle", "Sprint 7"],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      // Mock response for getTeamIdByKey()
-      {
-        queryName: "GetTeamIdByKey",
-        variables: { team: "ENG" },
-        response: {
-          data: {
-            teams: {
-              nodes: [{ id: "team-eng-id" }],
-            },
-          },
-        },
-      },
-      // Mock response for getCycleIdByNameOrNumber()
-      {
-        queryName: "GetTeamCyclesForLookup",
-        variables: { teamId: "team-eng-id" },
-        response: {
-          data: {
-            team: {
-              cycles: {
-                nodes: [
-                  { id: "cycle-1", number: 7, name: "Sprint 7" },
-                  { id: "cycle-2", number: 8, name: "Sprint 8" },
-                ],
-              },
-              activeCycle: { id: "cycle-1", number: 7, name: "Sprint 7" },
-            },
-          },
-        },
-      },
-      // Mock response for the update issue mutation
-      {
-        queryName: "UpdateIssue",
-        response: {
-          data: {
-            issueUpdate: {
-              success: true,
-              issue: {
-                id: "issue-existing-123",
-                identifier: "ENG-123",
-                url: "https://linear.app/test-team/issue/ENG-123/test-issue",
-                title: "Test Issue",
+    const { cleanup } = await setupMockLinearServer(
+      [
+        // Mock response for getTeamIdByKey()
+        {
+          queryName: "GetTeamIdByKey",
+          variables: { team: "ENG" },
+          response: {
+            data: {
+              teams: {
+                nodes: [{ id: "team-eng-id" }],
               },
             },
           },
         },
-      },
-    ], { LINEAR_TEAM_ID: "ENG" })
+        // Mock response for getCycleIdByNameOrNumber()
+        {
+          queryName: "GetTeamCyclesForLookup",
+          variables: { teamId: "team-eng-id" },
+          response: {
+            data: {
+              team: {
+                cycles: {
+                  nodes: [
+                    { id: "cycle-1", number: 7, name: "Sprint 7" },
+                    { id: "cycle-2", number: 8, name: "Sprint 8" },
+                  ],
+                },
+                activeCycle: { id: "cycle-1", number: 7, name: "Sprint 7" },
+              },
+            },
+          },
+        },
+        // Mock response for the update issue mutation
+        {
+          queryName: "UpdateIssue",
+          response: {
+            data: {
+              issueUpdate: {
+                success: true,
+                issue: {
+                  id: "issue-existing-123",
+                  identifier: "ENG-123",
+                  url: "https://linear.app/test-team/issue/ENG-123/test-issue",
+                  title: "Test Issue",
+                },
+              },
+            },
+          },
+        },
+      ],
+      { LINEAR_TEAM_ID: "ENG" },
+    )
 
     try {
       await updateCommand.parseAsync(process.argv.slice(2), { from: "user" })

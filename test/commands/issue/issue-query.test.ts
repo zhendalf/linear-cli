@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { queryCommand } from "../../../src/commands/issue/issue-query.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
 // Test help output
@@ -49,9 +49,7 @@ const mockIssueNode = {
   projectMilestone: null,
   cycle: null,
   labels: {
-    nodes: [
-      { id: "label-1", name: "Bug", color: "#eb5757" },
-    ],
+    nodes: [{ id: "label-1", name: "Bug", color: "#eb5757" }],
   },
   inverseRelations: { nodes: [] },
 }
@@ -61,39 +59,36 @@ await snapshotTest({
   name: "Issue Query Command - JSON Output",
   meta: import.meta,
   colors: false,
-  args: [
-    "--team",
-    "ENG",
-    "--state",
-    "started",
-    "--json",
-  ],
+  args: ["--team", "ENG", "--state", "started", "--json"],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      {
-        queryName: "GetIssuesForQuery",
-        variables: {
-          filter: {
-            team: { key: { eq: "ENG" } },
-            state: { type: { in: ["started"] } },
+    const { cleanup } = await setupMockLinearServer(
+      [
+        {
+          queryName: "GetIssuesForQuery",
+          variables: {
+            filter: {
+              team: { key: { eq: "ENG" } },
+              state: { type: { in: ["started"] } },
+            },
+            sort: [
+              { workflowState: { order: "Descending" } },
+              { priority: { nulls: "last", order: "Descending" } },
+              { manual: { nulls: "last", order: "Ascending" } },
+            ],
+            first: 50,
           },
-          sort: [
-            { workflowState: { order: "Descending" } },
-            { priority: { nulls: "last", order: "Descending" } },
-            { manual: { nulls: "last", order: "Ascending" } },
-          ],
-          first: 50,
-        },
-        response: {
-          data: {
-            issues: {
-              nodes: [mockIssueNode],
-              pageInfo: { hasNextPage: false, endCursor: "cursor-1" },
+          response: {
+            data: {
+              issues: {
+                nodes: [mockIssueNode],
+                pageInfo: { hasNextPage: false, endCursor: "cursor-1" },
+              },
             },
           },
         },
-      },
-    ], { NO_COLOR: "true" })
+      ],
+      { NO_COLOR: "true" },
+    )
 
     try {
       await queryCommand.parseAsync(process.argv.slice(2), { from: "user" })
@@ -108,39 +103,37 @@ await snapshotTest({
   name: "Issue Query Command - Search JSON Output",
   meta: import.meta,
   colors: false,
-  args: [
-    "--search",
-    "oauth timeout",
-    "--team",
-    "ENG",
-    "--search-comments",
-    "--json",
-  ],
+  args: ["--search", "oauth timeout", "--team", "ENG", "--search-comments", "--json"],
   async fn() {
-    const { cleanup } = await setupMockLinearServer([
-      {
-        queryName: "SearchIssues",
-        variables: {
-          term: "oauth timeout",
-          filter: {
-            team: { key: { eq: "ENG" } },
+    const { cleanup } = await setupMockLinearServer(
+      [
+        {
+          queryName: "SearchIssues",
+          variables: {
+            term: "oauth timeout",
+            filter: {
+              team: { key: { eq: "ENG" } },
+            },
+            includeComments: true,
           },
-          includeComments: true,
-        },
-        response: {
-          data: {
-            searchIssues: {
-              nodes: [{
-                ...mockIssueNode,
-                metadata: { context: {}, score: 0.42 },
-              }],
-              pageInfo: { hasNextPage: false, endCursor: "cursor-1" },
-              totalCount: 1,
+          response: {
+            data: {
+              searchIssues: {
+                nodes: [
+                  {
+                    ...mockIssueNode,
+                    metadata: { context: {}, score: 0.42 },
+                  },
+                ],
+                pageInfo: { hasNextPage: false, endCursor: "cursor-1" },
+                totalCount: 1,
+              },
             },
           },
         },
-      },
-    ], { NO_COLOR: "true" })
+      ],
+      { NO_COLOR: "true" },
+    )
 
     try {
       await queryCommand.parseAsync(process.argv.slice(2), { from: "user" })
@@ -164,39 +157,42 @@ test("Issue Query Command - All Teams shows TEAM column", async () => {
   }
   globalThis.Date = MockDate as DateConstructor
 
-  const { cleanup } = await setupMockLinearServer([
-    {
-      queryName: "GetIssuesForQuery",
-      variables: {
-        sort: [
-          { workflowState: { order: "Descending" } },
-          { priority: { nulls: "last", order: "Descending" } },
-          { manual: { nulls: "last", order: "Ascending" } },
-        ],
-        first: 50,
-      },
-      response: {
-        data: {
-          issues: {
-            nodes: [
-              {
-                ...mockIssueNode,
-                team: { id: "team-1", key: "ENG", name: "Engineering" },
-              },
-              {
-                ...mockIssueNode,
-                id: "issue-2",
-                identifier: "FE-42",
-                title: "Fix CSS bug",
-                team: { id: "team-2", key: "FE", name: "Frontend" },
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: null },
+  const { cleanup } = await setupMockLinearServer(
+    [
+      {
+        queryName: "GetIssuesForQuery",
+        variables: {
+          sort: [
+            { workflowState: { order: "Descending" } },
+            { priority: { nulls: "last", order: "Descending" } },
+            { manual: { nulls: "last", order: "Ascending" } },
+          ],
+          first: 50,
+        },
+        response: {
+          data: {
+            issues: {
+              nodes: [
+                {
+                  ...mockIssueNode,
+                  team: { id: "team-1", key: "ENG", name: "Engineering" },
+                },
+                {
+                  ...mockIssueNode,
+                  id: "issue-2",
+                  identifier: "FE-42",
+                  title: "Fix CSS bug",
+                  team: { id: "team-2", key: "FE", name: "Frontend" },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
       },
-    },
-  ], { NO_COLOR: "true" })
+    ],
+    { NO_COLOR: "true" },
+  )
 
   const logs: string[] = []
   const origConsoleLog = console.log
@@ -234,54 +230,61 @@ test("Issue Query Command - Shows Blocked Indicator", async () => {
   }
   globalThis.Date = MockDate as DateConstructor
 
-  const { cleanup } = await setupMockLinearServer([
-    {
-      queryName: "GetIssuesForQuery",
-      response: {
-        data: {
-          issues: {
-            nodes: [
-              {
-                ...mockIssueNode,
-                id: "blocked-1",
-                identifier: "ENG-300",
-                title: "Blocked by open",
-                inverseRelations: {
-                  nodes: [{
-                    id: "rel-a",
-                    type: "blocks",
-                    issue: {
-                      id: "blocker",
-                      identifier: "ENG-200",
-                      state: { type: "started" },
-                    },
-                  }],
+  const { cleanup } = await setupMockLinearServer(
+    [
+      {
+        queryName: "GetIssuesForQuery",
+        response: {
+          data: {
+            issues: {
+              nodes: [
+                {
+                  ...mockIssueNode,
+                  id: "blocked-1",
+                  identifier: "ENG-300",
+                  title: "Blocked by open",
+                  inverseRelations: {
+                    nodes: [
+                      {
+                        id: "rel-a",
+                        type: "blocks",
+                        issue: {
+                          id: "blocker",
+                          identifier: "ENG-200",
+                          state: { type: "started" },
+                        },
+                      },
+                    ],
+                  },
                 },
-              },
-              {
-                ...mockIssueNode,
-                id: "unblocked-1",
-                identifier: "ENG-301",
-                title: "Blocker done",
-                inverseRelations: {
-                  nodes: [{
-                    id: "rel-b",
-                    type: "blocks",
-                    issue: {
-                      id: "blocker-done",
-                      identifier: "ENG-201",
-                      state: { type: "canceled" },
-                    },
-                  }],
+                {
+                  ...mockIssueNode,
+                  id: "unblocked-1",
+                  identifier: "ENG-301",
+                  title: "Blocker done",
+                  inverseRelations: {
+                    nodes: [
+                      {
+                        id: "rel-b",
+                        type: "blocks",
+                        issue: {
+                          id: "blocker-done",
+                          identifier: "ENG-201",
+                          state: { type: "canceled" },
+                        },
+                      },
+                    ],
+                  },
                 },
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: null },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
       },
-    },
-  ], { NO_COLOR: "true" })
+    ],
+    { NO_COLOR: "true" },
+  )
 
   const logs: string[] = []
   const origConsoleLog = console.log
@@ -325,9 +328,7 @@ test("Issue Query Command - rejects --team with --all-teams", async () => {
     process.exit = origProcessExit
   }
 
-  expect(
-    errorLogs.some((l) => l.includes("Cannot use both --team and --all-teams")),
-  ).toBe(true)
+  expect(errorLogs.some((l) => l.includes("Cannot use both --team and --all-teams"))).toBe(true)
 })
 
 // Test validation: --sort with --search conflict
@@ -348,14 +349,9 @@ test("Issue Query Command - rejects --sort with --search", async () => {
   }) as typeof process.exit
 
   try {
-    await queryCommand.parseAsync([
-      "--search",
-      "foo",
-      "--sort",
-      "priority",
-      "--team",
-      "ENG",
-    ], { from: "user" })
+    await queryCommand.parseAsync(["--search", "foo", "--sort", "priority", "--team", "ENG"], {
+      from: "user",
+    })
   } catch {
     // expected
   } finally {
@@ -364,9 +360,7 @@ test("Issue Query Command - rejects --sort with --search", async () => {
     await cleanup()
   }
 
-  expect(
-    errorLogs.some((l) => l.includes("--sort cannot be used with --search")),
-  ).toBe(true)
+  expect(errorLogs.some((l) => l.includes("--sort cannot be used with --search"))).toBe(true)
 })
 
 // Test validation: --search-comments without --search
@@ -396,9 +390,7 @@ test("Issue Query Command - rejects --search-comments without --search", async (
     await cleanup()
   }
 
-  expect(
-    errorLogs.some((l) => l.includes("--search-comments requires --search")),
-  ).toBe(true)
+  expect(errorLogs.some((l) => l.includes("--search-comments requires --search"))).toBe(true)
 })
 
 // Test validation: --milestone without --project
@@ -428,9 +420,7 @@ test("Issue Query Command - rejects --milestone without --project", async () => 
     await cleanup()
   }
 
-  expect(
-    errorLogs.some((l) => l.includes("--milestone requires --project")),
-  ).toBe(true)
+  expect(errorLogs.some((l) => l.includes("--milestone requires --project"))).toBe(true)
 })
 
 // Note: "no default team" error path is not tested here because

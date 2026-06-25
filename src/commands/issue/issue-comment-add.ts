@@ -1,25 +1,18 @@
+import { readFile } from "node:fs/promises"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getIssueIdentifier } from "../../utils/linear.ts"
-import {
-  formatAsMarkdownLink,
-  uploadFile,
-  validateFilePath,
-} from "../../utils/upload.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getIssueIdentifier } from "../../utils/linear.ts"
 import { input } from "../../utils/prompt.ts"
-import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
-import { readFile } from "node:fs/promises"
+import { formatAsMarkdownLink, uploadFile, validateFilePath } from "../../utils/upload.ts"
 
 export const commentAddCommand = new Command("add")
   .description("Add a comment to an issue or reply to a comment")
   .argument("[issueId]")
   .option("-b, --body <text>", "Comment body text")
-  .option(
-    "--body-file <path>",
-    "Read comment body from a file (preferred for markdown content)",
-  )
+  .option("--body-file <path>", "Read comment body from a file (preferred for markdown content)")
   .option("-p, --parent <id>", "Parent comment ID for replies")
   .option(
     "-a, --attach <filepath>",
@@ -32,9 +25,7 @@ export const commentAddCommand = new Command("add")
     try {
       // Validate that body and bodyFile are not both provided
       if (body && bodyFile) {
-        throw new ValidationError(
-          "Cannot specify both --body and --body-file",
-        )
+        throw new ValidationError("Cannot specify both --body and --body-file")
       }
 
       // Read body from file if provided
@@ -43,23 +34,17 @@ export const commentAddCommand = new Command("add")
         try {
           commentBody = await readFile(bodyFile, "utf8")
         } catch (error) {
-          throw new ValidationError(
-            `Failed to read body file: ${bodyFile}`,
-            {
-              suggestion: `Error: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            },
-          )
+          throw new ValidationError(`Failed to read body file: ${bodyFile}`, {
+            suggestion: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          })
         }
       }
 
       const resolvedIdentifier = await getIssueIdentifier(issueId)
       if (!resolvedIdentifier) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          { suggestion: "Please provide an issue ID like 'ENG-123'." },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID like 'ENG-123'.",
+        })
       }
 
       // Validate and upload attachments first
@@ -108,9 +93,7 @@ export const commentAddCommand = new Command("add")
           return formatAsMarkdownLink({
             filename: file.filename,
             assetUrl: file.assetUrl,
-            contentType: file.isImage
-              ? "image/png"
-              : "application/octet-stream",
+            contentType: file.isImage ? "image/png" : "application/octet-stream",
             size: 0,
           })
         })

@@ -1,23 +1,15 @@
 import { Command } from "commander"
 import open from "open"
-import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { formatRelativeTime } from "../../utils/display.ts"
-import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { createSpinner } from "../../utils/spinner.ts"
 import { getOption } from "../../config.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import {
-  downloadMarkdownImages,
-  replaceImageUrls,
-} from "../../utils/markdown-images.ts"
-import {
-  handleError,
-  isClientError,
-  isNotFoundError,
-  NotFoundError,
-} from "../../utils/errors.ts"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
+import { formatRelativeTime } from "../../utils/display.ts"
+import { NotFoundError, handleError, isClientError, isNotFoundError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { downloadMarkdownImages, replaceImageUrls } from "../../utils/markdown-images.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const GetDocument = gql(`
   query GetDocument($id: String!) {
@@ -118,9 +110,7 @@ export const viewCommand = new Command("view")
       }
 
       if (document.issue) {
-        lines.push(
-          `**Issue:** ${document.issue.identifier} - ${document.issue.title}`,
-        )
+        lines.push(`**Issue:** ${document.issue.identifier} - ${document.issue.title}`)
       }
 
       lines.push(`**Created:** ${formatRelativeTime(document.createdAt)}`)

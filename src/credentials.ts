@@ -7,8 +7,8 @@
  * Users must re-run `linear auth login` after upgrading from the Deno release.
  */
 
-import { readFile, writeFile, mkdir, chmod } from "node:fs/promises"
 import { existsSync } from "node:fs"
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { credentialsFilePath } from "./utils/paths.ts"
 import { isWindows } from "./utils/runtime.ts"
@@ -90,9 +90,7 @@ export async function loadCredentials(): Promise<Credentials> {
       apiKeyCache.clear()
       return credentials
     }
-    throw new Error(
-      `Failed to read credentials file at ${path}: ${e.message}`,
-    )
+    throw new Error(`Failed to read credentials file at ${path}: ${e.message}`)
   }
 
   let parsed: CredentialsJson

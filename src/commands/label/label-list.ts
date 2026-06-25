@@ -2,14 +2,14 @@ import { Command } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import type { GetIssueLabelsQuery } from "../../__codegen__/graphql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay } from "../../utils/display.ts"
-import { getTeamKey } from "../../utils/linear.ts"
+import { handleError } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getTeamKey } from "../../utils/linear.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 import { applyConsoleFormat } from "../../utils/styling.ts"
-import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
-import { handleError } from "../../utils/errors.ts"
 
 const GetIssueLabels = gql(`
   query GetIssueLabels($filter: IssueLabelFilter, $first: Int, $after: String) {
@@ -36,18 +36,9 @@ type Label = NonNullable<GetIssueLabelsQuery["issueLabels"]>["nodes"][number]
 
 export const listCommand = new Command("list")
   .description("List issue labels")
-  .option(
-    "--team <teamKey>",
-    "Filter by team (e.g., TC). Shows team-specific labels only.",
-  )
-  .option(
-    "--workspace",
-    "Show only workspace-level labels (not team-specific)",
-  )
-  .option(
-    "--all",
-    "Show all labels (both workspace and team)",
-  )
+  .option("--team <teamKey>", "Filter by team (e.g., TC). Shows team-specific labels only.")
+  .option("--workspace", "Show only workspace-level labels (not team-specific)")
+  .option("--all", "Show all labels (both workspace and team)")
   .option("-j, --json", "Output as JSON")
   .action(async (options) => {
     const { team: teamKey, workspace, all, json } = options
@@ -67,20 +58,14 @@ export const listCommand = new Command("list")
       } else if (teamKey) {
         // Only labels for a specific team (includes workspace labels)
         filter = {
-          or: [
-            { team: { key: { eq: teamKey.toUpperCase() } } },
-            { team: { null: true } },
-          ],
+          or: [{ team: { key: { eq: teamKey.toUpperCase() } } }, { team: { null: true } }],
         }
       } else if (!all) {
         // Default: use configured team if available, otherwise show all
         const defaultTeam = getTeamKey()
         if (defaultTeam) {
           filter = {
-            or: [
-              { team: { key: { eq: defaultTeam } } },
-              { team: { null: true } },
-            ],
+            or: [{ team: { key: { eq: defaultTeam } } }, { team: { null: true } }],
           }
         }
         // If no team configured and not --all, show all anyway
@@ -90,22 +75,17 @@ export const listCommand = new Command("list")
       const allLabels: Label[] = []
       let hasNextPage = true
       let after: string | null | undefined = undefined
-      let pageInfo: NonNullable<
-        GetIssueLabelsQuery["issueLabels"]
-      >["pageInfo"] = {
+      let pageInfo: NonNullable<GetIssueLabelsQuery["issueLabels"]>["pageInfo"] = {
         hasNextPage: false,
         endCursor: null,
       }
 
       while (hasNextPage) {
-        const result: GetIssueLabelsQuery = await client.request(
-          GetIssueLabels,
-          {
-            filter: Object.keys(filter).length > 0 ? filter : undefined,
-            first: 100,
-            after,
-          },
-        )
+        const result: GetIssueLabelsQuery = await client.request(GetIssueLabels, {
+          filter: Object.keys(filter).length > 0 ? filter : undefined,
+          first: 100,
+          after,
+        })
 
         const labelsConnection = result.issueLabels
         const labels = labelsConnection?.nodes || []
@@ -123,14 +103,16 @@ export const listCommand = new Command("list")
 
       if (allLabels.length === 0) {
         if (json) {
-          console.log(JSON.stringify(
-            {
-              nodes: allLabels,
-              pageInfo,
-            },
-            null,
-            2,
-          ))
+          console.log(
+            JSON.stringify(
+              {
+                nodes: allLabels,
+                pageInfo,
+              },
+              null,
+              2,
+            ),
+          )
         } else {
           console.log("No labels found.")
         }
@@ -139,25 +121,25 @@ export const listCommand = new Command("list")
 
       // Sort by name
       const sortedLabels = allLabels.sort((a, b) =>
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
       )
 
       if (json) {
-        console.log(JSON.stringify(
-          {
-            nodes: sortedLabels,
-            pageInfo,
-          },
-          null,
-          2,
-        ))
+        console.log(
+          JSON.stringify(
+            {
+              nodes: sortedLabels,
+              pageInfo,
+            },
+            null,
+            2,
+          ),
+        )
         return
       }
 
       // Calculate column widths
-      const { columns } = isStdoutTTY()
-        ? getConsoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
       const ID_WIDTH = 36 // UUID length
       const COLOR_WIDTH = 7 // "#XXXXXX"
@@ -172,9 +154,7 @@ export const listCommand = new Command("list")
       const SPACE_WIDTH = 6
       const fixed = ID_WIDTH + COLOR_WIDTH + TEAM_WIDTH + SPACE_WIDTH
       const PADDING = 1
-      const maxNameWidth = Math.max(
-        ...sortedLabels.map((l) => stringWidth(l.name)),
-      )
+      const maxNameWidth = Math.max(...sortedLabels.map((l) => stringWidth(l.name)))
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, Math.max(20, availableWidth))
 
@@ -203,9 +183,10 @@ export const listCommand = new Command("list")
       for (const label of sortedLabels) {
         const teamDisplay = label.team?.key || "Workspace"
 
-        const truncName = label.name.length > nameWidth
-          ? label.name.slice(0, nameWidth - 3) + "..."
-          : padDisplay(label.name, nameWidth)
+        const truncName =
+          label.name.length > nameWidth
+            ? label.name.slice(0, nameWidth - 3) + "..."
+            : padDisplay(label.name, nameWidth)
 
         const idDisplay = padDisplay(label.id, ID_WIDTH)
         const colorDisplay = padDisplay(label.color, COLOR_WIDTH)

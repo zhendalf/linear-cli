@@ -1,22 +1,12 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import {
-  getAllTeams,
-  getTeamIdByKey,
-  getTeamKey,
-  lookupUserId,
-} from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
-import { createSpinner } from "../../utils/spinner.ts"
-import { select, input } from "../../utils/prompt.ts"
+import { getAllTeams, getTeamIdByKey, getTeamKey, lookupUserId } from "../../utils/linear.ts"
+import { input, select } from "../../utils/prompt.ts"
 import { isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const CreateProject = gql(`
   mutation CreateProject($input: ProjectCreateInput!) {
@@ -58,11 +48,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 
@@ -120,304 +106,277 @@ export const createCommand = new Command("create")
     "Team key (can be repeated for multiple teams)",
     (val: string, prev: string[] = []) => [...prev, val],
   )
-  .option(
-    "-l, --lead <lead>",
-    "Project lead (username, email, or @me)",
-  )
+  .option("-l, --lead <lead>", "Project lead (username, email, or @me)")
   .option(
     "-s, --status <status>",
     "Project status (planned, started, paused, completed, canceled, backlog)",
   )
   .option("--start-date <startDate>", "Start date (YYYY-MM-DD)")
-  .option(
-    "--target-date <targetDate>",
-    "Target completion date (YYYY-MM-DD)",
-  )
-  .option(
-    "--initiative <initiative>",
-    "Add to initiative immediately (ID, slug, or name)",
-  )
-  .option(
-    "-i, --interactive",
-    "Interactive mode (default if no flags provided)",
-  )
+  .option("--target-date <targetDate>", "Target completion date (YYYY-MM-DD)")
+  .option("--initiative <initiative>", "Add to initiative immediately (ID, slug, or name)")
+  .option("-i, --interactive", "Interactive mode (default if no flags provided)")
   .option("-j, --json", "Output created project as JSON")
-  .action(
-    async (options) => {
-      const {
-        name: providedName,
-        description: providedDescription,
-        team: providedTeams,
-        lead: providedLead,
-        status: providedStatus,
-        startDate: providedStartDate,
-        targetDate: providedTargetDate,
-        initiative: providedInitiative,
-        interactive: interactiveFlag,
-        json: jsonOutput,
-      } = options
+  .action(async (options) => {
+    const {
+      name: providedName,
+      description: providedDescription,
+      team: providedTeams,
+      lead: providedLead,
+      status: providedStatus,
+      startDate: providedStartDate,
+      targetDate: providedTargetDate,
+      initiative: providedInitiative,
+      interactive: interactiveFlag,
+      json: jsonOutput,
+    } = options
 
-      const client = getGraphQLClient()
-      const initiative = providedInitiative
+    const client = getGraphQLClient()
+    const initiative = providedInitiative
 
-      let name: string | undefined = providedName
-      let description: string | undefined = providedDescription
-      let teams: string[] = providedTeams || []
-      let lead: string | undefined = providedLead
-      let status: string | undefined = providedStatus
-      let startDate: string | undefined = providedStartDate
-      let targetDate: string | undefined = providedTargetDate
+    let name: string | undefined = providedName
+    let description: string | undefined = providedDescription
+    let teams: string[] = providedTeams || []
+    let lead: string | undefined = providedLead
+    let status: string | undefined = providedStatus
+    let startDate: string | undefined = providedStartDate
+    let targetDate: string | undefined = providedTargetDate
 
-      // Determine if we should run in interactive mode
-      const noFlagsProvided = !name && teams.length === 0
-      const isInteractive = (noFlagsProvided || interactiveFlag) &&
-        isStdoutTTY()
+    // Determine if we should run in interactive mode
+    const noFlagsProvided = !name && teams.length === 0
+    const isInteractive = (noFlagsProvided || interactiveFlag) && isStdoutTTY()
 
-      if (isInteractive) {
-        console.log("\nCreate a new project\n")
+    if (isInteractive) {
+      console.log("\nCreate a new project\n")
 
-        // Name (required)
-        if (!name) {
-          name = await input({
-            message: "Project name:",
-            minLength: 1,
-          })
-        }
-
-        // Description (optional)
-        if (!description) {
-          const descResult = await input({
-            message: "Description (optional):",
-          })
-          description = descResult || undefined
-        }
-
-        // Team selection (required)
-        if (teams.length === 0) {
-          const allTeams = await getAllTeams()
-          const teamOptions = allTeams.map((t) => ({
-            name: `${t.name} (${t.key})`,
-            value: t.key,
-          }))
-
-          // Try to get default team from config
-          const defaultTeam = getTeamKey()
-          const defaultIndex = defaultTeam
-            ? teamOptions.findIndex((t) => t.value === defaultTeam)
-            : -1
-
-          const selectedTeam = await select({
-            message: "Team:",
-            choices: teamOptions,
-            default: defaultIndex >= 0
-              ? teamOptions[defaultIndex].value
-              : undefined,
-          })
-          teams = [selectedTeam]
-        }
-
-        // Status selection - get actual statuses from API
-        if (!status) {
-          const statusResult = await client.request(GetProjectStatuses)
-          const projectStatuses = statusResult.projectStatuses?.nodes || []
-
-          if (projectStatuses.length > 0) {
-            const statusOptions = projectStatuses.map(
-              (s: { id: string; name: string; type: string }) => ({
-                name: s.name,
-                value: s.type,
-              }),
-            )
-
-            // Find default (planned) status
-            const defaultStatus = statusOptions.find(
-              (s: { value: string }) => s.value === "planned",
-            )
-
-            const selectedStatus = await select({
-              message: "Status:",
-              choices: statusOptions,
-              default: defaultStatus?.value || statusOptions[0]?.value,
-            })
-            status = selectedStatus
-          }
-        }
-
-        // Lead (optional)
-        if (!lead) {
-          const leadResult = await input({
-            message: "Lead (username, email, or @me - press Enter to skip):",
-          })
-          lead = leadResult || undefined
-        }
-
-        // Start date (optional)
-        if (!startDate) {
-          const startDateResult = await input({
-            message: "Start date (YYYY-MM-DD - press Enter to skip):",
-          })
-          startDate = startDateResult || undefined
-        }
-
-        // Target date (optional)
-        if (!targetDate) {
-          const targetDateResult = await input({
-            message: "Target date (YYYY-MM-DD - press Enter to skip):",
-          })
-          targetDate = targetDateResult || undefined
-        }
-      }
-
-      // Validate required fields
+      // Name (required)
       if (!name) {
-        throw new ValidationError("Project name is required", {
-          suggestion: "Use --name or -n flag to specify a project name.",
+        name = await input({
+          message: "Project name:",
+          minLength: 1,
         })
       }
 
+      // Description (optional)
+      if (!description) {
+        const descResult = await input({
+          message: "Description (optional):",
+        })
+        description = descResult || undefined
+      }
+
+      // Team selection (required)
       if (teams.length === 0) {
-        // Try default team from config
+        const allTeams = await getAllTeams()
+        const teamOptions = allTeams.map((t) => ({
+          name: `${t.name} (${t.key})`,
+          value: t.key,
+        }))
+
+        // Try to get default team from config
         const defaultTeam = getTeamKey()
-        if (defaultTeam) {
-          teams = [defaultTeam]
-        } else {
-          throw new ValidationError("At least one team is required", {
-            suggestion: "Use --team or -t flag to specify a team.",
-          })
-        }
+        const defaultIndex = defaultTeam
+          ? teamOptions.findIndex((t) => t.value === defaultTeam)
+          : -1
+
+        const selectedTeam = await select({
+          message: "Team:",
+          choices: teamOptions,
+          default: defaultIndex >= 0 ? teamOptions[defaultIndex].value : undefined,
+        })
+        teams = [selectedTeam]
       }
 
-      // Resolve team IDs
-      const teamIds: string[] = []
-      for (const teamKey of teams) {
-        const teamId = await getTeamIdByKey(teamKey.toUpperCase())
-        if (!teamId) {
-          throw new NotFoundError("Team", teamKey)
-        }
-        teamIds.push(teamId)
-      }
-
-      // Build input - resolve all optional fields first
-      let leadId: string | undefined
-      if (lead) {
-        leadId = await lookupUserId(lead)
-        if (!leadId) {
-          throw new NotFoundError("Lead", lead)
-        }
-      }
-
-      let statusId: string | undefined
-      if (status) {
-        // Map display value to API type if needed
-        const statusLower = status.toLowerCase()
-        const statusTypeMapping: Record<string, string> = {
-          "planned": "planned",
-          "in progress": "started",
-          "started": "started",
-          "paused": "paused",
-          "completed": "completed",
-          "canceled": "canceled",
-          "backlog": "backlog",
-        }
-        const apiStatusType = statusTypeMapping[statusLower]
-        if (!apiStatusType) {
-          throw new ValidationError(`Invalid status: ${status}`, {
-            suggestion:
-              "Valid values: planned, started, paused, completed, canceled, backlog",
-          })
-        }
-
-        // Look up the actual status ID from the organization's project statuses
+      // Status selection - get actual statuses from API
+      if (!status) {
         const statusResult = await client.request(GetProjectStatuses)
         const projectStatuses = statusResult.projectStatuses?.nodes || []
-        const matchingStatus = projectStatuses.find(
-          (s: { type: string }) => s.type === apiStatusType,
-        )
-        if (!matchingStatus) {
-          throw new NotFoundError("Project status", apiStatusType)
+
+        if (projectStatuses.length > 0) {
+          const statusOptions = projectStatuses.map(
+            (s: { id: string; name: string; type: string }) => ({
+              name: s.name,
+              value: s.type,
+            }),
+          )
+
+          // Find default (planned) status
+          const defaultStatus = statusOptions.find((s: { value: string }) => s.value === "planned")
+
+          const selectedStatus = await select({
+            message: "Status:",
+            choices: statusOptions,
+            default: defaultStatus?.value || statusOptions[0]?.value,
+          })
+          status = selectedStatus
         }
-        statusId = matchingStatus.id
       }
 
-      if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-        throw new ValidationError("Start date must be in YYYY-MM-DD format")
+      // Lead (optional)
+      if (!lead) {
+        const leadResult = await input({
+          message: "Lead (username, email, or @me - press Enter to skip):",
+        })
+        lead = leadResult || undefined
       }
 
-      if (targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-        throw new ValidationError("Target date must be in YYYY-MM-DD format")
+      // Start date (optional)
+      if (!startDate) {
+        const startDateResult = await input({
+          message: "Start date (YYYY-MM-DD - press Enter to skip):",
+        })
+        startDate = startDateResult || undefined
       }
 
-      const projectInput = {
-        name,
-        teamIds,
-        ...(description && { description }),
-        ...(leadId && { leadId }),
-        ...(statusId && { statusId }),
-        ...(startDate && { startDate }),
-        ...(targetDate && { targetDate }),
+      // Target date (optional)
+      if (!targetDate) {
+        const targetDateResult = await input({
+          message: "Target date (YYYY-MM-DD - press Enter to skip):",
+        })
+        targetDate = targetDateResult || undefined
+      }
+    }
+
+    // Validate required fields
+    if (!name) {
+      throw new ValidationError("Project name is required", {
+        suggestion: "Use --name or -n flag to specify a project name.",
+      })
+    }
+
+    if (teams.length === 0) {
+      // Try default team from config
+      const defaultTeam = getTeamKey()
+      if (defaultTeam) {
+        teams = [defaultTeam]
+      } else {
+        throw new ValidationError("At least one team is required", {
+          suggestion: "Use --team or -t flag to specify a team.",
+        })
+      }
+    }
+
+    // Resolve team IDs
+    const teamIds: string[] = []
+    for (const teamKey of teams) {
+      const teamId = await getTeamIdByKey(teamKey.toUpperCase())
+      if (!teamId) {
+        throw new NotFoundError("Team", teamKey)
+      }
+      teamIds.push(teamId)
+    }
+
+    // Build input - resolve all optional fields first
+    let leadId: string | undefined
+    if (lead) {
+      leadId = await lookupUserId(lead)
+      if (!leadId) {
+        throw new NotFoundError("Lead", lead)
+      }
+    }
+
+    let statusId: string | undefined
+    if (status) {
+      // Map display value to API type if needed
+      const statusLower = status.toLowerCase()
+      const statusTypeMapping: Record<string, string> = {
+        planned: "planned",
+        "in progress": "started",
+        started: "started",
+        paused: "paused",
+        completed: "completed",
+        canceled: "canceled",
+        backlog: "backlog",
+      }
+      const apiStatusType = statusTypeMapping[statusLower]
+      if (!apiStatusType) {
+        throw new ValidationError(`Invalid status: ${status}`, {
+          suggestion: "Valid values: planned, started, paused, completed, canceled, backlog",
+        })
       }
 
-      const spinner = createSpinner("", shouldShowSpinner() && !jsonOutput)
-      spinner.start()
+      // Look up the actual status ID from the organization's project statuses
+      const statusResult = await client.request(GetProjectStatuses)
+      const projectStatuses = statusResult.projectStatuses?.nodes || []
+      const matchingStatus = projectStatuses.find((s: { type: string }) => s.type === apiStatusType)
+      if (!matchingStatus) {
+        throw new NotFoundError("Project status", apiStatusType)
+      }
+      statusId = matchingStatus.id
+    }
 
-      try {
-        const result = await client.request(CreateProject, { input: projectInput })
+    if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      throw new ValidationError("Start date must be in YYYY-MM-DD format")
+    }
 
-        if (!result.projectCreate.success) {
-          spinner.stop()
-          throw new CliError("Failed to create project")
-        }
+    if (targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+      throw new ValidationError("Target date must be in YYYY-MM-DD format")
+    }
 
-        const project = result.projectCreate.project
+    const projectInput = {
+      name,
+      teamIds,
+      ...(description && { description }),
+      ...(leadId && { leadId }),
+      ...(statusId && { statusId }),
+      ...(startDate && { startDate }),
+      ...(targetDate && { targetDate }),
+    }
+
+    const spinner = createSpinner("", shouldShowSpinner() && !jsonOutput)
+    spinner.start()
+
+    try {
+      const result = await client.request(CreateProject, { input: projectInput })
+
+      if (!result.projectCreate.success) {
         spinner.stop()
+        throw new CliError("Failed to create project")
+      }
 
-        if (!project) {
-          throw new CliError("Failed to create project: no project returned")
-        }
+      const project = result.projectCreate.project
+      spinner.stop()
 
-        // Add to initiative if specified (before JSON output so warnings go to stderr)
-        if (initiative) {
-          const initiativeId = await resolveInitiativeId(client, initiative)
-          if (!initiativeId) {
-            console.error(`\nWarning: Initiative not found: ${initiative}`)
-            console.error("Project was created but not added to initiative.")
-          } else {
-            try {
-              const linkResult = await client.request(AddProjectToInitiative, {
-                input: {
-                  initiativeId,
-                  projectId: project.id,
-                },
-              })
+      if (!project) {
+        throw new CliError("Failed to create project: no project returned")
+      }
 
-              if (linkResult.initiativeToProjectCreate.success && !jsonOutput) {
-                console.log(`✓ Added to initiative: ${initiative}`)
-              } else if (
-                !linkResult.initiativeToProjectCreate.success
-              ) {
-                console.error(`\nWarning: Failed to add project to initiative`)
-              }
-            } catch (error) {
-              console.error(
-                `\nWarning: Failed to add project to initiative:`,
-                error,
-              )
-            }
-          }
-        }
-
-        if (jsonOutput) {
-          console.log(JSON.stringify(result.projectCreate, null, 2))
+      // Add to initiative if specified (before JSON output so warnings go to stderr)
+      if (initiative) {
+        const initiativeId = await resolveInitiativeId(client, initiative)
+        if (!initiativeId) {
+          console.error(`\nWarning: Initiative not found: ${initiative}`)
+          console.error("Project was created but not added to initiative.")
         } else {
-          console.log(`✓ Created project: ${project.name}`)
-          console.log(`  Slug: ${project.slugId}`)
-          if (project.url) {
-            console.log(`  URL: ${project.url}`)
+          try {
+            const linkResult = await client.request(AddProjectToInitiative, {
+              input: {
+                initiativeId,
+                projectId: project.id,
+              },
+            })
+
+            if (linkResult.initiativeToProjectCreate.success && !jsonOutput) {
+              console.log(`✓ Added to initiative: ${initiative}`)
+            } else if (!linkResult.initiativeToProjectCreate.success) {
+              console.error(`\nWarning: Failed to add project to initiative`)
+            }
+          } catch (error) {
+            console.error(`\nWarning: Failed to add project to initiative:`, error)
           }
         }
-      } catch (error) {
-        spinner.stop()
-        handleError(error, "Failed to create project")
       }
-    },
-  )
+
+      if (jsonOutput) {
+        console.log(JSON.stringify(result.projectCreate, null, 2))
+      } else {
+        console.log(`✓ Created project: ${project.name}`)
+        console.log(`  Slug: ${project.slugId}`)
+        if (project.url) {
+          console.log(`  URL: ${project.url}`)
+        }
+      }
+    } catch (error) {
+      spinner.stop()
+      handleError(error, "Failed to create project")
+    }
+  })

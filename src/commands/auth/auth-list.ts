@@ -1,11 +1,7 @@
 import { Command } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
-import {
-  getCredentialApiKey,
-  getDefaultWorkspace,
-  getWorkspaces,
-} from "../../credentials.ts"
+import { getCredentialApiKey, getDefaultWorkspace, getWorkspaces } from "../../credentials.ts"
 import { padDisplay } from "../../utils/display.ts"
 import { handleError, isClientError } from "../../utils/errors.ts"
 import { createGraphQLClient } from "../../utils/graphql.ts"
@@ -32,10 +28,7 @@ interface WorkspaceInfo {
   error?: string
 }
 
-async function fetchWorkspaceInfo(
-  workspace: string,
-  apiKey: string,
-): Promise<WorkspaceInfo> {
+async function fetchWorkspaceInfo(workspace: string, apiKey: string): Promise<WorkspaceInfo> {
   const isDefault = getDefaultWorkspace() === workspace
   const client = createGraphQLClient(apiKey)
 
@@ -106,9 +99,10 @@ export const listCommand = new Command("list")
       )
 
       // Print header
-      const header = `  ${padDisplay("WORKSPACE", workspaceWidth)} ${
-        padDisplay("ORG NAME", orgWidth)
-      } USER`
+      const header = `  ${padDisplay("WORKSPACE", workspaceWidth)} ${padDisplay(
+        "ORG NAME",
+        orgWidth,
+      )} USER`
       console.log(`%c${header}`, "text-decoration: underline")
 
       // Print each workspace

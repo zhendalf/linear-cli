@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { updateCommand } from "../../../src/commands/milestone/milestone-update.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -18,11 +18,7 @@ await snapshotTest({
   name: "Milestone Update Command - Update Name",
   meta: import.meta,
   colors: false,
-  args: [
-    "milestone-123",
-    "--name",
-    "Updated Milestone Name",
-  ],
+  args: ["milestone-123", "--name", "Updated Milestone Name"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -118,11 +114,7 @@ await snapshotTest({
   name: "Milestone Update Command - Update Sort Order",
   meta: import.meta,
   colors: false,
-  args: [
-    "milestone-sort",
-    "--sort-order",
-    "5",
-  ],
+  args: ["milestone-sort", "--sort-order", "5"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -166,11 +158,7 @@ await snapshotTest({
   name: "Milestone Update Command - Update Sort Order Zero",
   meta: import.meta,
   colors: false,
-  args: [
-    "milestone-zero",
-    "--sort-order",
-    "0",
-  ],
+  args: ["milestone-zero", "--sort-order", "0"],
   async fn() {
     const server = new MockLinearServer([
       {
@@ -214,11 +202,7 @@ await snapshotTest({
   name: "Milestone Update Command - Update Target Date",
   meta: import.meta,
   colors: false,
-  args: [
-    "milestone-789",
-    "--target-date",
-    "2026-12-31",
-  ],
+  args: ["milestone-789", "--target-date", "2026-12-31"],
   async fn() {
     const server = new MockLinearServer([
       {

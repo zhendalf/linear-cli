@@ -1,25 +1,23 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
-import { createSpinner } from "../../utils/spinner.ts"
-import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
+  NotFoundError,
+  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
-  NotFoundError,
-  ValidationError,
 } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const RELATION_TYPES = ["blocks", "blocked-by", "related", "duplicate"] as const
 type RelationType = (typeof RELATION_TYPES)[number]
 
 // Map CLI-friendly names to Linear API types
 // Note: "blocked-by" is implemented by reversing the issue order with "blocks"
-function getApiRelationType(
-  type: RelationType,
-): "blocks" | "related" | "duplicate" {
+function getApiRelationType(type: RelationType): "blocks" | "related" | "duplicate" {
   if (type === "blocked-by") return "blocks"
   return type
 }
@@ -29,36 +27,34 @@ const addRelationCommand = new Command("add")
   .argument("<issueId>")
   .argument("<relationType>")
   .argument("<relatedIssueId>")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ linear issue relation add ENG-123 blocked-by ENG-100
   $ linear issue relation add ENG-123 blocks ENG-456
   $ linear issue relation add ENG-123 related ENG-456
-  $ linear issue relation add ENG-123 duplicate ENG-100`)
+  $ linear issue relation add ENG-123 duplicate ENG-100`,
+  )
   .action(async (issueIdArg: string, relationTypeArg: string, relatedIssueIdArg: string) => {
     try {
       // Validate relation type
       const relationType = relationTypeArg.toLowerCase() as RelationType
       if (!RELATION_TYPES.includes(relationType)) {
-        throw new ValidationError(
-          `Invalid relation type: ${relationTypeArg}`,
-          { suggestion: `Must be one of: ${RELATION_TYPES.join(", ")}` },
-        )
+        throw new ValidationError(`Invalid relation type: ${relationTypeArg}`, {
+          suggestion: `Must be one of: ${RELATION_TYPES.join(", ")}`,
+        })
       }
 
       // Get issue identifiers
       const issueIdentifier = await getIssueIdentifier(issueIdArg)
       if (!issueIdentifier) {
-        throw new ValidationError(
-          `Could not resolve issue identifier: ${issueIdArg}`,
-        )
+        throw new ValidationError(`Could not resolve issue identifier: ${issueIdArg}`)
       }
 
       const relatedIssueIdentifier = await getIssueIdentifier(relatedIssueIdArg)
       if (!relatedIssueIdentifier) {
-        throw new ValidationError(
-          `Could not resolve issue identifier: ${relatedIssueIdArg}`,
-        )
+        throw new ValidationError(`Could not resolve issue identifier: ${relatedIssueIdArg}`)
       }
 
       const spinner = createSpinner("", shouldShowSpinner())
@@ -98,9 +94,8 @@ Examples:
       // For "blocked-by", we swap the issues so the relation is correct
       // "A blocked-by B" means "B blocks A"
       const apiType = getApiRelationType(relationType)
-      const [fromId, toId] = relationType === "blocked-by"
-        ? [relatedIssueId, issueId]
-        : [issueId, relatedIssueId]
+      const [fromId, toId] =
+        relationType === "blocked-by" ? [relatedIssueId, issueId] : [issueId, relatedIssueId]
 
       const createRelationMutation = gql(`
         mutation CreateIssueRelation($input: IssueRelationCreateInput!) {
@@ -148,25 +143,20 @@ const deleteRelationCommand = new Command("delete")
       // Validate relation type
       const relationType = relationTypeArg.toLowerCase() as RelationType
       if (!RELATION_TYPES.includes(relationType)) {
-        throw new ValidationError(
-          `Invalid relation type: ${relationTypeArg}`,
-          { suggestion: `Must be one of: ${RELATION_TYPES.join(", ")}` },
-        )
+        throw new ValidationError(`Invalid relation type: ${relationTypeArg}`, {
+          suggestion: `Must be one of: ${RELATION_TYPES.join(", ")}`,
+        })
       }
 
       // Get issue identifiers
       const issueIdentifier = await getIssueIdentifier(issueIdArg)
       if (!issueIdentifier) {
-        throw new ValidationError(
-          `Could not resolve issue identifier: ${issueIdArg}`,
-        )
+        throw new ValidationError(`Could not resolve issue identifier: ${issueIdArg}`)
       }
 
       const relatedIssueIdentifier = await getIssueIdentifier(relatedIssueIdArg)
       if (!relatedIssueIdentifier) {
-        throw new ValidationError(
-          `Could not resolve issue identifier: ${relatedIssueIdArg}`,
-        )
+        throw new ValidationError(`Could not resolve issue identifier: ${relatedIssueIdArg}`)
       }
 
       const spinner = createSpinner("", shouldShowSpinner())
@@ -205,9 +195,8 @@ const deleteRelationCommand = new Command("delete")
 
       // Find the relation
       const apiType = getApiRelationType(relationType)
-      const [fromId, toId] = relationType === "blocked-by"
-        ? [relatedIssueId, issueId]
-        : [issueId, relatedIssueId]
+      const [fromId, toId] =
+        relationType === "blocked-by" ? [relatedIssueId, issueId] : [issueId, relatedIssueId]
 
       const findRelationQuery = gql(`
         query FindIssueRelation($issueId: String!) {
@@ -274,10 +263,9 @@ const listRelationsCommand = new Command("list")
     try {
       const issueIdentifier = await getIssueIdentifier(issueIdArg)
       if (!issueIdentifier) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          { suggestion: "Please provide an issue ID like 'ENG-123'." },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID like 'ENG-123'.",
+        })
       }
 
       const spinner = createSpinner("", shouldShowSpinner())
@@ -360,9 +348,7 @@ const listRelationsCommand = new Command("list")
         for (const rel of incoming) {
           // Show inverse perspective
           const displayType = rel.type === "blocks" ? "blocked-by" : rel.type
-          console.log(
-            `  ${identifier} ${displayType} ${rel.issue.identifier}: ${rel.issue.title}`,
-          )
+          console.log(`  ${identifier} ${displayType} ${rel.issue.identifier}: ${rel.issue.title}`)
         }
       }
     } catch (error) {

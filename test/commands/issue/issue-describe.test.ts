@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { describeCommand } from "../../../src/commands/issue/issue-describe.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -28,10 +28,8 @@ await snapshotTest({
           data: {
             issue: {
               title: "Fix authentication bug in login flow",
-              description:
-                "Users are experiencing issues logging in when their session expires.",
-              url:
-                "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
+              description: "Users are experiencing issues logging in when their session expires.",
+              url: "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
               branchName: "fix/test-123-auth-bug",
             },
           },
@@ -69,8 +67,7 @@ await snapshotTest({
             issue: {
               title: "Update user profile page",
               description: "Add new fields to the user profile",
-              url:
-                "https://linear.app/test-team/issue/TEST-456/update-user-profile-page",
+              url: "https://linear.app/test-team/issue/TEST-456/update-user-profile-page",
               branchName: "feature/test-456-profile",
             },
           },
@@ -105,10 +102,12 @@ await snapshotTest({
         queryName: "GetIssueDetails",
         variables: { id: "TEST-999" },
         response: {
-          errors: [{
-            message: "Issue not found: TEST-999",
-            extensions: { code: "NOT_FOUND" },
-          }],
+          errors: [
+            {
+              message: "Issue not found: TEST-999",
+              extensions: { code: "NOT_FOUND" },
+            },
+          ],
         },
       },
     ])

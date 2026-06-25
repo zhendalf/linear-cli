@@ -1,10 +1,10 @@
-import { gql } from "../__codegen__/gql.ts"
-import { getGraphQLClient } from "./graphql.ts"
+import { readFile, stat } from "node:fs/promises"
 import { basename, extname } from "node:path"
-import { stat, readFile } from "node:fs/promises"
+import { gql } from "../__codegen__/gql.ts"
 import { CliError, NotFoundError, ValidationError } from "./errors.ts"
-import { isNotFoundError } from "./runtime.ts"
+import { getGraphQLClient } from "./graphql.ts"
 import { shouldShowSpinner } from "./hyperlink.ts"
+import { isNotFoundError } from "./runtime.ts"
 import { createSpinner } from "./spinner.ts"
 
 /**
@@ -26,13 +26,11 @@ const MIME_TYPES: Record<string, string> = {
   // Documents
   ".pdf": "application/pdf",
   ".doc": "application/msword",
-  ".docx":
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".xls": "application/vnd.ms-excel",
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ".ppt": "application/vnd.ms-powerpoint",
-  ".pptx":
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 
   // Text
   ".txt": "text/plain",
@@ -200,10 +198,7 @@ export async function uploadFile(
 
   const client = getGraphQLClient()
 
-  const spinner = createSpinner(
-    `Uploading ${filename}...`,
-    showProgress && shouldShowSpinner(),
-  )
+  const spinner = createSpinner(`Uploading ${filename}...`, showProgress && shouldShowSpinner())
   spinner.start()
 
   // Auto-detect makePublic based on file type (only images can be public)

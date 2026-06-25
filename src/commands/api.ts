@@ -1,26 +1,22 @@
-import { Command, InvalidArgumentError } from "commander";
-import pkg from "../../package.json" with { type: "json" };
-import { getGraphQLEndpoint, getResolvedApiKey } from "../utils/graphql.ts";
-import {
-  CliError,
-  handleError,
-  ValidationError as AppValidationError,
-} from "../utils/errors.ts";
-import { isStdoutTTY, isNotFoundError } from "../utils/runtime.ts";
-import { readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises"
+import { Command, InvalidArgumentError } from "commander"
+import pkg from "../../package.json" with { type: "json" }
+import { ValidationError as AppValidationError, CliError, handleError } from "../utils/errors.ts"
+import { getGraphQLEndpoint, getResolvedApiKey } from "../utils/graphql.ts"
+import { isNotFoundError, isStdoutTTY } from "../utils/runtime.ts"
 
 /**
  * argParser for --variable <key=value> options.
  * Accumulates into an array (replaces cliffy collect:true + custom Type).
  */
 function parseVariable(value: string, prev: [string, string][] = []): [string, string][] {
-  const [key, ...rest] = value.split("=");
+  const [key, ...rest] = value.split("=")
   if (rest.length === 0) {
     throw new InvalidArgumentError(
       `Invalid variable format: ${value}. Variables must be in key=value format, e.g. --variable teamId=abc`,
-    );
+    )
   }
-  return [...prev, [key, rest.join("=")]];
+  return [...prev, [key, rest.join("=")]]
 }
 
 export const apiCommand = new Command("api")
@@ -35,58 +31,36 @@ export const apiCommand = new Command("api")
     "--variables-json <json>",
     "JSON object of variables (merged with --variable, which takes precedence)",
   )
-  .option(
-    "--paginate",
-    "Auto-paginate a single connection field using cursor pagination",
-  )
-  .option(
-    "--silent",
-    "Suppress response output (exit code still reflects errors)",
-  )
+  .option("--paginate", "Auto-paginate a single connection field using cursor pagination")
+  .option("--silent", "Suppress response output (exit code still reflects errors)")
   .action(async (query: string | undefined, options) => {
     try {
-      const resolvedQuery = await resolveQuery(query);
-      const variables = await buildVariables(
-        options.variable,
-        options.variablesJson,
-      );
+      const resolvedQuery = await resolveQuery(query)
+      const variables = await buildVariables(options.variable, options.variablesJson)
 
-      const apiKey = getResolvedApiKey();
+      const apiKey = getResolvedApiKey()
       if (!apiKey) {
-        throw new AppValidationError(
-          "No API key configured",
-          {
-            suggestion:
-              "Set LINEAR_API_KEY, add api_key to .linear.toml, or run `linear auth login`.",
-          },
-        );
+        throw new AppValidationError("No API key configured", {
+          suggestion:
+            "Set LINEAR_API_KEY, add api_key to .linear.toml, or run `linear auth login`.",
+        })
       }
 
       const headers = {
         "Content-Type": "application/json",
         Authorization: apiKey,
         "User-Agent": `schpet-linear-cli/${pkg.version}`,
-      };
+      }
 
       if (options.paginate) {
-        await executePaginated(
-          resolvedQuery,
-          variables,
-          headers,
-          options.silent ?? false,
-        );
+        await executePaginated(resolvedQuery, variables, headers, options.silent ?? false)
       } else {
-        await executeSingle(
-          resolvedQuery,
-          variables,
-          headers,
-          options.silent ?? false,
-        );
+        await executeSingle(resolvedQuery, variables, headers, options.silent ?? false)
       }
     } catch (error) {
-      handleError(error, "API request failed");
+      handleError(error, "API request failed")
     }
-  });
+  })
 
 async function executeSingle(
   query: string,
@@ -94,41 +68,41 @@ async function executeSingle(
   headers: Record<string, string>,
   silent: boolean,
 ): Promise<void> {
-  const body: Record<string, unknown> = { query };
+  const body: Record<string, unknown> = { query }
   if (Object.keys(variables).length > 0) {
-    body.variables = variables;
+    body.variables = variables
   }
 
   const response = await fetch(getGraphQLEndpoint(), {
     method: "POST",
     headers,
     body: JSON.stringify(body),
-  });
+  })
 
-  const text = await response.text();
+  const text = await response.text()
 
   if (response.status >= 400) {
     if (!silent) {
-      console.error(text);
+      console.error(text)
     }
-    process.exit(1);
+    process.exit(1)
   }
 
-  let hasGraphQLErrors = false;
+  let hasGraphQLErrors = false
   try {
-    const parsed = JSON.parse(text);
-    hasGraphQLErrors = Array.isArray(parsed.errors) && parsed.errors.length > 0;
+    const parsed = JSON.parse(text)
+    hasGraphQLErrors = Array.isArray(parsed.errors) && parsed.errors.length > 0
     if (!silent) {
-      outputJSON(parsed, text);
+      outputJSON(parsed, text)
     }
   } catch {
     if (!silent) {
-      console.log(text);
+      console.log(text)
     }
   }
 
   if (hasGraphQLErrors) {
-    process.exit(1);
+    process.exit(1)
   }
 }
 
@@ -138,47 +112,47 @@ async function executePaginated(
   headers: Record<string, string>,
   silent: boolean,
 ): Promise<void> {
-  const allNodes: unknown[] = [];
-  let cursor: string | undefined;
+  const allNodes: unknown[] = []
+  let cursor: string | undefined
 
   for (;;) {
-    const vars = { ...variables, after: cursor ?? null };
+    const vars = { ...variables, after: cursor ?? null }
 
-    const body: Record<string, unknown> = { query };
+    const body: Record<string, unknown> = { query }
     if (Object.keys(vars).length > 0) {
-      body.variables = vars;
+      body.variables = vars
     }
 
     const response = await fetch(getGraphQLEndpoint(), {
       method: "POST",
       headers,
       body: JSON.stringify(body),
-    });
+    })
 
-    const text = await response.text();
+    const text = await response.text()
 
     if (response.status >= 400) {
       if (!silent) {
-        console.error(text);
+        console.error(text)
       }
-      process.exit(1);
+      process.exit(1)
     }
 
-    let parsed: Record<string, unknown>;
+    let parsed: Record<string, unknown>
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(text)
     } catch {
       if (!silent) {
-        console.log(text);
+        console.log(text)
       }
-      process.exit(1);
+      process.exit(1)
     }
 
     if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
       if (!silent) {
-        outputJSON(parsed, text);
+        outputJSON(parsed, text)
       }
-      process.exit(1);
+      process.exit(1)
     }
 
     if (allNodes.length === 0 && countConnections(parsed.data) > 1) {
@@ -188,52 +162,47 @@ async function executePaginated(
           suggestion:
             "Use cursor-based pagination manually with $after and pageInfo { hasNextPage endCursor }.",
         },
-      );
+      )
     }
 
-    const pageResult = extractPageInfo(parsed);
+    const pageResult = extractPageInfo(parsed)
 
     if (!pageResult) {
       if (!silent) {
-        outputJSON(parsed, text);
+        outputJSON(parsed, text)
       }
-      return;
+      return
     }
 
-    allNodes.push(...pageResult.nodes);
+    allNodes.push(...pageResult.nodes)
 
     if (!pageResult.hasNextPage || !pageResult.endCursor) {
-      break;
+      break
     }
 
-    cursor = pageResult.endCursor;
+    cursor = pageResult.endCursor
   }
 
   if (!silent) {
-    outputJSON(allNodes, JSON.stringify(allNodes));
+    outputJSON(allNodes, JSON.stringify(allNodes))
   }
 }
 
 interface PageResult {
-  nodes: unknown[];
-  hasNextPage: boolean;
-  endCursor: string | null;
-  connectionPath: string[];
+  nodes: unknown[]
+  hasNextPage: boolean
+  endCursor: string | null
+  connectionPath: string[]
 }
 
-function extractPageInfo(
-  data: Record<string, unknown>,
-): PageResult | null {
-  return findPageInfo(data, []);
+function extractPageInfo(data: Record<string, unknown>): PageResult | null {
+  return findPageInfo(data, [])
 }
 
-function findPageInfo(
-  obj: unknown,
-  path: string[],
-): PageResult | null {
-  if (obj == null || typeof obj !== "object") return null;
+function findPageInfo(obj: unknown, path: string[]): PageResult | null {
+  if (obj == null || typeof obj !== "object") return null
 
-  const record = obj as Record<string, unknown>;
+  const record = obj as Record<string, unknown>
 
   if (
     "pageInfo" in record &&
@@ -241,96 +210,94 @@ function findPageInfo(
     record.pageInfo != null &&
     typeof record.pageInfo === "object"
   ) {
-    const pageInfo = record.pageInfo as Record<string, unknown>;
+    const pageInfo = record.pageInfo as Record<string, unknown>
     return {
       nodes: Array.isArray(record.nodes) ? record.nodes : [],
       hasNextPage: Boolean(pageInfo.hasNextPage),
       endCursor: (pageInfo.endCursor as string) ?? null,
       connectionPath: path,
-    };
+    }
   }
 
   for (const [key, value] of Object.entries(record)) {
-    const result = findPageInfo(value, [...path, key]);
-    if (result) return result;
+    const result = findPageInfo(value, [...path, key])
+    if (result) return result
   }
 
-  return null;
+  return null
 }
 
 function countConnections(obj: unknown): number {
-  if (obj == null || typeof obj !== "object") return 0;
+  if (obj == null || typeof obj !== "object") return 0
 
-  const record = obj as Record<string, unknown>;
+  const record = obj as Record<string, unknown>
 
   if ("pageInfo" in record && "nodes" in record) {
-    return 1;
+    return 1
   }
 
-  let count = 0;
+  let count = 0
   for (const value of Object.values(record)) {
-    count += countConnections(value);
+    count += countConnections(value)
   }
 
-  return count;
+  return count
 }
 
 function outputJSON(parsed: unknown, rawText: string): void {
   if (isStdoutTTY()) {
     try {
-      console.log(JSON.stringify(parsed, null, 2));
+      console.log(JSON.stringify(parsed, null, 2))
     } catch {
-      console.log(rawText);
+      console.log(rawText)
     }
   } else {
-    const out = typeof parsed === "string" ? rawText : JSON.stringify(parsed);
-    process.stdout.write(out);
+    const out = typeof parsed === "string" ? rawText : JSON.stringify(parsed)
+    process.stdout.write(out)
   }
 }
 
 async function resolveQuery(positionalArg?: string): Promise<string> {
   if (positionalArg && positionalArg !== "-") {
-    return positionalArg;
+    return positionalArg
   }
 
-  const explicit = positionalArg === "-";
+  const explicit = positionalArg === "-"
 
   if (explicit || !process.stdin.isTTY) {
-    const content = explicit
-      ? await readAllStdin()
-      : await readStdinWithTimeout();
+    const content = explicit ? await readAllStdin() : await readStdinWithTimeout()
     if (content) {
-      return content;
+      return content
     }
   }
 
   throw new AppValidationError("No query provided", {
     suggestion:
       "Provide a query as an argument: linear api '{ viewer { id } }'\n  Or pipe from stdin: echo '{ viewer { id } }' | linear api",
-  });
+  })
 }
 
 async function readAllStdin(): Promise<string | undefined> {
   return new Promise<string | undefined>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const chunks: Buffer[] = []
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk))
     process.stdin.on("end", () => {
-      const text = Buffer.concat(chunks).toString("utf8").trim();
-      resolve(text.length > 0 ? text : undefined);
-    });
-    process.stdin.on("error", reject);
-  });
+      const text = Buffer.concat(chunks).toString("utf8").trim()
+      resolve(text.length > 0 ? text : undefined)
+    })
+    process.stdin.on("error", reject)
+  })
 }
 
 async function readStdinWithTimeout(): Promise<string | undefined> {
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("stdin timeout")), 100);
-    });
-    const result = await Promise.race([readAllStdin(), timeoutPromise]);
-    return result;
+      setTimeout(() => reject(new Error("stdin timeout")), 100)
+    })
+    const result = await Promise.race([readAllStdin(), timeoutPromise])
+    return result
   } catch {
-    return undefined;
+    return undefined
   }
 }
 
@@ -338,20 +305,16 @@ async function buildVariables(
   variableEntries?: [string, string][],
   variablesJson?: string,
 ): Promise<Record<string, unknown>> {
-  const variables: Record<string, unknown> = {};
+  const variables: Record<string, unknown> = {}
 
   if (variablesJson) {
-    let parsed: unknown;
+    let parsed: unknown
     try {
-      parsed = JSON.parse(variablesJson);
+      parsed = JSON.parse(variablesJson)
     } catch {
-      throw new AppValidationError(
-        `Invalid JSON for --variables-json: ${variablesJson}`,
-        {
-          suggestion:
-            'Provide a valid JSON object, e.g. --variables-json \'{"key": "value"}\'',
-        },
-      );
+      throw new AppValidationError(`Invalid JSON for --variables-json: ${variablesJson}`, {
+        suggestion: 'Provide a valid JSON object, e.g. --variables-json \'{"key": "value"}\'',
+      })
     }
     if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new AppValidationError(
@@ -359,66 +322,62 @@ async function buildVariables(
           Array.isArray(parsed) ? "array" : typeof parsed
         }`,
         {
-          suggestion:
-            'Provide a JSON object, e.g. --variables-json \'{"key": "value"}\'',
+          suggestion: 'Provide a JSON object, e.g. --variables-json \'{"key": "value"}\'',
         },
-      );
+      )
     }
-    Object.assign(variables, parsed);
+    Object.assign(variables, parsed)
   }
 
   if (variableEntries) {
     for (const [key, rawValue] of variableEntries) {
-      variables[key] = await resolveTypedValue(rawValue);
+      variables[key] = await resolveTypedValue(rawValue)
     }
   }
 
-  return variables;
+  return variables
 }
 
 async function resolveTypedValue(value: string): Promise<unknown> {
   if (value === "@-") {
-    const content = await readAllStdin();
+    const content = await readAllStdin()
     if (content == null) {
-      throw new AppValidationError("No data on stdin for @- value");
+      throw new AppValidationError("No data on stdin for @- value")
     }
-    return parseJSONOrString(content);
+    return parseJSONOrString(content)
   }
 
   if (value.startsWith("@")) {
-    const filePath = value.slice(1);
+    const filePath = value.slice(1)
     try {
-      const content = await readFile(filePath, "utf8");
-      return parseJSONOrString(content.trim());
+      const content = await readFile(filePath, "utf8")
+      return parseJSONOrString(content.trim())
     } catch (error) {
       if (isNotFoundError(error)) {
-        throw new AppValidationError(`File not found: ${filePath}`);
+        throw new AppValidationError(`File not found: ${filePath}`)
       }
-      throw new CliError(
-        `Failed to read file: ${filePath}`,
-        { cause: error },
-      );
+      throw new CliError(`Failed to read file: ${filePath}`, { cause: error })
     }
   }
 
-  return coerceValue(value);
+  return coerceValue(value)
 }
 
 function parseJSONOrString(content: string): unknown {
   try {
-    return JSON.parse(content);
+    return JSON.parse(content)
   } catch {
-    return content;
+    return content
   }
 }
 
 function coerceValue(value: string): unknown {
-  if (value === "true") return true;
-  if (value === "false") return false;
-  if (value === "null") return null;
+  if (value === "true") return true
+  if (value === "false") return false
+  if (value === "null") return null
 
-  const num = Number(value);
-  if (value !== "" && !isNaN(num) && String(num) === value) return num;
+  const num = Number(value)
+  if (value !== "" && !isNaN(num) && String(num) === value) return num
 
-  return value;
+  return value
 }

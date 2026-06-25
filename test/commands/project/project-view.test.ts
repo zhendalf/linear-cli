@@ -1,6 +1,6 @@
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { viewCommand } from "../../../src/commands/project/project-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -113,8 +113,7 @@ await snapshotTest({
               },
               lastUpdate: {
                 id: "update-1",
-                body:
-                  "Great progress this week! The OAuth implementation is nearly complete and we're on track for our Q1 delivery. The team has been collaborating well across backend and security concerns.\n\n**This week's highlights:**\n- OAuth 2.0 flow implementation 80% complete\n- MFA design reviews completed\n- Security penetration testing scheduled\n\n**Next week:**\n- Complete OAuth testing\n- Begin MFA implementation\n- Finalize UI designs",
+                body: "Great progress this week! The OAuth implementation is nearly complete and we're on track for our Q1 delivery. The team has been collaborating well across backend and security concerns.\n\n**This week's highlights:**\n- OAuth 2.0 flow implementation 80% complete\n- MFA design reviews completed\n- Security penetration testing scheduled\n\n**Next week:**\n- Complete OAuth testing\n- Begin MFA implementation\n- Finalize UI designs",
                 health: "onTrack",
                 createdAt: "2024-01-22T16:00:00Z",
                 user: {

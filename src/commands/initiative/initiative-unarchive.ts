@@ -1,16 +1,11 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { confirm } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
-import { confirm } from "../../utils/prompt.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
 
 export const unarchiveCommand = new Command("unarchive")
   .description("Unarchive a Linear initiative")
@@ -64,9 +59,7 @@ export const unarchiveCommand = new Command("unarchive")
     // Confirm unarchive
     if (!force) {
       if (!isStdinTTY()) {
-        throw new ValidationError(
-          "Interactive confirmation required. Use --force to skip.",
-        )
+        throw new ValidationError("Interactive confirmation required. Use --force to skip.")
       }
       const confirmed = await confirm({
         message: `Are you sure you want to unarchive "${initiative.name}"?`,
@@ -125,11 +118,7 @@ async function resolveInitiativeId(
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
   // Try as UUID first
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlugOrName,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlugOrName)) {
     return idOrSlugOrName
   }
 

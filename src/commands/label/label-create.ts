@@ -1,17 +1,12 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getAllTeams, getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { createSpinner } from "../../utils/spinner.ts"
+import { getAllTeams, getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
 import { input, select } from "../../utils/prompt.ts"
 import { isStdoutTTY } from "../../utils/runtime.ts"
-import {
-  CliError,
-  handleError,
-  NotFoundError,
-  ValidationError,
-} from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const CreateIssueLabel = gql(`
   mutation CreateIssueLabel($input: IssueLabelCreateInput!) {
@@ -48,19 +43,10 @@ const DEFAULT_COLORS = [
 export const createCommand = new Command("create")
   .description("Create a new issue label")
   .option("-n, --name <name>", "Label name (required)")
-  .option(
-    "-c, --color <color>",
-    "Color hex code (e.g., #EB5757)",
-  )
+  .option("-c, --color <color>", "Color hex code (e.g., #EB5757)")
   .option("-d, --description <description>", "Label description")
-  .option(
-    "-t, --team <teamKey>",
-    "Team key for team-specific label (omit for workspace label)",
-  )
-  .option(
-    "-i, --interactive",
-    "Interactive mode (default if no flags provided)",
-  )
+  .option("-t, --team <teamKey>", "Team key for team-specific label (omit for workspace label)")
+  .option("-i, --interactive", "Interactive mode (default if no flags provided)")
   .action(async (options) => {
     try {
       const {
@@ -80,8 +66,7 @@ export const createCommand = new Command("create")
 
       // Determine if we should run in interactive mode
       const noFlagsProvided = !name
-      const isInteractive = (noFlagsProvided || interactiveFlag) &&
-        isStdoutTTY()
+      const isInteractive = (noFlagsProvided || interactiveFlag) && isStdoutTTY()
 
       if (isInteractive) {
         console.log("\nCreate a new label\n")
@@ -163,9 +148,7 @@ export const createCommand = new Command("create")
 
       // Validate color format if provided
       if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
-        throw new ValidationError(
-          "Color must be a valid hex code (e.g., #EB5757)",
-        )
+        throw new ValidationError("Color must be a valid hex code (e.g., #EB5757)")
       }
 
       // Default color if not provided
@@ -209,11 +192,7 @@ export const createCommand = new Command("create")
           console.log(`  Description: ${label.description}`)
         }
         console.log(
-          `  Scope: ${
-            label.team?.name
-              ? `${label.team.name} (${label.team.key})`
-              : "Workspace"
-          }`,
+          `  Scope: ${label.team?.name ? `${label.team.name} (${label.team.key})` : "Workspace"}`,
         )
       } catch (error) {
         spinner.stop()

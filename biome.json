@@ -19,14 +19,34 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "complexity": {
+        "useLiteralKeys": "off",
+        "noForEach": "off",
+        "noUselessSwitchCase": "off",
+        "useRegexLiterals": "off"
+      },
+      "performance": {
+        "noDelete": "off"
+      },
+      "style": {
+        "useTemplate": "off",
+        "noNonNullAssertion": "off",
+        "noUnusedTemplateLiteral": "off",
+        "noUselessElse": "off",
+        "noParameterAssign": "off",
+        "useNumberNamespace": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noControlCharactersInRegex": "off",
+        "noConfusingVoidType": "off",
+        "noImplicitAnyLet": "off",
+        "noGlobalIsNan": "off"
+      }
     }
   },
   "files": {
-    "ignore": [
-      "src/__codegen__/",
-      "dist/",
-      "node_modules/"
-    ]
+    "ignore": ["src/__codegen__/", "src/utils/charmd/", "dist/", "node_modules/"]
   }
 }

@@ -15,9 +15,7 @@
       },
       "homepage": "https://github.com/schpet/linear-cli",
       "source": "./",
-      "skills": [
-        "./skills/linear-cli"
-      ]
+      "skills": ["./skills/linear-cli"]
     }
   ]
 }

@@ -1,39 +1,35 @@
+import { basename } from "node:path"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import type { AttachmentCreateInput } from "../../__codegen__/graphql.ts"
-import { getGraphQLClient } from "../../utils/graphql.ts"
-import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
-import { uploadFile, validateFilePath } from "../../utils/upload.ts"
-import { basename } from "node:path"
-import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
   CliError,
+  NotFoundError,
+  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
-  NotFoundError,
-  ValidationError,
 } from "../../utils/errors.ts"
+import { getGraphQLClient } from "../../utils/graphql.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
+import { uploadFile, validateFilePath } from "../../utils/upload.ts"
 
 export const attachCommand = new Command("attach")
   .description("Attach a file to an issue")
   .argument("<issueId>")
   .argument("<filepath>")
   .option("-t, --title <title>", "Custom title for the attachment")
-  .option(
-    "-c, --comment <body>",
-    "Add a comment body linked to the attachment",
-  )
+  .option("-c, --comment <body>", "Add a comment body linked to the attachment")
   .action(async (issueId: string, filepath: string, options) => {
     const { title, comment } = options
 
     try {
       const resolvedIdentifier = await getIssueIdentifier(issueId)
       if (!resolvedIdentifier) {
-        throw new ValidationError(
-          "Could not determine issue ID",
-          { suggestion: "Please provide an issue ID like 'ENG-123'." },
-        )
+        throw new ValidationError("Could not determine issue ID", {
+          suggestion: "Please provide an issue ID like 'ENG-123'.",
+        })
       }
 
       // Validate file exists

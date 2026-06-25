@@ -1,8 +1,8 @@
-import { toAst } from "./utils.ts"
-import { transformer } from "./transformer.ts"
-import { generator } from "./generator.ts"
 import { strike, strikethroughExt } from "./deps.ts"
+import { generator } from "./generator.ts"
 import type { Node } from "./nodeTypes.ts"
+import { transformer } from "./transformer.ts"
+import { toAst } from "./utils.ts"
 
 export interface Extension {
   /** Called before AST generation, if a string is returned,

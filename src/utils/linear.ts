@@ -1,7 +1,6 @@
 import { gql } from "../__codegen__/gql.ts"
 import type {
   GetAllTeamsQuery,
-  GetAllTeamsQueryVariables as _GetAllTeamsQueryVariables,
   GetIssueDetailsQuery,
   GetIssueDetailsWithCommentsQuery,
   GetIssuesForQueryQuery,
@@ -11,14 +10,15 @@ import type {
   IssueSortInput,
   PaginationOrderBy,
   SearchIssuesQuery,
+  GetAllTeamsQueryVariables as _GetAllTeamsQueryVariables,
 } from "../__codegen__/graphql.ts"
-import { select } from "./prompt.ts"
-import { createSpinner } from "./spinner.ts"
-import { shouldShowSpinner } from "./hyperlink.ts"
 import { getOption } from "../config.ts"
 import { NotFoundError, ValidationError } from "./errors.ts"
 import { getGraphQLClient } from "./graphql.ts"
+import { shouldShowSpinner } from "./hyperlink.ts"
 import { normalizeIssueIdentifier } from "./issue-identifier.ts"
+import { select } from "./prompt.ts"
+import { createSpinner } from "./spinner.ts"
 import { getCurrentIssueFromVcs } from "./vcs.ts"
 
 /**
@@ -28,23 +28,15 @@ import { getCurrentIssueFromVcs } from "./vcs.ts"
 export function parseDateFilter(value: string, flagName: string): string {
   const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?([+-]\d{2}:?\d{2})?)?$/
   if (!ISO_DATE_RE.test(value)) {
-    throw new ValidationError(
-      `Invalid date format for ${flagName}: "${value}"`,
-      {
-        suggestion:
-          "Use YYYY-MM-DD or ISO 8601 format (e.g. 2024-01-15 or 2024-01-15T09:00:00Z).",
-      },
-    )
+    throw new ValidationError(`Invalid date format for ${flagName}: "${value}"`, {
+      suggestion: "Use YYYY-MM-DD or ISO 8601 format (e.g. 2024-01-15 or 2024-01-15T09:00:00Z).",
+    })
   }
   const parsed = new Date(value)
   if (isNaN(parsed.getTime())) {
-    throw new ValidationError(
-      `Invalid date for ${flagName}: "${value}"`,
-      {
-        suggestion:
-          "Use YYYY-MM-DD or ISO 8601 format (e.g. 2024-01-15 or 2024-01-15T09:00:00Z).",
-      },
-    )
+    throw new ValidationError(`Invalid date for ${flagName}: "${value}"`, {
+      suggestion: "Use YYYY-MM-DD or ISO 8601 format (e.g. 2024-01-15 or 2024-01-15T09:00:00Z).",
+    })
   }
   return parsed.toISOString()
 }
@@ -86,9 +78,7 @@ export function getTeamKey(): string | undefined {
  *
  * formats the provided identifier, adds the team id prefix, or finds one from VCS state
  */
-export async function getIssueIdentifier(
-  providedId?: string,
-): Promise<string | undefined> {
+export async function getIssueIdentifier(providedId?: string): Promise<string | undefined> {
   if (providedId) {
     const normalizedIdentifier = normalizeIssueIdentifier(providedId)
     if (normalizedIdentifier) {
@@ -102,9 +92,7 @@ export async function getIssueIdentifier(
       return normalizeIssueIdentifier(`${teamId}-${providedId}`)
     }
 
-    throw new Error(
-      "an integer id was provided, but no team is set. run `linear configure`",
-    )
+    throw new Error("an integer id was provided, but no team is set. run `linear configure`")
   }
 
   if (providedId === undefined) {
@@ -113,9 +101,7 @@ export async function getIssueIdentifier(
   }
 }
 
-export async function getIssueId(
-  identifier: string,
-): Promise<string | undefined> {
+export async function getIssueId(identifier: string): Promise<string | undefined> {
   const query = gql(/* GraphQL */ `
     query GetIssueId($id: String!) {
       issue(id: $id) {
@@ -129,9 +115,7 @@ export async function getIssueId(
   return data.issue?.id
 }
 
-export async function getWorkflowStates(
-  teamKey: string,
-) {
+export async function getWorkflowStates(teamKey: string) {
   const query = gql(/* GraphQL */ `
     query GetWorkflowStates($teamKey: String!) {
       team(id: $teamKey) {
@@ -150,17 +134,12 @@ export async function getWorkflowStates(
   const client = getGraphQLClient()
   const result = await client.request(query, { teamKey })
   return result.team.states.nodes.sort(
-    (a: { position: number }, b: { position: number }) =>
-      a.position - b.position,
+    (a: { position: number }, b: { position: number }) => a.position - b.position,
   )
 }
-export type WorkflowState = Awaited<
-  ReturnType<typeof getWorkflowStates>
->[number]
+export type WorkflowState = Awaited<ReturnType<typeof getWorkflowStates>>[number]
 
-export async function getStartedState(
-  teamKey: string,
-): Promise<{ id: string; name: string }> {
+export async function getStartedState(teamKey: string): Promise<{ id: string; name: string }> {
   const states = await getWorkflowStates(teamKey)
   const startedStates = states.filter((s) => s.type === "started")
 
@@ -177,9 +156,7 @@ export async function getWorkflowStateByNameOrType(
 ): Promise<{ id: string; name: string } | undefined> {
   const states = await getWorkflowStates(teamKey)
 
-  const nameMatch = states.find(
-    (s) => s.name.toLowerCase() === nameOrType.toLowerCase(),
-  )
+  const nameMatch = states.find((s) => s.name.toLowerCase() === nameOrType.toLowerCase())
   if (nameMatch) {
     return { id: nameMatch.id, name: nameMatch.name }
   }
@@ -192,10 +169,7 @@ export async function getWorkflowStateByNameOrType(
   return undefined
 }
 
-export async function updateIssueState(
-  issueId: string,
-  stateId: string,
-): Promise<void> {
+export async function updateIssueState(issueId: string, stateId: string): Promise<void> {
   const mutation = gql(/* GraphQL */ `
     mutation UpdateIssueState($issueId: String!, $stateId: String!) {
       issueUpdate(id: $issueId, input: { stateId: $stateId }) {
@@ -373,10 +347,7 @@ const issueDetailsQuery = gql(/* GraphQL */ `
   }
 `)
 
-export async function fetchIssueDetailsRaw(
-  issueId: string,
-  includeComments = false,
-) {
+export async function fetchIssueDetailsRaw(issueId: string, includeComments = false) {
   const client = getGraphQLClient()
   if (includeComments) {
     const data = await client.request(issueDetailsWithCommentsQuery, {
@@ -392,32 +363,26 @@ export async function fetchIssueDetailsRaw(
 type IssueDetailsWithComments = GetIssueDetailsWithCommentsQuery["issue"]
 type IssueDetailsWithoutComments = GetIssueDetailsQuery["issue"]
 
-export type FetchedIssueComment = IssueDetailsWithComments["comments"]["nodes"][
-  number
-]
+export type FetchedIssueComment = IssueDetailsWithComments["comments"]["nodes"][number]
 
-export type FetchedIssueDetailsWithComments =
-  & Omit<
-    IssueDetailsWithComments,
-    "children" | "comments" | "attachments" | "documents"
-  >
-  & {
-    children: IssueDetailsWithComments["children"]["nodes"]
-    comments: IssueDetailsWithComments["comments"]["nodes"]
-    attachments: IssueDetailsWithComments["attachments"]["nodes"]
-    documents: IssueDetailsWithComments["documents"]["nodes"]
-  }
+export type FetchedIssueDetailsWithComments = Omit<
+  IssueDetailsWithComments,
+  "children" | "comments" | "attachments" | "documents"
+> & {
+  children: IssueDetailsWithComments["children"]["nodes"]
+  comments: IssueDetailsWithComments["comments"]["nodes"]
+  attachments: IssueDetailsWithComments["attachments"]["nodes"]
+  documents: IssueDetailsWithComments["documents"]["nodes"]
+}
 
-export type FetchedIssueDetailsWithoutComments =
-  & Omit<
-    IssueDetailsWithoutComments,
-    "children" | "attachments" | "documents"
-  >
-  & {
-    children: IssueDetailsWithoutComments["children"]["nodes"]
-    attachments: IssueDetailsWithoutComments["attachments"]["nodes"]
-    documents: IssueDetailsWithoutComments["documents"]["nodes"]
-  }
+export type FetchedIssueDetailsWithoutComments = Omit<
+  IssueDetailsWithoutComments,
+  "children" | "attachments" | "documents"
+> & {
+  children: IssueDetailsWithoutComments["children"]["nodes"]
+  attachments: IssueDetailsWithoutComments["attachments"]["nodes"]
+  documents: IssueDetailsWithoutComments["documents"]["nodes"]
+}
 
 export type FetchedIssueDetails =
   | FetchedIssueDetailsWithComments
@@ -463,9 +428,7 @@ export async function fetchIssueDetails(
   }
 }
 
-export async function fetchParentIssueTitle(
-  parentId: string,
-): Promise<string | null> {
+export async function fetchParentIssueTitle(parentId: string): Promise<string | null> {
   try {
     const query = gql(/* GraphQL */ `
       query GetParentIssueTitle($id: String!) {
@@ -484,13 +447,11 @@ export async function fetchParentIssueTitle(
   }
 }
 
-export async function fetchParentIssueData(parentId: string): Promise<
-  {
-    title: string
-    identifier: string
-    projectId: string | null
-  } | null
-> {
+export async function fetchParentIssueData(parentId: string): Promise<{
+  title: string
+  identifier: string
+  projectId: string | null
+} | null> {
   try {
     const query = gql(/* GraphQL */ `
       query GetParentIssueData($id: String!) {
@@ -532,16 +493,12 @@ export async function fetchIssuesForState(
   createdAfter?: string,
   updatedAfter?: string,
 ) {
-  const sort = sortParam ??
-    getOption("issue_sort") as "manual" | "priority" | undefined
+  const sort = sortParam ?? (getOption("issue_sort") as "manual" | "priority" | undefined)
   if (!sort) {
-    throw new ValidationError(
-      "Sort must be provided",
-      {
-        suggestion:
-          "Use --sort parameter, set in configuration file, or set LINEAR_ISSUE_SORT environment variable",
-      },
-    )
+    throw new ValidationError("Sort must be provided", {
+      suggestion:
+        "Use --sort parameter, set in configuration file, or set LINEAR_ISSUE_SORT environment variable",
+    })
   }
 
   const filter: IssueFilter = {
@@ -925,16 +882,13 @@ export async function fetchIssuesForQuery(
   }
 
   while (hasNextPage) {
-    const result: GetIssuesForQueryQuery = await client.request(
-      queryIssuesQuery,
-      {
-        sort: sortPayload,
-        filter: Object.keys(filter).length > 0 ? filter : undefined,
-        first: pageSize,
-        after,
-        includeArchived: options.includeArchived,
-      },
-    )
+    const result: GetIssuesForQueryQuery = await client.request(queryIssuesQuery, {
+      sort: sortPayload,
+      filter: Object.keys(filter).length > 0 ? filter : undefined,
+      first: pageSize,
+      after,
+      includeArchived: options.includeArchived,
+    })
 
     allNodes.push(...result.issues.nodes)
     lastPageInfo = result.issues.pageInfo
@@ -1149,9 +1103,9 @@ export async function searchIssuesByTerm(
   while (hasNextPage) {
     const remaining = fetchUnlimited
       ? 100
-      : (options.limit == null
+      : options.limit == null
         ? undefined
-        : Math.min(options.limit - allNodes.length, 100))
+        : Math.min(options.limit - allNodes.length, 100)
     if (!fetchUnlimited && remaining != null && remaining <= 0) {
       break
     }
@@ -1172,10 +1126,7 @@ export async function searchIssuesByTerm(
     hasNextPage = result.searchIssues.pageInfo.hasNextPage
     after = result.searchIssues.pageInfo.endCursor
 
-    if (
-      options.limit == null ||
-      (!fetchUnlimited && allNodes.length >= options.limit)
-    ) {
+    if (options.limit == null || (!fetchUnlimited && allNodes.length >= options.limit)) {
       break
     }
   }
@@ -1187,9 +1138,7 @@ export async function searchIssuesByTerm(
   }
 }
 
-export async function getProjectIdByName(
-  name: string,
-): Promise<string | undefined> {
+export async function getProjectIdByName(name: string): Promise<string | undefined> {
   const client = getGraphQLClient()
   const query = gql(/* GraphQL */ `
     query GetProjectIdByName($name: String!) {
@@ -1221,15 +1170,9 @@ export async function getProjectIdByName(
   return slugData.projects?.nodes[0]?.id
 }
 
-export async function resolveProjectId(
-  projectIdOrSlug: string,
-): Promise<string> {
+export async function resolveProjectId(projectIdOrSlug: string): Promise<string> {
   // If it looks like a full UUID, try to use it directly
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      projectIdOrSlug,
-    )
-  ) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdOrSlug)) {
     return projectIdOrSlug
   }
 
@@ -1255,9 +1198,7 @@ export async function resolveProjectId(
   return projectId
 }
 
-export async function getProjectOptionsByName(
-  name: string,
-): Promise<Record<string, string>> {
+export async function getProjectOptionsByName(name: string): Promise<Record<string, string>> {
   const client = getGraphQLClient()
   const query = gql(/* GraphQL */ `
     query GetProjectIdOptionsByName($name: String!) {
@@ -1274,9 +1215,7 @@ export async function getProjectOptionsByName(
   return Object.fromEntries(qResults.map((t) => [t.id, t.name]))
 }
 
-export async function getTeamIdByKey(
-  team: string,
-): Promise<string | undefined> {
+export async function getTeamIdByKey(team: string): Promise<string | undefined> {
   const client = getGraphQLClient()
   const query = gql(/* GraphQL */ `
     query GetTeamIdByKey($team: String!) {
@@ -1309,7 +1248,7 @@ export async function searchTeamsByKeySubstring(
   const data = await client.request(query, { team: keySubstring })
   const qResults = data.teams?.nodes || []
   const sortedResults = qResults.sort((a, b) =>
-    a.key.toLowerCase().localeCompare(b.key.toLowerCase())
+    a.key.toLowerCase().localeCompare(b.key.toLowerCase()),
   )
   return Object.fromEntries(
     sortedResults.map((t) => [
@@ -1430,14 +1369,12 @@ export async function getIssueLabelOptionsByNameForTeam(
   const data = await client.request(query, { name, teamKey })
   const qResults = data.issueLabels?.nodes || []
   const sortedResults = qResults.sort((a, b) =>
-    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
   )
   return Object.fromEntries(sortedResults.map((t) => [t.id, t.name]))
 }
 
-export async function getAllTeams(): Promise<
-  Array<{ id: string; key: string; name: string }>
-> {
+export async function getAllTeams(): Promise<Array<{ id: string; key: string; name: string }>> {
   const client = getGraphQLClient()
 
   const query = gql(/* GraphQL */ `
@@ -1473,9 +1410,7 @@ export async function getAllTeams(): Promise<
     after = result.teams.pageInfo.endCursor
   }
 
-  return allTeams.sort((a, b) =>
-    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-  )
+  return allTeams.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 }
 
 export async function getLabelsForTeam(
@@ -1499,9 +1434,7 @@ export async function getLabelsForTeam(
   const result = await client.request(query, { teamKey })
   const labels = result.team?.labels?.nodes || []
 
-  return labels.sort((a, b) =>
-    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-  )
+  return labels.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 }
 
 export async function getTeamMembers(teamKey: string) {
@@ -1553,13 +1486,11 @@ export async function getTeamMembers(teamKey: string) {
   }
 
   return allMembers.sort((a, b) =>
-    a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase())
+    a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()),
   )
 }
 
-export async function getIssueProjectId(
-  issueIdentifier: string,
-): Promise<string | undefined> {
+export async function getIssueProjectId(issueIdentifier: string): Promise<string | undefined> {
   const client = getGraphQLClient()
   const query = gql(/* GraphQL */ `
     query GetIssueProjectId($id: String!) {
@@ -1596,9 +1527,7 @@ export async function getMilestoneIdByName(
     throw new NotFoundError("Project", projectId)
   }
   const milestones = data.project.projectMilestones?.nodes || []
-  const match = milestones.find(
-    (m) => m.name.toLowerCase() === milestoneName.toLowerCase(),
-  )
+  const match = milestones.find((m) => m.name.toLowerCase() === milestoneName.toLowerCase())
   if (!match) {
     throw new NotFoundError("Milestone", milestoneName)
   }
@@ -1643,8 +1572,7 @@ export async function getCycleIdByNameOrNumber(
   const cycles = data.team.cycles?.nodes || []
   const match = cycles.find(
     (c) =>
-      (c.name != null &&
-        c.name.toLowerCase() === cycleNameOrNumber.toLowerCase()) ||
+      (c.name != null && c.name.toLowerCase() === cycleNameOrNumber.toLowerCase()) ||
       String(c.number) === cycleNameOrNumber,
   )
   if (!match) {
@@ -1679,8 +1607,7 @@ export async function selectOption(
     return result === NO_VALUE ? undefined : result
   } else {
     const result = await select({
-      message:
-        `${dataName} with ${originalValue} does not exist, but the following exist. Is any of these what you meant?`,
+      message: `${dataName} with ${originalValue} does not exist, but the following exist. Is any of these what you meant?`,
       choices: [
         ...Object.entries(options).map(([value, name]: [string, string]) => ({
           name,

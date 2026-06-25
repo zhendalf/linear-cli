@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { isStdoutTTY, getConsoleSize } from "./runtime.ts"
+import { getConsoleSize, isStdoutTTY } from "./runtime.ts"
 
 // Helper function to get the appropriate pager command
 export function getPagerCommand(): { command: string; args: string[] } | null {
@@ -73,7 +73,7 @@ async function tryFallbackPagers(content: string, failedPager: string): Promise<
       const ok = await runPager(fallback.command, fallback.args, content)
       if (ok) return
     } catch {
-      continue
+      // try the next fallback pager
     }
   }
 

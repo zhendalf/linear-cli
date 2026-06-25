@@ -3,7 +3,7 @@
  * Uses node:http instead of Deno.serve
  */
 
-import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http"
+import { type IncomingMessage, type Server, type ServerResponse, createServer } from "node:http"
 
 interface MockResponse {
   queryName: string
@@ -96,7 +96,7 @@ export class MockLinearServer {
     const headers = {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Date": "Mon, 01 Jan 2024 00:00:00 GMT",
+      Date: "Mon, 01 Jan 2024 00:00:00 GMT",
     }
 
     let body = ""
@@ -117,21 +117,29 @@ export class MockLinearServer {
 
         // Default response for unhandled queries
         res.writeHead(200, headers)
-        res.end(JSON.stringify({
-          errors: [{
-            message: "No mock response configured for this query",
-            extensions: {
-              code: "NO_MOCK_CONFIGURED",
-              query: this.extractQueryName(query),
-              variables,
-            },
-          }],
-        }))
+        res.end(
+          JSON.stringify({
+            errors: [
+              {
+                message: "No mock response configured for this query",
+                extensions: {
+                  code: "NO_MOCK_CONFIGURED",
+                  query: this.extractQueryName(query),
+                  variables,
+                },
+              },
+            ],
+          }),
+        )
       } catch {
         res.writeHead(400, headers)
-        res.end(JSON.stringify({
-          errors: [{ message: "Invalid JSON in request body", extensions: { code: "BAD_REQUEST" } }],
-        }))
+        res.end(
+          JSON.stringify({
+            errors: [
+              { message: "Invalid JSON in request body", extensions: { code: "BAD_REQUEST" } },
+            ],
+          }),
+        )
       }
     })
   }
@@ -147,7 +155,7 @@ export class MockLinearServer {
       if (mock.queryIncludes != null && !query.includes(mock.queryIncludes)) return false
       if (!mock.variables) return true
       return Object.entries(mock.variables).every(([key, value]) =>
-        this.deepEqual(variables[key], value)
+        this.deepEqual(variables[key], value),
       )
     })
   }

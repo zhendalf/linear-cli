@@ -1,10 +1,7 @@
 import { expect, test } from "bun:test"
-import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
-import {
-  formatThreadIdLabel,
-  viewCommand,
-} from "../../../src/commands/issue/issue-view.ts"
+import { formatThreadIdLabel, viewCommand } from "../../../src/commands/issue/issue-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
+import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 
 // Test help output
 await snapshotTest({
@@ -40,8 +37,7 @@ await snapshotTest({
               title: "Fix authentication bug in login flow",
               description:
                 "Users are experiencing issues logging in when their session expires. This affects the main authentication flow and needs to be resolved quickly.\n\n## Steps to reproduce\n1. Log in to the application\n2. Wait for session to expire\n3. Try to perform an authenticated action\n4. Observe the error\n\n## Expected behavior\nUser should be redirected to login page with clear messaging.\n\n## Actual behavior\nUser sees cryptic error message and gets stuck.",
-              url:
-                "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
+              url: "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
               branchName: "fix/test-123-auth-bug",
               state: {
                 name: "In Progress",
@@ -97,10 +93,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-123",
               title: "Fix authentication bug in login flow",
-              description:
-                "Users are experiencing issues logging in when their session expires.",
-              url:
-                "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
+              description: "Users are experiencing issues logging in when their session expires.",
+              url: "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
               branchName: "fix/test-123-auth-bug",
               state: {
                 name: "In Progress",
@@ -156,10 +150,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-123",
               title: "Fix authentication bug in login flow",
-              description:
-                "Users are experiencing issues logging in when their session expires.",
-              url:
-                "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
+              description: "Users are experiencing issues logging in when their session expires.",
+              url: "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
               branchName: "fix/test-123-auth-bug",
               state: {
                 name: "In Progress",
@@ -180,8 +172,7 @@ await snapshotTest({
                 nodes: [
                   {
                     id: "comment-1",
-                    body:
-                      "I've reproduced this issue on staging. The session timeout seems to be too aggressive.",
+                    body: "I've reproduced this issue on staging. The session timeout seems to be too aggressive.",
                     createdAt: "2024-01-15T10:30:00Z",
                     user: {
                       name: "john.doe",
@@ -192,8 +183,7 @@ await snapshotTest({
                   },
                   {
                     id: "comment-2",
-                    body:
-                      "Working on a fix. Will increase the session timeout and add proper error handling.",
+                    body: "Working on a fix. Will increase the session timeout and add proper error handling.",
                     createdAt: "2024-01-15T14:22:00Z",
                     user: {
                       name: "jane.smith",
@@ -206,8 +196,7 @@ await snapshotTest({
                   },
                   {
                     id: "comment-3",
-                    body:
-                      "Sounds good! Also, we should add better error messaging for expired sessions.",
+                    body: "Sounds good! Also, we should add better error messaging for expired sessions.",
                     createdAt: "2024-01-15T15:10:00Z",
                     user: {
                       name: "alice.dev",
@@ -220,8 +209,7 @@ await snapshotTest({
                   },
                   {
                     id: "comment-4",
-                    body:
-                      "Should we also consider implementing automatic session refresh?",
+                    body: "Should we also consider implementing automatic session refresh?",
                     createdAt: "2024-01-15T16:00:00Z",
                     user: {
                       name: "bob.senior",
@@ -272,10 +260,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-246",
               title: "Audit issue resource output",
-              description:
-                "Ensure issue view shows both attachments and documents.",
-              url:
-                "https://linear.app/test-team/issue/TEST-246/audit-issue-resource-output",
+              description: "Ensure issue view shows both attachments and documents.",
+              url: "https://linear.app/test-team/issue/TEST-246/audit-issue-resource-output",
               branchName: "test-246-issue-resource-output",
               state: {
                 name: "In Progress",
@@ -312,8 +298,7 @@ await snapshotTest({
                     id: "document-1",
                     title: "Implementation plan",
                     slugId: "impl-plan-123",
-                    url:
-                      "https://linear.app/test-team/document/implementation-plan-impl-plan-123",
+                    url: "https://linear.app/test-team/document/implementation-plan-impl-plan-123",
                     createdAt: "2024-01-15T09:30:00Z",
                     updatedAt: "2024-01-15T09:45:00Z",
                   },
@@ -321,8 +306,7 @@ await snapshotTest({
                     id: "document-2",
                     title: "QA checklist",
                     slugId: "qa-checklist-456",
-                    url:
-                      "https://linear.app/test-team/document/qa-checklist-qa-checklist-456",
+                    url: "https://linear.app/test-team/document/qa-checklist-qa-checklist-456",
                     createdAt: "2024-01-15T09:00:00Z",
                     updatedAt: "2024-01-15T09:15:00Z",
                   },
@@ -361,10 +345,12 @@ await snapshotTest({
         queryName: "GetIssueDetailsWithComments",
         variables: { id: "TEST-999" },
         response: {
-          errors: [{
-            message: "Issue not found: TEST-999",
-            extensions: { code: "NOT_FOUND" },
-          }],
+          errors: [
+            {
+              message: "Issue not found: TEST-999",
+              extensions: { code: "NOT_FOUND" },
+            },
+          ],
         },
       },
     ])
@@ -399,10 +385,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-123",
               title: "Fix authentication bug in login flow",
-              description:
-                "Users are experiencing issues logging in when their session expires.",
-              url:
-                "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
+              description: "Users are experiencing issues logging in when their session expires.",
+              url: "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
               branchName: "fix/test-123-auth-bug",
               state: {
                 name: "In Progress",
@@ -453,10 +437,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-123",
               title: "Fix authentication bug in login flow",
-              description:
-                "Users are experiencing issues logging in when their session expires.",
-              url:
-                "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
+              description: "Users are experiencing issues logging in when their session expires.",
+              url: "https://linear.app/test-team/issue/TEST-123/fix-authentication-bug-in-login-flow",
               branchName: "fix/test-123-auth-bug",
               state: {
                 name: "In Progress",
@@ -477,8 +459,7 @@ await snapshotTest({
                 nodes: [
                   {
                     id: "comment-1",
-                    body:
-                      "I've reproduced this issue on staging. The session timeout seems to be too aggressive.",
+                    body: "I've reproduced this issue on staging. The session timeout seems to be too aggressive.",
                     createdAt: "2024-01-15T10:30:00Z",
                     user: {
                       name: "john.doe",
@@ -489,8 +470,7 @@ await snapshotTest({
                   },
                   {
                     id: "comment-2",
-                    body:
-                      "Working on a fix. Will increase the session timeout and add proper error handling.",
+                    body: "Working on a fix. Will increase the session timeout and add proper error handling.",
                     createdAt: "2024-01-15T14:22:00Z",
                     user: {
                       name: "jane.smith",
@@ -543,10 +523,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-246",
               title: "Audit issue resource output",
-              description:
-                "Ensure issue view shows both attachments and documents.",
-              url:
-                "https://linear.app/test-team/issue/TEST-246/audit-issue-resource-output",
+              description: "Ensure issue view shows both attachments and documents.",
+              url: "https://linear.app/test-team/issue/TEST-246/audit-issue-resource-output",
               branchName: "test-246-issue-resource-output",
               state: {
                 name: "In Progress",
@@ -583,8 +561,7 @@ await snapshotTest({
                     id: "document-1",
                     title: "Implementation plan",
                     slugId: "impl-plan-123",
-                    url:
-                      "https://linear.app/test-team/document/implementation-plan-impl-plan-123",
+                    url: "https://linear.app/test-team/document/implementation-plan-impl-plan-123",
                     createdAt: "2024-01-15T09:30:00Z",
                     updatedAt: "2024-01-15T09:45:00Z",
                   },
@@ -592,8 +569,7 @@ await snapshotTest({
                     id: "document-2",
                     title: "QA checklist",
                     slugId: "qa-checklist-456",
-                    url:
-                      "https://linear.app/test-team/document/qa-checklist-qa-checklist-456",
+                    url: "https://linear.app/test-team/document/qa-checklist-qa-checklist-456",
                     createdAt: "2024-01-15T09:00:00Z",
                     updatedAt: "2024-01-15T09:15:00Z",
                   },
@@ -636,8 +612,7 @@ await snapshotTest({
               identifier: "TEST-456",
               title: "Implement user authentication",
               description: "Add user authentication to the application.",
-              url:
-                "https://linear.app/test-team/issue/TEST-456/implement-user-authentication",
+              url: "https://linear.app/test-team/issue/TEST-456/implement-user-authentication",
               branchName: "feat/test-456-auth",
               state: {
                 name: "In Progress",
@@ -726,8 +701,7 @@ await snapshotTest({
               identifier: "TEST-789",
               title: "Add monitoring dashboards",
               description: "Set up Datadog dashboards for the new service.",
-              url:
-                "https://linear.app/test-team/issue/TEST-789/add-monitoring-dashboards",
+              url: "https://linear.app/test-team/issue/TEST-789/add-monitoring-dashboards",
               branchName: "feat/test-789-monitoring",
               state: {
                 name: "In Progress",
@@ -788,8 +762,7 @@ await snapshotTest({
               identifier: "TEST-890",
               title: "Implement rate limiting",
               description: "Add rate limiting to the API gateway.",
-              url:
-                "https://linear.app/test-team/issue/TEST-890/implement-rate-limiting",
+              url: "https://linear.app/test-team/issue/TEST-890/implement-rate-limiting",
               branchName: "feat/test-890-rate-limiting",
               state: {
                 name: "Todo",
@@ -847,10 +820,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-321",
               title: "Audit resolved comment thread output",
-              description:
-                "Check how issue view handles resolved comment threads.",
-              url:
-                "https://linear.app/test-team/issue/TEST-321/audit-resolved-comment-thread-output",
+              description: "Check how issue view handles resolved comment threads.",
+              url: "https://linear.app/test-team/issue/TEST-321/audit-resolved-comment-thread-output",
               branchName: "test-321-resolved-thread-output",
               state: {
                 name: "In Progress",
@@ -902,8 +873,7 @@ await snapshotTest({
                     id: "comment-root-resolved",
                     body: "Resolved thread root comment.",
                     createdAt: "2024-01-15T12:00:00Z",
-                    url:
-                      "https://linear.app/issue/TEST-321#comment-root-resolved",
+                    url: "https://linear.app/issue/TEST-321#comment-root-resolved",
                     resolvedAt: "2024-01-15T12:30:00Z",
                     resolvingCommentId: null,
                     resolvingUser: {
@@ -957,10 +927,8 @@ await snapshotTest({
             issue: {
               identifier: "TEST-321",
               title: "Audit resolved comment thread output",
-              description:
-                "Check how issue view handles resolved comment threads.",
-              url:
-                "https://linear.app/test-team/issue/TEST-321/audit-resolved-comment-thread-output",
+              description: "Check how issue view handles resolved comment threads.",
+              url: "https://linear.app/test-team/issue/TEST-321/audit-resolved-comment-thread-output",
               branchName: "test-321-resolved-thread-output",
               state: {
                 name: "In Progress",
@@ -1012,8 +980,7 @@ await snapshotTest({
                     id: "comment-root-resolved",
                     body: "Resolved thread root comment.",
                     createdAt: "2024-01-15T12:00:00Z",
-                    url:
-                      "https://linear.app/issue/TEST-321#comment-root-resolved",
+                    url: "https://linear.app/issue/TEST-321#comment-root-resolved",
                     resolvedAt: "2024-01-15T12:30:00Z",
                     resolvingCommentId: null,
                     resolvingUser: {
@@ -1090,8 +1057,7 @@ await snapshotTest({
               identifier: "TEST-654",
               title: "Expose resolved thread metadata",
               description: "Test JSON output for resolved thread data.",
-              url:
-                "https://linear.app/test-team/issue/TEST-654/expose-resolved-thread-metadata",
+              url: "https://linear.app/test-team/issue/TEST-654/expose-resolved-thread-metadata",
               branchName: "test-654-resolved-thread-json",
               state: {
                 name: "Backlog",

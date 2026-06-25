@@ -1,14 +1,14 @@
 import { expect, test } from "bun:test"
+import { ClientError, type GraphQLResponse } from "graphql-request"
 import {
   CliError,
+  NotFoundError,
+  ValidationError,
   extractGraphQLMessage,
   isClientError,
   isDebugMode,
   isNotFoundError,
-  NotFoundError,
-  ValidationError,
 } from "../../src/utils/errors.ts"
-import { ClientError, type GraphQLResponse } from "graphql-request"
 
 test("isDebugMode - returns false when LINEAR_DEBUG is not set", () => {
   delete process.env["LINEAR_DEBUG"]
@@ -62,18 +62,13 @@ test("ValidationError - stores message and suggestion", () => {
 })
 
 // Helper to create test ClientError instances
-function createClientError(
-  message: string,
-  userPresentableMessage?: string,
-): ClientError {
+function createClientError(message: string, userPresentableMessage?: string): ClientError {
   const response = {
     status: 200,
     errors: [
       {
         message,
-        extensions: userPresentableMessage
-          ? { userPresentableMessage }
-          : undefined,
+        extensions: userPresentableMessage ? { userPresentableMessage } : undefined,
       },
     ],
   } as unknown as GraphQLResponse<unknown>

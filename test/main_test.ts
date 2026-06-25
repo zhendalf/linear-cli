@@ -14,24 +14,23 @@ function restoreFetch() {
 
 test("getGraphQLClient handles authentication errors", async () => {
   const jsonErrorResponse = {
-    errors: [{
-      message: "Authentication failed",
-      extensions: {
-        code: "INVALID_API_KEY",
+    errors: [
+      {
+        message: "Authentication failed",
+        extensions: {
+          code: "INVALID_API_KEY",
+        },
       },
-    }],
+    ],
   }
 
-  const mockResponse = new Response(
-    JSON.stringify(jsonErrorResponse),
-    {
-      status: 401,
-      statusText: "Unauthorized",
-      headers: {
-        "content-type": "application/json",
-      },
+  const mockResponse = new Response(JSON.stringify(jsonErrorResponse), {
+    status: 401,
+    statusText: "Unauthorized",
+    headers: {
+      "content-type": "application/json",
     },
-  )
+  })
 
   mockFetch(mockResponse)
   process.env["LINEAR_API_KEY"] = "test-api-key"
@@ -64,16 +63,13 @@ test("getGraphQLClient handles HTTP errors", async () => {
     </html>
   `.trim()
 
-  const mockResponse = new Response(
-    htmlErrorResponse,
-    {
-      status: 500,
-      statusText: "Internal Server Error",
-      headers: {
-        "content-type": "text/html",
-      },
+  const mockResponse = new Response(htmlErrorResponse, {
+    status: 500,
+    statusText: "Internal Server Error",
+    headers: {
+      "content-type": "text/html",
     },
-  )
+  })
 
   mockFetch(mockResponse)
   process.env["LINEAR_API_KEY"] = "test-api-key"
@@ -94,16 +90,13 @@ test("getGraphQLClient handles HTTP errors", async () => {
 test("getGraphQLClient handles malformed JSON responses", async () => {
   const malformedJsonResponse = '{"error": "Invalid JSON", "incomplete": '
 
-  const mockResponse = new Response(
-    malformedJsonResponse,
-    {
-      status: 400,
-      statusText: "Bad Request",
-      headers: {
-        "content-type": "application/json",
-      },
+  const mockResponse = new Response(malformedJsonResponse, {
+    status: 400,
+    statusText: "Bad Request",
+    headers: {
+      "content-type": "application/json",
     },
-  )
+  })
 
   mockFetch(mockResponse)
   process.env["LINEAR_API_KEY"] = "test-api-key"
