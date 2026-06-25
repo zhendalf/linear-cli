@@ -1,0 +1,10 @@
+export const snapshot = {};
+
+snapshot[`Issue Comment Update Command - With Body Flag 1`] = `
+stdout:
+"✓ Comment updated
+https://linear.app/issue/TEST-123#comment-uuid-123
+"
+stderr:
+""
+`;

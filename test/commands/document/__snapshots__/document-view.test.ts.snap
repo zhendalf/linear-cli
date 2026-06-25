@@ -1,0 +1,98 @@
+export const snapshot = {};
+
+snapshot[`Document View Command - Help Text 1`] = `
+stdout:
+"
+Usage: view <id>
+
+Description:
+
+  View a document's content
+
+Options:
+
+  -h, --help     - Show this help.                                
+  --raw          - Output raw markdown without rendering          
+  -w, --web      - Open document in browser                       
+  --json         - Output full document as JSON                   
+  --no-download  - Keep remote URLs instead of downloading files  
+
+"
+stderr:
+""
+`;
+
+snapshot[`Document View Command - View Document 1`] = `
+stdout:
+"# Delegation System
+
+This document describes the delegation system architecture.
+
+## Overview
+
+The system supports user-to-user delegations with time-bounded capabilities.
+
+## Implementation
+
+- UCAN-based delegation chains
+- PKH DID format for user identity
+- Session key DIDs for signing
+"
+stderr:
+""
+`;
+
+snapshot[`Document View Command - Raw Output 1`] = `
+stdout:
+"# Delegation System
+
+This document describes the delegation system architecture.
+"
+stderr:
+""
+`;
+
+snapshot[`Document View Command - JSON Output 1`] = `
+stdout:
+'{
+  "id": "doc-1",
+  "title": "Delegation System Spec",
+  "slugId": "d4b93e3b2695",
+  "content": "# Delegation System\\\\n\\\\nThis document describes the delegation system architecture.",
+  "url": "https://linear.app/test/document/delegation-system-spec-d4b93e3b2695",
+  "createdAt": "2026-01-15T08:00:00Z",
+  "updatedAt": "2026-01-18T10:30:00Z",
+  "creator": {
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "project": {
+    "name": "TinyCloud SDK",
+    "slugId": "tinycloud-sdk"
+  },
+  "issue": null
+}
+'
+stderr:
+""
+`;
+
+snapshot[`Document View Command - No Download Keeps Remote URLs 1`] = `
+stdout:
+"# Doc
+
+![screenshot](https://uploads.linear.app/abc/screenshot.png)
+"
+stderr:
+""
+`;
+
+snapshot[`Document View Command - Document Attached To Issue 1`] = `
+stdout:
+"# Investigation Notes
+
+Notes from investigating TC-123.
+"
+stderr:
+""
+`;

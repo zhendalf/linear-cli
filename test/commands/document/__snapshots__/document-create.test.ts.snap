@@ -1,0 +1,71 @@
+export const snapshot = {};
+
+snapshot[`Document Create Command - Help Text 1`] = `
+stdout:
+"
+Usage: create
+
+Description:
+
+  Create a new document
+
+Options:
+
+  -h, --help                     - Show this help.                           
+  -t, --title         <title>    - Document title (required)                 
+  -c, --content       <content>  - Markdown content (inline)                 
+  -f, --content-file  <path>     - Read content from file                    
+  --project           <project>  - Attach to project (slug or ID)            
+  --issue             <issue>    - Attach to issue (identifier like TC-123)  
+  --icon              <icon>     - Document icon (emoji)                     
+  -i, --interactive              - Interactive mode with prompts             
+
+"
+stderr:
+""
+`;
+
+snapshot[`Document Create Command - With Inline Content 1`] = `
+stdout:
+"✓ Created document: Test Document
+https://linear.app/test/document/test-document-newd0c12345
+"
+stderr:
+""
+`;
+
+snapshot[`Document Create Command - Attached To Project 1`] = `
+stdout:
+"✓ Created document: Project Spec
+https://linear.app/test/document/project-spec-projd0c456
+"
+stderr:
+""
+`;
+
+snapshot[`Document Create Command - Attached To Issue 1`] = `
+stdout:
+"✓ Created document: Investigation
+https://linear.app/test/document/investigation-issued0c789
+"
+stderr:
+""
+`;
+
+snapshot[`Document Create Command - With Icon 1`] = `
+stdout:
+"✓ Created document: Design Doc
+https://linear.app/test/document/design-doc-icond0c000
+"
+stderr:
+""
+`;
+
+snapshot[`Document Create Command - Missing Title Error 1`] = `
+stdout:
+""
+stderr:
+"✗ Failed to create document: Title is required
+  Use --title or run with -i for interactive mode.
+"
+`;
