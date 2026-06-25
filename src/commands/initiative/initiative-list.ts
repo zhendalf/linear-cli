@@ -1,11 +1,13 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { open } from "@opensrc/deno-open"
+import { Command } from "commander"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay, truncateText } from "../../utils/display.ts"
 import { getOption } from "../../config.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
 import {
   handleError,
@@ -72,20 +74,21 @@ const STATUS_INPUT_MAP: Record<string, string> = {
   "completed": "Completed",
 }
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List initiatives")
   .option(
-    "-s, --status <status:string>",
+    "-s, --status <status>",
     "Filter by status (active, planned, completed)",
   )
   .option("--all-statuses", "Show all statuses (default: active only)")
-  .option("-o, --owner <owner:string>", "Filter by owner (username or email)")
+  .option("-o, --owner <owner>", "Filter by owner (username or email)")
   .option("-w, --web", "Open initiatives page in web browser")
   .option("-a, --app", "Open initiatives page in Linear.app")
   .option("-j, --json", "Output as JSON")
   .option("--archived", "Include archived initiatives")
-  .action(async ({ status, allStatuses, owner, web, app, json, archived }) => {
+  .action(async (options) => {
+    const { status, allStatuses, owner, web, app, json, archived } = options
+
     // Handle open in browser/app
     if (web || app) {
       let workspace = getOption("workspace")
@@ -108,18 +111,18 @@ export const listCommand = new Command()
       const url = `${LINEAR_WEB_BASE_URL}/${workspace}/initiatives`
       const destination = app ? "Linear.app" : "web browser"
       console.log(`Opening ${url} in ${destination}`)
-      await open(url, app ? { app: { name: "Linear" } } : undefined)
+      const openMod = await import("open")
+      await openMod.default(url, app ? { app: { name: "Linear" } } : undefined)
       return
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
     const showSpinner = shouldShowSpinner() && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", showSpinner)
+    spinner.start()
 
     try {
       // Build filter
-      // deno-lint-ignore no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filter: any = {}
 
       // Status filter
@@ -127,7 +130,7 @@ export const listCommand = new Command()
         const statusLower = status.toLowerCase()
         const apiStatus = STATUS_INPUT_MAP[statusLower]
         if (!apiStatus) {
-          spinner?.stop()
+          spinner.stop()
           throw new ValidationError(
             `Invalid status: ${status}. Valid values: ${
               Object.keys(STATUS_INPUT_MAP).join(", ")
@@ -145,7 +148,7 @@ export const listCommand = new Command()
         const { lookupUserId } = await import("../../utils/linear.ts")
         const ownerId = await lookupUserId(owner)
         if (!ownerId) {
-          spinner?.stop()
+          spinner.stop()
           throw new NotFoundError("Owner", owner)
         }
         filter.owner = { id: { eq: ownerId } }
@@ -156,7 +159,7 @@ export const listCommand = new Command()
         filter: Object.keys(filter).length > 0 ? filter : undefined,
         includeArchived: archived || false,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const initiativesConnection = result.initiatives ?? {
         nodes: [],
@@ -202,8 +205,8 @@ export const listCommand = new Command()
       }
 
       // Table output
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
+      const { columns } = isStdoutTTY()
+        ? getConsoleSize()
         : { columns: 120 }
 
       // Calculate column widths
@@ -247,7 +250,7 @@ export const listCommand = new Command()
         SPACE_WIDTH
       const PADDING = 1
       const maxNameWidth = Math.max(
-        ...initiatives.map((init) => unicodeWidth(init.name)),
+        ...initiatives.map((init) => stringWidth(init.name)),
       )
       const availableWidth = Math.max(columns - PADDING - fixed, 10)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
@@ -274,14 +277,14 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each initiative
       for (const init of initiatives) {
         const statusDisplay = INITIATIVE_STATUS_DISPLAY[init.status] ||
           init.status
         const health = init.health || "-"
-        const owner = init.owner?.initials || "-"
+        const ownerInitials = init.owner?.initials || "-"
         const projectCount = String(init.projects?.nodes?.length || 0)
         const target = init.targetDate || "-"
 
@@ -297,21 +300,23 @@ export const listCommand = new Command()
         const statusColor = statusColors[init.status] || "#6B6F76"
 
         console.log(
-          `${padDisplay(init.slugId, SLUG_WIDTH)} ${paddedName} %c${
-            padDisplay(statusDisplay, STATUS_WIDTH)
-          }%c ${padDisplay(health, HEALTH_WIDTH)} ${
-            padDisplay(owner, OWNER_WIDTH)
-          } ${padDisplay(projectCount, PROJECTS_WIDTH)} %c${
-            padDisplay(target, TARGET_WIDTH)
-          }%c`,
-          `color: ${statusColor}`,
-          "",
-          "color: gray",
-          "",
+          applyConsoleFormat(
+            `${padDisplay(init.slugId, SLUG_WIDTH)} ${paddedName} %c${
+              padDisplay(statusDisplay, STATUS_WIDTH)
+            }%c ${padDisplay(health, HEALTH_WIDTH)} ${
+              padDisplay(ownerInitials, OWNER_WIDTH)
+            } ${padDisplay(projectCount, PROJECTS_WIDTH)} %c${
+              padDisplay(target, TARGET_WIDTH)
+            }%c`,
+            `color: ${statusColor}`,
+            "",
+            "color: gray",
+            "",
+          ),
         )
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch initiatives")
     }
   })

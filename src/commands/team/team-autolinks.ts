@@ -1,11 +1,11 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { getTeamKey } from "../../utils/linear.ts"
 import { getOption } from "../../config.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
+import { runCommand } from "../../utils/runtime.ts"
 
-export const autolinksCommand = new Command()
-  .name("autolinks")
+export const autolinksCommand = new Command("autolinks")
   .description(
     "Configure GitHub repository autolinks for Linear issues with this team prefix",
   )
@@ -26,22 +26,19 @@ export const autolinksCommand = new Command()
         )
       }
 
-      const process = new Deno.Command("gh", {
-        args: [
-          "api",
-          "repos/{owner}/{repo}/autolinks",
-          "-f",
-          `key_prefix=${teamId}-`,
-          "-f",
-          `url_template=${LINEAR_WEB_BASE_URL}/${workspace}/issue/${teamId}-<num>`,
-        ],
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      })
+      const result = await runCommand("gh", [
+        "api",
+        "repos/{owner}/{repo}/autolinks",
+        "-f",
+        `key_prefix=${teamId}-`,
+        "-f",
+        `url_template=${LINEAR_WEB_BASE_URL}/${workspace}/issue/${teamId}-<num>`,
+      ])
 
-      const status = await process.spawn().status
-      if (!status.success) {
+      if (result.stdout) process.stdout.write(result.stdout)
+      if (result.stderr) process.stderr.write(result.stderr)
+
+      if (!result.success) {
         throw new CliError("Failed to configure autolinks")
       }
     } catch (error) {

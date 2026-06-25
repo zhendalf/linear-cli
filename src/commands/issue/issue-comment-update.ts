@@ -1,19 +1,19 @@
-import { Command } from "@cliffy/command"
-import { Input } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
+import { input } from "../../utils/prompt.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
+import { readFile } from "node:fs/promises"
 
-export const commentUpdateCommand = new Command()
-  .name("update")
+export const commentUpdateCommand = new Command("update")
   .description("Update an existing comment")
-  .arguments("<commentId:string>")
-  .option("-b, --body <text:string>", "New comment body text")
+  .argument("<commentId>")
+  .option("-b, --body <text>", "New comment body text")
   .option(
-    "--body-file <path:string>",
+    "--body-file <path>",
     "Read comment body from a file (preferred for markdown content)",
   )
-  .action(async (options, commentId) => {
+  .action(async (commentId: string, options) => {
     const { body, bodyFile } = options
 
     try {
@@ -28,7 +28,7 @@ export const commentUpdateCommand = new Command()
       let newBody = body
       if (bodyFile) {
         try {
-          newBody = await Deno.readTextFile(bodyFile)
+          newBody = await readFile(bodyFile, "utf8")
         } catch (error) {
           throw new ValidationError(
             `Failed to read body file: ${bodyFile}`,
@@ -60,7 +60,7 @@ export const commentUpdateCommand = new Command()
 
         existingBody = commentData.comment?.body || ""
 
-        newBody = await Input.prompt({
+        newBody = await input({
           message: "New comment body",
           default: existingBody,
         })

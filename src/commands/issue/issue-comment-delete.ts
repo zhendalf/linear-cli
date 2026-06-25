@@ -1,13 +1,12 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { CliError, handleError } from "../../utils/errors.ts"
 
-export const commentDeleteCommand = new Command()
-  .name("delete")
+export const commentDeleteCommand = new Command("delete")
   .description("Delete a comment")
-  .arguments("<commentId:string>")
-  .action(async (_options, commentId) => {
+  .argument("<commentId>")
+  .action(async (commentId: string) => {
     try {
       const mutation = gql(`
         mutation DeleteComment($id: String!) {

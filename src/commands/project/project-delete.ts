@@ -1,10 +1,12 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { resolveProjectId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 
 const DeleteProject = gql(`
   mutation DeleteProject($id: String!) {
@@ -18,19 +20,20 @@ const DeleteProject = gql(`
   }
 `)
 
-export const deleteCommand = new Command()
-  .name("delete")
+export const deleteCommand = new Command("delete")
   .description("Delete (trash) a Linear project")
-  .arguments("<projectId:string>")
+  .argument("<projectId>", "Project ID or slug")
   .option("-f, --force", "Skip confirmation prompt")
-  .action(async ({ force }, projectId) => {
+  .action(async (projectId: string, options) => {
+    const { force } = options
+
     if (!force) {
-      if (!Deno.stdin.isTerminal()) {
+      if (!isStdinTTY()) {
         throw new ValidationError("Interactive confirmation required", {
           suggestion: "Use --force to skip confirmation.",
         })
       }
-      const confirmed = await Confirm.prompt({
+      const confirmed = await confirm({
         message: `Are you sure you want to delete project ${projectId}?`,
         default: false,
       })
@@ -41,10 +44,8 @@ export const deleteCommand = new Command()
       }
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
@@ -53,7 +54,7 @@ export const deleteCommand = new Command()
       const result = await client.request(DeleteProject, {
         id: resolvedId,
       })
-      spinner?.stop()
+      spinner.stop()
 
       if (!result.projectDelete.success) {
         throw new CliError("Failed to delete project")
@@ -63,7 +64,7 @@ export const deleteCommand = new Command()
       const displayName = entity?.name ?? projectId
       console.log(`✓ Deleted project: ${displayName}`)
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to delete project")
     }
   })

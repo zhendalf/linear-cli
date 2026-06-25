@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import {
@@ -15,6 +14,9 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, input } from "../../utils/prompt.ts"
+import { isStdoutTTY } from "../../utils/runtime.ts"
 
 const CreateProject = gql(`
   mutation CreateProject($input: ProjectCreateInput!) {
@@ -51,7 +53,7 @@ const AddProjectToInitiative = gql(`
 `)
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
@@ -109,31 +111,30 @@ async function resolveInitiativeId(
   return undefined
 }
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a new Linear project")
-  .option("-n, --name <name:string>", "Project name (required)")
-  .option("-d, --description <description:string>", "Project description")
+  .option("-n, --name <name>", "Project name (required)")
+  .option("-d, --description <description>", "Project description")
   .option(
-    "-t, --team <team:string>",
-    "Team key (required, can be repeated for multiple teams)",
-    { collect: true },
+    "-t, --team <team>",
+    "Team key (can be repeated for multiple teams)",
+    (val: string, prev: string[] = []) => [...prev, val],
   )
   .option(
-    "-l, --lead <lead:string>",
+    "-l, --lead <lead>",
     "Project lead (username, email, or @me)",
   )
   .option(
-    "-s, --status <status:string>",
+    "-s, --status <status>",
     "Project status (planned, started, paused, completed, canceled, backlog)",
   )
-  .option("--start-date <startDate:string>", "Start date (YYYY-MM-DD)")
+  .option("--start-date <startDate>", "Start date (YYYY-MM-DD)")
   .option(
-    "--target-date <targetDate:string>",
+    "--target-date <targetDate>",
     "Target completion date (YYYY-MM-DD)",
   )
   .option(
-    "--initiative <initiative:string>",
+    "--initiative <initiative>",
     "Add to initiative immediately (ID, slug, or name)",
   )
   .option(
@@ -159,25 +160,25 @@ export const createCommand = new Command()
       const client = getGraphQLClient()
       const initiative = providedInitiative
 
-      let name = providedName
-      let description = providedDescription
-      let teams = providedTeams || []
-      let lead = providedLead
-      let status = providedStatus
-      let startDate = providedStartDate
-      let targetDate = providedTargetDate
+      let name: string | undefined = providedName
+      let description: string | undefined = providedDescription
+      let teams: string[] = providedTeams || []
+      let lead: string | undefined = providedLead
+      let status: string | undefined = providedStatus
+      let startDate: string | undefined = providedStartDate
+      let targetDate: string | undefined = providedTargetDate
 
       // Determine if we should run in interactive mode
       const noFlagsProvided = !name && teams.length === 0
       const isInteractive = (noFlagsProvided || interactiveFlag) &&
-        Deno.stdout.isTerminal()
+        isStdoutTTY()
 
       if (isInteractive) {
         console.log("\nCreate a new project\n")
 
         // Name (required)
         if (!name) {
-          name = await Input.prompt({
+          name = await input({
             message: "Project name:",
             minLength: 1,
           })
@@ -185,10 +186,10 @@ export const createCommand = new Command()
 
         // Description (optional)
         if (!description) {
-          description = await Input.prompt({
+          const descResult = await input({
             message: "Description (optional):",
           })
-          if (!description) description = undefined
+          description = descResult || undefined
         }
 
         // Team selection (required)
@@ -205,9 +206,9 @@ export const createCommand = new Command()
             ? teamOptions.findIndex((t) => t.value === defaultTeam)
             : -1
 
-          const selectedTeam = await Select.prompt({
+          const selectedTeam = await select({
             message: "Team:",
-            options: teamOptions,
+            choices: teamOptions,
             default: defaultIndex >= 0
               ? teamOptions[defaultIndex].value
               : undefined,
@@ -233,9 +234,9 @@ export const createCommand = new Command()
               (s: { value: string }) => s.value === "planned",
             )
 
-            const selectedStatus = await Select.prompt({
+            const selectedStatus = await select({
               message: "Status:",
-              options: statusOptions,
+              choices: statusOptions,
               default: defaultStatus?.value || statusOptions[0]?.value,
             })
             status = selectedStatus
@@ -244,26 +245,26 @@ export const createCommand = new Command()
 
         // Lead (optional)
         if (!lead) {
-          lead = await Input.prompt({
+          const leadResult = await input({
             message: "Lead (username, email, or @me - press Enter to skip):",
           })
-          if (!lead) lead = undefined
+          lead = leadResult || undefined
         }
 
         // Start date (optional)
         if (!startDate) {
-          startDate = await Input.prompt({
+          const startDateResult = await input({
             message: "Start date (YYYY-MM-DD - press Enter to skip):",
           })
-          if (!startDate) startDate = undefined
+          startDate = startDateResult || undefined
         }
 
         // Target date (optional)
         if (!targetDate) {
-          targetDate = await Input.prompt({
+          const targetDateResult = await input({
             message: "Target date (YYYY-MM-DD - press Enter to skip):",
           })
-          if (!targetDate) targetDate = undefined
+          targetDate = targetDateResult || undefined
         }
       }
 
@@ -346,7 +347,7 @@ export const createCommand = new Command()
         throw new ValidationError("Target date must be in YYYY-MM-DD format")
       }
 
-      const input = {
+      const projectInput = {
         name,
         teamIds,
         ...(description && { description }),
@@ -356,21 +357,19 @@ export const createCommand = new Command()
         ...(targetDate && { targetDate }),
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner() && !jsonOutput
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner() && !jsonOutput)
+      spinner.start()
 
       try {
-        const result = await client.request(CreateProject, { input })
+        const result = await client.request(CreateProject, { input: projectInput })
 
         if (!result.projectCreate.success) {
-          spinner?.stop()
+          spinner.stop()
           throw new CliError("Failed to create project")
         }
 
         const project = result.projectCreate.project
-        spinner?.stop()
+        spinner.stop()
 
         if (!project) {
           throw new CliError("Failed to create project: no project returned")
@@ -417,7 +416,7 @@ export const createCommand = new Command()
           }
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to create project")
       }
     },

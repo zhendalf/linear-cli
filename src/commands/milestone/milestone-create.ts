@@ -1,8 +1,9 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { resolveProjectId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { CliError, handleError } from "../../utils/errors.ts"
 
 const CreateProjectMilestone = gql(`
@@ -22,19 +23,17 @@ const CreateProjectMilestone = gql(`
   }
 `)
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a new project milestone")
-  .option("--project <projectId:string>", "Project ID", { required: true })
-  .option("--name <name:string>", "Milestone name", { required: true })
-  .option("--description <description:string>", "Milestone description")
-  .option("--target-date <date:string>", "Target date (YYYY-MM-DD)")
+  .requiredOption("--project <projectId>", "Project ID")
+  .requiredOption("--name <name>", "Milestone name")
+  .option("--description <description>", "Milestone description")
+  .option("--target-date <date>", "Target date (YYYY-MM-DD)")
   .action(
-    async ({ project: projectIdOrSlug, name, description, targetDate }) => {
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+    async (options) => {
+      const { project: projectIdOrSlug, name, description, targetDate } = options
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       try {
         // Resolve project slug to full UUID
@@ -49,7 +48,7 @@ export const createCommand = new Command()
             targetDate,
           },
         })
-        spinner?.stop()
+        spinner.stop()
 
         if (result.projectMilestoneCreate.success) {
           const milestone = result.projectMilestoneCreate.projectMilestone
@@ -65,7 +64,7 @@ export const createCommand = new Command()
           throw new CliError("Failed to create milestone")
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to create milestone")
       }
     },

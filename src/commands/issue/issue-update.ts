@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getTeamKeyFromIssueIdentifier } from "../../utils/issue-identifier.ts"
@@ -14,6 +14,9 @@ import {
   getWorkflowStateByNameOrType,
   lookupUserId,
 } from "../../utils/linear.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { readFile } from "node:fs/promises"
 import {
   CliError,
   handleError,
@@ -21,67 +24,70 @@ import {
   ValidationError,
 } from "../../utils/errors.ts"
 
-export const updateCommand = new Command()
-  .name("update")
+export const updateCommand = new Command("update")
   .description("Update a linear issue")
-  .arguments("[issueId:string]")
+  .argument("[issueId]")
   .option(
-    "-a, --assignee <assignee:string>",
+    "-a, --assignee <assignee>",
     "Assign the issue to 'self' or someone (by username or name)",
   )
   .option(
-    "--due-date <dueDate:string>",
+    "--due-date <dueDate>",
     "Due date of the issue",
   )
   .option(
-    "--parent <parent:string>",
+    "--parent <parent>",
     "Parent issue (if any) as a team_number code",
   )
-  .option(
-    "-p, --priority <priority:number>",
-    "Priority of the issue (1-4, descending priority)",
+  .addOption(
+    new Option(
+      "-p, --priority <priority>",
+      "Priority of the issue (1-4, descending priority)",
+    ).argParser(Number),
+  )
+  .addOption(
+    new Option(
+      "--estimate <estimate>",
+      "Points estimate of the issue",
+    ).argParser(Number),
   )
   .option(
-    "--estimate <estimate:number>",
-    "Points estimate of the issue",
-  )
-  .option(
-    "-d, --description <description:string>",
+    "-d, --description <description>",
     "Description of the issue",
   )
   .option(
-    "--description-file <path:string>",
+    "--description-file <path>",
     "Read description from a file (preferred for markdown content)",
   )
   .option(
-    "-l, --label <label:string>",
+    "-l, --label <label>",
     "Issue label associated with the issue. May be repeated.",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
   )
   .option(
-    "--team <team:string>",
+    "--team <team>",
     "Team associated with the issue (if not your default team)",
   )
   .option(
-    "--project <project:string>",
+    "--project <project>",
     "Name or slug ID of the project with the issue",
   )
   .option(
-    "-s, --state <state:string>",
+    "-s, --state <state>",
     "Workflow state for the issue (by name or type)",
   )
   .option(
-    "--milestone <milestone:string>",
+    "--milestone <milestone>",
     "Name of the project milestone",
   )
   .option(
-    "--cycle <cycle:string>",
+    "--cycle <cycle>",
     "Cycle name, number, or 'active'",
   )
-  .option("-t, --title <title:string>", "Title of the issue")
+  .option("-t, --title <title>", "Title of the issue")
   .action(
-    async (
-      {
+    async (issueIdArg: string | undefined, options) => {
+      const {
         assignee,
         dueDate,
         parent,
@@ -96,9 +102,7 @@ export const updateCommand = new Command()
         milestone,
         cycle,
         title,
-      },
-      issueIdArg,
-    ) => {
+      } = options
       try {
         // Validate that description and descriptionFile are not both provided
         if (description && descriptionFile) {
@@ -111,7 +115,7 @@ export const updateCommand = new Command()
         let finalDescription = description
         if (descriptionFile) {
           try {
-            finalDescription = await Deno.readTextFile(descriptionFile)
+            finalDescription = await readFile(descriptionFile, "utf8")
           } catch (error) {
             throw new ValidationError(
               `Failed to read description file: ${descriptionFile}`,
@@ -136,10 +140,8 @@ export const updateCommand = new Command()
           )
         }
 
-        const { Spinner } = await import("@std/cli/unstable-spinner")
-        const { shouldShowSpinner } = await import("../../utils/hyperlink.ts")
-        const spinner = shouldShowSpinner() ? new Spinner() : null
-        spinner?.start()
+        const spinner = createSpinner("", shouldShowSpinner())
+        spinner.start()
 
         // Extract team from issue ID if not provided
         let teamKey = team
@@ -255,10 +257,10 @@ export const updateCommand = new Command()
         if (cycleId !== undefined) input.cycleId = cycleId
         if (stateId !== undefined) input.stateId = stateId
 
-        spinner?.stop()
+        spinner.stop()
         console.log(`Updating issue ${issueId}`)
         console.log()
-        spinner?.start()
+        spinner.start()
 
         const updateIssueMutation = gql(`
           mutation UpdateIssue($id: String!, $input: IssueUpdateInput!) {
@@ -284,7 +286,7 @@ export const updateCommand = new Command()
           throw new CliError("Issue update failed - no issue returned")
         }
 
-        spinner?.stop()
+        spinner.stop()
         console.log(`✓ Updated issue ${issue.identifier}: ${issue.title}`)
         console.log(issue.url)
       } catch (error) {

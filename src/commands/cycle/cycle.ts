@@ -1,11 +1,12 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { listCommand } from "./cycle-list.ts"
 import { viewCommand } from "./cycle-view.ts"
 
-export const cycleCommand = new Command()
+export const cycleCommand = new Command("cycle")
+  .alias("cy")
   .description("Manage Linear team cycles")
-  .action(function () {
-    this.showHelp()
+  .action((_opts, cmd) => {
+    cmd.help()
   })
-  .command("list", listCommand)
-  .command("view", viewCommand)
+  .addCommand(listCommand)
+  .addCommand(viewCommand)

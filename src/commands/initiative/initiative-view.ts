@@ -1,10 +1,12 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
-import { open } from "@opensrc/deno-open"
+import { Command } from "commander"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { handleError, NotFoundError } from "../../utils/errors.ts"
 
 const GetInitiativeDetails = gql(`
@@ -61,15 +63,14 @@ const STATUS_COLORS: Record<string, string> = {
   canceled: "#EB5757",
 }
 
-export const viewCommand = new Command()
-  .name("view")
+export const viewCommand = new Command("view")
   .description("View initiative details")
   .alias("v")
-  .arguments("<initiativeId:string>")
+  .argument("<initiativeId>")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
   .option("-j, --json", "Output as JSON")
-  .action(async (options, initiativeId) => {
+  .action(async (initiativeId: string, options) => {
     const { web, app, json } = options
 
     const client = getGraphQLClient()
@@ -93,20 +94,20 @@ export const viewCommand = new Command()
 
       const destination = app ? "Linear.app" : "web browser"
       console.log(`Opening ${initiative.url} in ${destination}`)
-      await open(initiative.url, app ? { app: { name: "Linear" } } : undefined)
+      const openMod = await import("open")
+      await openMod.default(initiative.url, app ? { app: { name: "Linear" } } : undefined)
       return
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
     const showSpinner = shouldShowSpinner() && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", showSpinner)
+    spinner.start()
 
     try {
       const result = await client.request(GetInitiativeDetails, {
         id: resolvedId,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const initiative = result.initiative
       if (!initiative) {
@@ -134,9 +135,9 @@ export const viewCommand = new Command()
       const statusDisplay = INITIATIVE_STATUS_DISPLAY[initiative.status] ||
         initiative.status
       const statusLine = `**Status:** ${statusDisplay}`
-      if (Deno.stdout.isTerminal()) {
+      if (isStdoutTTY()) {
         const statusColor = STATUS_COLORS[initiative.status] || "#6B6F76"
-        console.log(`%c${statusLine}%c`, `color: ${statusColor}`, "")
+        console.log(applyConsoleFormat(`%c${statusLine}%c`, `color: ${statusColor}`, ""))
       } else {
         lines.push(statusLine)
       }
@@ -234,14 +235,14 @@ export const viewCommand = new Command()
 
       const markdown = lines.join("\n")
 
-      if (Deno.stdout.isTerminal()) {
-        const terminalWidth = Deno.consoleSize().columns
+      if (isStdoutTTY()) {
+        const terminalWidth = getConsoleSize().columns
         console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
       } else {
         console.log(markdown)
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch initiative details")
     }
   })
@@ -250,7 +251,7 @@ export const viewCommand = new Command()
  * Resolve initiative ID from UUID, slug, or name
  */
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {

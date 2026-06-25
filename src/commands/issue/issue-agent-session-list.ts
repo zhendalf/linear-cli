@@ -1,12 +1,14 @@
-import { Command, EnumType } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { green, yellow } from "@std/fmt/colors"
+import { Command, Option } from "commander"
+import stringWidth from "string-width"
+import chalk from "chalk"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay, truncateText } from "../../utils/display.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { header, muted } from "../../utils/styling.ts"
+import { getConsoleSize } from "../../utils/runtime.ts"
 import { handleError, ValidationError } from "../../utils/errors.ts"
 
 const GetIssueAgentSessions = gql(`
@@ -42,11 +44,11 @@ const GetIssueAgentSessions = gql(`
 function formatStatus(status: string): string {
   switch (status) {
     case "active":
-      return green(padDisplay("active", 13))
+      return chalk.green(padDisplay("active", 13))
     case "pending":
-      return yellow(padDisplay("pending", 13))
+      return chalk.yellow(padDisplay("pending", 13))
     case "awaitingInput":
-      return yellow(padDisplay("awaitingInput", 13))
+      return chalk.yellow(padDisplay("awaitingInput", 13))
     case "complete":
       return muted(padDisplay("complete", 13))
     case "error":
@@ -62,26 +64,22 @@ function formatDate(dateString: string): string {
   return dateString.slice(0, 10)
 }
 
-const AgentSessionStatusType = new EnumType([
-  "pending",
-  "active",
-  "complete",
-  "awaitingInput",
-  "error",
-  "stale",
-])
-
-export const agentSessionListCommand = new Command()
-  .name("list")
+export const agentSessionListCommand = new Command("list")
   .description("List agent sessions for an issue")
-  .type("agentSessionStatus", AgentSessionStatusType)
-  .arguments("[issueId:string]")
+  .argument("[issueId]")
   .option("-j, --json", "Output as JSON")
-  .option(
-    "--status <status:agentSessionStatus>",
-    "Filter by session status",
+  .addOption(
+    new Option("--status <status>", "Filter by session status").choices([
+      "pending",
+      "active",
+      "complete",
+      "awaitingInput",
+      "error",
+      "stale",
+    ]),
   )
-  .action(async ({ json, status }, issueId) => {
+  .action(async (issueId: string | undefined, options) => {
+    const { json, status } = options
     try {
       const resolvedIdentifier = await getIssueIdentifier(issueId)
       if (!resolvedIdentifier) {
@@ -91,16 +89,14 @@ export const agentSessionListCommand = new Command()
         )
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner() && !json
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner() && !json)
+      spinner.start()
 
       const client = getGraphQLClient()
       const result = await client.request(GetIssueAgentSessions, {
         issueId: resolvedIdentifier,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const comments = result.issue?.comments ?? {
         nodes: [],
@@ -137,15 +133,13 @@ export const agentSessionListCommand = new Command()
         return
       }
 
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
-        : { columns: 120 }
+      const { columns } = getConsoleSize()
 
       const STATUS_WIDTH = 13
       const DATE_WIDTH = 10
       const AGENT_WIDTH = Math.max(
         5,
-        ...sessions.map((s) => unicodeWidth(s.appUser.name)),
+        ...sessions.map((s) => stringWidth(s.appUser.name)),
       )
       const SPACE_WIDTH = 3
 

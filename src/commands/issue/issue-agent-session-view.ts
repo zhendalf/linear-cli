@@ -1,9 +1,11 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
+import { Command } from "commander"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import { handleError, NotFoundError } from "../../utils/errors.ts"
 
 const GetAgentSessionDetails = gql(`
@@ -71,24 +73,22 @@ const GetAgentSessionDetails = gql(`
   }
 `)
 
-export const agentSessionViewCommand = new Command()
-  .name("view")
+export const agentSessionViewCommand = new Command("view")
   .description("View agent session details")
   .alias("v")
-  .arguments("<sessionId:string>")
+  .argument("<sessionId>")
   .option("-j, --json", "Output as JSON")
-  .action(async ({ json }, sessionId) => {
+  .action(async (sessionId: string, options) => {
+    const { json } = options
     try {
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner() && !json
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner() && !json)
+      spinner.start()
 
       const client = getGraphQLClient()
       const result = await client.request(GetAgentSessionDetails, {
         id: sessionId,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const session = result.agentSession
       if (!session) {
@@ -167,8 +167,8 @@ export const agentSessionViewCommand = new Command()
 
       const markdown = lines.join("\n")
 
-      if (Deno.stdout.isTerminal()) {
-        const terminalWidth = Deno.consoleSize().columns
+      if (isStdoutTTY()) {
+        const { columns: terminalWidth } = getConsoleSize()
         console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
       } else {
         console.log(markdown)

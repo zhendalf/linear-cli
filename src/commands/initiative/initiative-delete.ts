@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Confirm, Input } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import {
@@ -10,6 +9,9 @@ import {
   printBulkSummary,
 } from "../../utils/bulk.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { confirm, input } from "../../utils/prompt.ts"
 import {
   CliError,
   handleError,
@@ -21,25 +23,25 @@ interface InitiativeDeleteResult extends BulkOperationResult {
   name: string
 }
 
-export const deleteCommand = new Command()
-  .name("delete")
+export const deleteCommand = new Command("delete")
   .description("Permanently delete a Linear initiative")
-  .arguments("[initiativeId:string]")
+  .argument("[initiativeId]")
   .option("-y, --force", "Skip confirmation prompt")
   .option(
-    "--bulk <ids...:string>",
+    "--bulk <ids...>",
     "Delete multiple initiatives by ID, slug, or name",
   )
   .option(
-    "--bulk-file <file:string>",
+    "--bulk-file <file>",
     "Read initiative IDs from a file (one per line)",
   )
   .option("--bulk-stdin", "Read initiative IDs from stdin")
   .action(
     async (
-      { force, bulk, bulkFile, bulkStdin },
-      initiativeId,
+      initiativeId: string | undefined,
+      options,
     ) => {
+      const { force, bulk, bulkFile, bulkStdin } = options
       const client = getGraphQLClient()
 
       // Check if bulk mode
@@ -65,7 +67,7 @@ export const deleteCommand = new Command()
   )
 
 async function handleSingleDelete(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   initiativeId: string,
   options: { force?: boolean },
@@ -118,14 +120,14 @@ async function handleSingleDelete(
 
   // Confirm deletion with typed confirmation for safety
   if (!force) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         "Interactive confirmation required. Use --force to skip.",
       )
     }
     console.log(`\n⚠️  This action is PERMANENT and cannot be undone.\n`)
 
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message:
         `Are you sure you want to permanently delete "${initiative.name}"?`,
       default: false,
@@ -137,7 +139,7 @@ async function handleSingleDelete(
     }
 
     // Require typing the initiative name for extra safety
-    const typedName = await Input.prompt({
+    const typedName = await input({
       message: `Type the initiative name to confirm deletion:`,
     })
 
@@ -147,10 +149,8 @@ async function handleSingleDelete(
     }
   }
 
-  const { Spinner } = await import("@std/cli/unstable-spinner")
-  const showSpinner = shouldShowSpinner()
-  const spinner = showSpinner ? new Spinner() : null
-  spinner?.start()
+  const spinner = createSpinner("", shouldShowSpinner())
+  spinner.start()
 
   // Delete the initiative
   const deleteMutation = gql(`
@@ -164,7 +164,7 @@ async function handleSingleDelete(
   try {
     const result = await client.request(deleteMutation, { id: resolvedId })
 
-    spinner?.stop()
+    spinner.stop()
 
     if (!result.initiativeDelete.success) {
       throw new CliError("Failed to delete initiative")
@@ -172,13 +172,13 @@ async function handleSingleDelete(
 
     console.log(`✓ Permanently deleted initiative: ${initiative.name}`)
   } catch (error) {
-    spinner?.stop()
+    spinner.stop()
     handleError(error, "Failed to delete initiative")
   }
 }
 
 async function handleBulkDelete(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   options: {
     bulk?: string[]
@@ -205,12 +205,12 @@ async function handleBulkDelete(
 
   // Confirm bulk operation
   if (!force) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         "Interactive confirmation required. Use --force to skip.",
       )
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Permanently delete ${ids.length} initiative(s)?`,
       default: false,
     })
@@ -298,12 +298,12 @@ async function handleBulkDelete(
 
   // Exit with error code if any failed
   if (summary.failed > 0) {
-    Deno.exit(1)
+    process.exit(1)
   }
 }
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {

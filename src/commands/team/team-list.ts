@@ -1,6 +1,5 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { open } from "@opensrc/deno-open"
+import { Command } from "commander"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import type { GetTeamsQuery } from "../../__codegen__/graphql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
@@ -9,6 +8,9 @@ import { getOption } from "../../config.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { handleError, ValidationError } from "../../utils/errors.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 
 const GetTeams = gql(`
   query GetTeams($filter: TeamFilter, $first: Int, $after: String) {
@@ -37,15 +39,13 @@ const GetTeams = gql(`
   }
 `)
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List teams")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
-  .action(async ({ web, app }) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
+  .action(async (options) => {
+    const { web, app } = options
+    const spinner = createSpinner("", shouldShowSpinner())
 
     try {
       if (web || app) {
@@ -59,11 +59,12 @@ export const listCommand = new Command()
         const url = `${LINEAR_WEB_BASE_URL}/${workspace}/settings/teams`
         const destination = app ? "Linear.app" : "web browser"
         console.log(`Opening ${url} in ${destination}`)
-        await open(url, app ? { app: { name: "Linear" } } : undefined)
+        const openMod = await import("open")
+        await openMod.default(url, app ? { app: { name: "Linear" } } : undefined)
         return
       }
 
-      spinner?.start()
+      spinner.start()
 
       const client = getGraphQLClient()
 
@@ -86,7 +87,7 @@ export const listCommand = new Command()
         after = result.teams?.pageInfo?.endCursor
       }
 
-      spinner?.stop()
+      spinner.stop()
 
       // Filter out archived teams
       let teams = allTeams.filter((team) => !team.archivedAt)
@@ -100,9 +101,7 @@ export const listCommand = new Command()
       teams = teams.sort((a, b) => a.name.localeCompare(b.name))
 
       // Define column widths based on actual data
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
       const ID_WIDTH = Math.max(
         2, // minimum width for "ID" header
         ...teams.map((team) => team.id.length),
@@ -125,7 +124,7 @@ export const listCommand = new Command()
         SPACE_WIDTH
       const PADDING = 1
       const maxNameWidth = Math.max(
-        ...teams.map((team) => unicodeWidth(team.name)),
+        ...teams.map((team) => stringWidth(team.name)),
       )
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
@@ -150,7 +149,7 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each team
       for (const team of teams) {
@@ -162,21 +161,23 @@ export const listCommand = new Command()
           : padDisplay(team.name, nameWidth)
 
         console.log(
-          `%c${padDisplay(team.key, KEY_WIDTH)}%c ${truncName} ${
-            padDisplay(cycles, CYCLES_WIDTH)
-          } %c${padDisplay(updated, UPDATED_WIDTH)}%c %c${
-            padDisplay(team.id, ID_WIDTH)
-          }%c`,
-          `color: ${team.color || "#ffffff"}`,
-          "",
-          "color: gray",
-          "",
-          "color: gray",
-          "",
+          applyConsoleFormat(
+            `%c${padDisplay(team.key, KEY_WIDTH)}%c ${truncName} ${
+              padDisplay(cycles, CYCLES_WIDTH)
+            } %c${padDisplay(updated, UPDATED_WIDTH)}%c %c${
+              padDisplay(team.id, ID_WIDTH)
+            }%c`,
+            `color: ${team.color || "#ffffff"}`,
+            "",
+            "color: gray",
+            "",
+            "color: gray",
+            "",
+          ),
         )
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch teams")
     }
   })

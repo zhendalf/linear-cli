@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import {
   formatRelativeTime,
@@ -8,12 +8,15 @@ import {
 import { handleError, NotFoundError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 /**
  * Resolve initiative ID from UUID, slug, or name
  */
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
@@ -84,18 +87,19 @@ const HEALTH_DISPLAY: Record<string, string> = {
   offTrack: "Off Track",
 }
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List status updates for an initiative")
   .alias("l")
-  .arguments("<initiativeId:string>")
+  .argument("<initiativeId>")
   .option("-j, --json", "Output as JSON")
-  .option("--limit <limit:number>", "Limit results", { default: 10 })
-  .action(async ({ json, limit }, initiativeId) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
+  .addOption(
+    new Option("--limit <limit>", "Limit results").argParser(Number).default(10),
+  )
+  .action(async (initiativeId: string, options) => {
+    const { json, limit } = options
     const showSpinner = shouldShowSpinner() && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", showSpinner)
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
@@ -103,7 +107,7 @@ export const listCommand = new Command()
       // Resolve initiative ID
       const resolvedId = await resolveInitiativeId(client, initiativeId)
       if (!resolvedId) {
-        spinner?.stop()
+        spinner.stop()
         throw new NotFoundError("Initiative", initiativeId)
       }
 
@@ -133,7 +137,7 @@ export const listCommand = new Command()
         first: limit,
       })
 
-      spinner?.stop()
+      spinner.stop()
 
       const initiative = result.initiative
       if (!initiative) {
@@ -155,8 +159,8 @@ export const listCommand = new Command()
       console.log(`Status updates for: ${initiative.name}\n`)
 
       // Calculate column widths
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
+      const { columns } = isStdoutTTY()
+        ? getConsoleSize()
         : { columns: 120 }
 
       // ID column - show first 8 chars of UUID
@@ -165,7 +169,7 @@ export const listCommand = new Command()
       // Health column
       const HEALTH_WIDTH = Math.max(
         6,
-        ...updates.map((u) =>
+        ...updates.map((u: { health?: string }) =>
           u.health ? (HEALTH_DISPLAY[u.health] || u.health).length : 1
         ),
       )
@@ -173,13 +177,13 @@ export const listCommand = new Command()
       // Date column
       const DATE_WIDTH = Math.max(
         4,
-        ...updates.map((u) => formatRelativeTime(u.createdAt).length),
+        ...updates.map((u: { createdAt: string }) => formatRelativeTime(u.createdAt).length),
       )
 
       // Author column
       const AUTHOR_WIDTH = Math.max(
         6,
-        ...updates.map((u) => (u.user?.name || "-").length),
+        ...updates.map((u: { user?: { name: string } }) => (u.user?.name || "-").length),
       )
 
       const SPACE_WIDTH = 4 // spaces between columns
@@ -207,10 +211,16 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each update
-      for (const update of updates) {
+      for (const update of updates as Array<{
+        id: string
+        body?: string
+        health?: string
+        createdAt: string
+        user?: { name: string }
+      }>) {
         const shortId = update.id.slice(0, 8)
         const healthDisplay = update.health
           ? (HEALTH_DISPLAY[update.health] || update.health)
@@ -222,15 +232,17 @@ export const listCommand = new Command()
         const author = update.user?.name || "-"
 
         console.log(
-          `${padDisplay(shortId, ID_WIDTH)} %c${
-            padDisplay(healthDisplay, HEALTH_WIDTH)
-          }%c %c${padDisplay(date, DATE_WIDTH)}%c ${
-            padDisplay(author, AUTHOR_WIDTH)
-          }`,
-          `color: ${healthColor}`,
-          "",
-          "color: gray",
-          "",
+          applyConsoleFormat(
+            `${padDisplay(shortId, ID_WIDTH)} %c${
+              padDisplay(healthDisplay, HEALTH_WIDTH)
+            }%c %c${padDisplay(date, DATE_WIDTH)}%c ${
+              padDisplay(author, AUTHOR_WIDTH)
+            }`,
+            `color: ${healthColor}`,
+            "",
+            "color: gray",
+            "",
+          ),
         )
 
         // Print body preview if available (indented, on next line)
@@ -239,11 +251,11 @@ export const listCommand = new Command()
             update.body.replace(/\n/g, " ").trim(),
             availableWidth,
           )
-          console.log(`  %c${bodyPreview}%c`, "color: gray", "")
+          console.log(applyConsoleFormat(`  %c${bodyPreview}%c`, "color: gray", ""))
         }
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch initiative updates")
     }
   })

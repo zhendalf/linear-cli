@@ -1,9 +1,11 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { lookupUserId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, input } from "../../utils/prompt.ts"
 import { CliError, handleError, NotFoundError } from "../../utils/errors.ts"
 
 // Initiative status options from Linear API
@@ -14,28 +16,27 @@ const INITIATIVE_STATUSES = [
   { name: "Paused", value: "paused" },
 ]
 
-export const updateCommand = new Command()
-  .name("update")
+export const updateCommand = new Command("update")
   .description("Update a Linear initiative")
-  .arguments("<initiativeId:string>")
-  .option("-n, --name <name:string>", "New name for the initiative")
-  .option("-d, --description <description:string>", "New description")
+  .argument("<initiativeId>")
+  .option("-n, --name <name>", "New name for the initiative")
+  .option("-d, --description <description>", "New description")
   .option(
-    "--status <status:string>",
+    "--status <status>",
     "New status (planned, active, completed, paused)",
   )
-  .option("--owner <owner:string>", "New owner (username, email, or @me)")
+  .option("--owner <owner>", "New owner (username, email, or @me)")
   .option(
-    "--target-date <targetDate:string>",
+    "--target-date <targetDate>",
     "Target completion date (YYYY-MM-DD)",
   )
-  .option("--color <color:string>", "Initiative color (hex, e.g., #5E6AD2)")
-  .option("--icon <icon:string>", "Initiative icon name")
+  .option("--color <color>", "Initiative color (hex, e.g., #5E6AD2)")
+  .option("--icon <icon>", "Initiative icon name")
   .option("-i, --interactive", "Interactive mode for updates")
   .action(
     async (
+      initiativeId: string,
       options,
-      initiativeId,
     ) => {
       // Define GraphQL queries at top level for proper type inference
       const detailsQuery = gql(`
@@ -106,7 +107,7 @@ export const updateCommand = new Command()
       const initiative = initiativeDetails.initiative
 
       // Interactive mode
-      const isInteractive = interactive && Deno.stdout.isTerminal()
+      const isInteractive = interactive && isStdoutTTY()
       const noFlagsProvided = !name &&
         !description &&
         !status &&
@@ -119,7 +120,7 @@ export const updateCommand = new Command()
         console.log(`\nUpdating initiative: ${initiative.name}\n`)
 
         // Prompt for name
-        const newName = await Input.prompt({
+        const newName = await input({
           message: "Name:",
           default: initiative.name,
         })
@@ -128,7 +129,7 @@ export const updateCommand = new Command()
         }
 
         // Prompt for description
-        const newDescription = await Input.prompt({
+        const newDescription = await input({
           message: "Description:",
           default: initiative.description || "",
         })
@@ -140,9 +141,9 @@ export const updateCommand = new Command()
         const currentStatusIndex = INITIATIVE_STATUSES.findIndex(
           (s) => s.value.toLowerCase() === initiative.status?.toLowerCase(),
         )
-        const newStatus = await Select.prompt({
+        const newStatus = await select({
           message: "Status:",
-          options: INITIATIVE_STATUSES,
+          choices: INITIATIVE_STATUSES,
           default: currentStatusIndex >= 0
             ? INITIATIVE_STATUSES[currentStatusIndex].value
             : undefined,
@@ -152,7 +153,7 @@ export const updateCommand = new Command()
         }
 
         // Prompt for target date
-        const newTargetDate = await Input.prompt({
+        const newTargetDate = await input({
           message: "Target date (YYYY-MM-DD):",
           default: initiative.targetDate || "",
         })
@@ -161,7 +162,7 @@ export const updateCommand = new Command()
         }
 
         // Prompt for color
-        const newColor = await Input.prompt({
+        const newColor = await input({
           message: "Color (hex, e.g., #5E6AD2):",
           default: initiative.color || "",
         })
@@ -171,42 +172,40 @@ export const updateCommand = new Command()
       }
 
       // Build update input
-      const input: Record<string, string | undefined> = {}
+      const inputPayload: Record<string, string | undefined> = {}
 
-      if (name !== undefined) input.name = name
-      if (description !== undefined) input.description = description
-      if (status !== undefined) input.status = status.toLowerCase()
-      if (targetDate !== undefined) input.targetDate = targetDate
-      if (colorHex !== undefined) input.color = colorHex
-      if (icon !== undefined) input.icon = icon
+      if (name !== undefined) inputPayload.name = name
+      if (description !== undefined) inputPayload.description = description
+      if (status !== undefined) inputPayload.status = status.toLowerCase()
+      if (targetDate !== undefined) inputPayload.targetDate = targetDate
+      if (colorHex !== undefined) inputPayload.color = colorHex
+      if (icon !== undefined) inputPayload.icon = icon
 
       if (owner !== undefined) {
         const ownerId = await lookupUserId(owner)
         if (!ownerId) {
           throw new NotFoundError("Owner", owner)
         }
-        input.ownerId = ownerId
+        inputPayload.ownerId = ownerId
       }
 
       // Check if any updates to make
-      if (Object.keys(input).length === 0) {
+      if (Object.keys(inputPayload).length === 0) {
         console.log("No changes specified")
         return
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       // Update the initiative
       try {
         const result = await client.request(updateMutation, {
           id: resolvedId,
-          input,
+          input: inputPayload,
         })
 
-        spinner?.stop()
+        spinner.stop()
 
         if (!result.initiativeUpdate.success) {
           throw new CliError("Failed to update initiative")
@@ -218,14 +217,14 @@ export const updateCommand = new Command()
           console.log(updated.url)
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to update initiative")
       }
     },
   )
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {

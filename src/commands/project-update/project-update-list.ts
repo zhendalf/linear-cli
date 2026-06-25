@@ -1,10 +1,13 @@
-import { Command } from "@cliffy/command"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
 import { resolveProjectId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { handleError, NotFoundError } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 
 const ListProjectUpdatesQuery = gql(`
   query ListProjectUpdates($id: String!, $first: Int) {
@@ -32,18 +35,16 @@ const ListProjectUpdatesQuery = gql(`
   }
 `)
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List status updates for a project")
   .alias("l")
-  .arguments("<projectId:string>")
+  .argument("<projectId>", "Project ID or slug")
   .option("--json", "Output as JSON")
-  .option("--limit <limit:number>", "Limit results", { default: 10 })
-  .action(async ({ json, limit }, projectId) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner() && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+  .addOption(new Option("--limit <limit>", "Limit results").argParser(Number).default(10))
+  .action(async (projectId: string, options) => {
+    const { json, limit } = options
+    const spinner = createSpinner("", shouldShowSpinner() && !json)
+    spinner.start()
 
     try {
       // Resolve project ID
@@ -54,7 +55,7 @@ export const listCommand = new Command()
         id: resolvedProjectId,
         first: limit,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const project = result.project
       if (!project) {
@@ -77,9 +78,7 @@ export const listCommand = new Command()
       console.log("")
 
       // Calculate column widths based on actual data
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
 
       const ID_WIDTH = 8 // Short ID prefix
 
@@ -130,7 +129,7 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each update
       for (const update of updates) {
@@ -151,13 +150,15 @@ export const listCommand = new Command()
 
         if (healthColor) {
           console.log(
-            `${padDisplay(shortId, ID_WIDTH)} %c${
-              padDisplay(health, HEALTH_WIDTH)
-            }%c ${padDisplay(date, DATE_WIDTH)} ${
-              padDisplay(author, AUTHOR_WIDTH)
-            }`,
-            healthColor,
-            "",
+            applyConsoleFormat(
+              `${padDisplay(shortId, ID_WIDTH)} %c${
+                padDisplay(health, HEALTH_WIDTH)
+              }%c ${padDisplay(date, DATE_WIDTH)} ${
+                padDisplay(author, AUTHOR_WIDTH)
+              }`,
+              healthColor,
+              "",
+            ),
           )
         } else {
           console.log(
@@ -173,11 +174,11 @@ export const listCommand = new Command()
         if (update.body) {
           const bodyPreview = update.body.replace(/\n/g, " ").trim()
           const truncatedBody = truncateText(bodyPreview, availableWidth)
-          console.log(`%c   ${truncatedBody}%c`, "color: gray", "")
+          console.log(applyConsoleFormat(`%c   ${truncatedBody}%c`, "color: gray", ""))
         }
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch project updates")
     }
   })

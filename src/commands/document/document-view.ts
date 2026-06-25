@@ -1,11 +1,13 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
-import { open } from "@opensrc/deno-open"
+import { Command } from "commander"
+import open from "open"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { getOption } from "../../config.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import {
   downloadMarkdownImages,
   replaceImageUrls,
@@ -43,25 +45,23 @@ const GetDocument = gql(`
   }
 `)
 
-export const viewCommand = new Command()
-  .name("view")
-  .description("View a document's content")
+export const viewCommand = new Command("view")
   .alias("v")
-  .arguments("<id:string>")
+  .description("View a document's content")
+  .argument("<id>", "Document ID or slug")
   .option("--raw", "Output raw markdown without rendering")
   .option("-w, --web", "Open document in browser")
   .option("--json", "Output full document as JSON")
   .option("--no-download", "Keep remote URLs instead of downloading files")
-  .action(async ({ raw, web, json, download }, id) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner() && !raw && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+  .action(async (id: string, options) => {
+    const { raw, web, json, download } = options
+    const spinner = createSpinner("", shouldShowSpinner() && !raw && !json)
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
       const result = await client.request(GetDocument, { id })
-      spinner?.stop()
+      spinner.stop()
 
       const document = result.document
       if (!document) {
@@ -91,7 +91,7 @@ export const viewCommand = new Command()
       }
 
       // Raw output (for piping)
-      if (raw || !Deno.stdout.isTerminal()) {
+      if (raw || !isStdoutTTY()) {
         if (content) {
           console.log(content)
         }
@@ -134,10 +134,10 @@ export const viewCommand = new Command()
       }
 
       const markdown = lines.join("\n")
-      const terminalWidth = Deno.consoleSize().columns
+      const terminalWidth = getConsoleSize().columns
       console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       if (isClientError(error) && isNotFoundError(error)) {
         throw new NotFoundError("Document", id)
       }

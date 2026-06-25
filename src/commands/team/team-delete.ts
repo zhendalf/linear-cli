@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Confirm, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getAllTeams, getTeamIdByKey } from "../../utils/linear.ts"
@@ -9,6 +8,10 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { select, confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 
 const GetTeamIssuesForMove = gql(`
   query GetTeamIssuesForMove($teamId: String!, $first: Int, $after: String) {
@@ -27,16 +30,16 @@ const GetTeamIssuesForMove = gql(`
   }
 `)
 
-export const deleteCommand = new Command()
-  .name("delete")
+export const deleteCommand = new Command("delete")
   .description("Delete a Linear team")
-  .arguments("<teamKey:string>")
+  .argument("<teamKey>", "Team key to delete")
   .option(
-    "--move-issues <targetTeam:string>",
+    "--move-issues <targetTeam>",
     "Move all issues to another team before deletion",
   )
   .option("-y, --force", "Skip confirmation prompt")
-  .action(async ({ moveIssues, force }, teamKey) => {
+  .action(async (teamKey: string, options) => {
+    const { moveIssues, force } = options
     try {
       const client = getGraphQLClient()
 
@@ -80,7 +83,7 @@ export const deleteCommand = new Command()
           "You must move these issues to another team before deletion.\n",
         )
 
-        if (!Deno.stdin.isTerminal()) {
+        if (!isStdinTTY()) {
           throw new ValidationError(
             "Interactive selection required",
             {
@@ -96,9 +99,9 @@ export const deleteCommand = new Command()
           throw new CliError("No other teams available to move issues to")
         }
 
-        const targetTeamId = await Select.prompt({
+        const targetTeamId = await select({
           message: "Select a team to move issues to:",
-          options: otherTeams.map((t) => ({
+          choices: otherTeams.map((t) => ({
             name: `${t.name} (${t.key})`,
             value: t.id,
           })),
@@ -123,13 +126,13 @@ export const deleteCommand = new Command()
 
       // Confirm deletion
       if (!force) {
-        if (!Deno.stdin.isTerminal()) {
+        if (!isStdinTTY()) {
           throw new ValidationError(
             "Interactive confirmation required",
             { suggestion: "Use --force to skip." },
           )
         }
-        const confirmed = await Confirm.prompt({
+        const confirmed = await confirm({
           message:
             `Are you sure you want to delete team "${team.key}: ${team.name}"?`,
           default: false,
@@ -163,20 +166,17 @@ export const deleteCommand = new Command()
   })
 
 async function moveIssuesToTeam(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   sourceTeamId: string,
   targetTeamId: string,
   issueCount: number,
 ) {
-  const { Spinner } = await import("@std/cli/unstable-spinner")
-  const { shouldShowSpinner } = await import("../../utils/hyperlink.ts")
-  const spinner = shouldShowSpinner()
-    ? new Spinner({
-      message: `Moving ${issueCount} issue(s) to target team...`,
-    })
-    : null
-  spinner?.start()
+  const spinner = createSpinner(
+    `Moving ${issueCount} issue(s) to target team...`,
+    shouldShowSpinner(),
+  )
+  spinner.start()
 
   try {
     // Fetch all issues from source team
@@ -228,15 +228,13 @@ async function moveIssuesToTeam(
         teamId: targetTeamId,
       })
       movedCount++
-      if (spinner) {
-        spinner.message = `Moving issues... (${movedCount}/${allIssues.length})`
-      }
+      spinner.text = `Moving issues... (${movedCount}/${allIssues.length})`
     }
 
-    spinner?.stop()
+    spinner.stop()
     console.log(`✓ Moved ${movedCount} issue(s) to target team`)
   } catch (error) {
-    spinner?.stop()
+    spinner.stop()
     handleError(error, "Failed to move issues")
   }
 }

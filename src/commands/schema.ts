@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import {
   buildClientSchema,
   getIntrospectionQuery,
@@ -6,15 +6,15 @@ import {
   lexicographicSortSchema,
   printSchema,
 } from "graphql"
+import { writeFile } from "node:fs/promises"
 import { handleError } from "../utils/errors.ts"
 import { getGraphQLClient } from "../utils/graphql.ts"
 
-export const schemaCommand = new Command()
-  .name("schema")
+export const schemaCommand = new Command("schema")
   .description("Print the GraphQL schema to stdout")
   .option("--json", "Output as JSON introspection result instead of SDL")
   .option(
-    "-o, --output <file:string>",
+    "-o, --output <file>",
     "Write schema to file instead of stdout",
   )
   .action(async (options) => {
@@ -36,7 +36,7 @@ export const schemaCommand = new Command()
       }
 
       if (output) {
-        await Deno.writeTextFile(output, content + "\n")
+        await writeFile(output, content + "\n", "utf8")
         console.log(`Schema written to ${output}`)
       } else {
         console.log(content)

@@ -1,14 +1,14 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { fetchIssueDetails, getIssueIdentifier } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
+import { spawn } from "node:child_process"
 
-export const pullRequestCommand = new Command()
-  .name("pull-request")
+export const pullRequestCommand = new Command("pull-request")
   .description("Create a GitHub pull request with issue details")
   .alias("pr")
   .option(
-    "--base <branch:string>",
+    "--base <branch>",
     "The branch into which you want your code merged",
   )
   .option(
@@ -16,7 +16,7 @@ export const pullRequestCommand = new Command()
     "Create the pull request as a draft",
   )
   .option(
-    "-t, --title <title:string>",
+    "-t, --title <title>",
     "Optional title for the pull request (Linear issue ID will be prefixed)",
   )
   .option(
@@ -24,11 +24,12 @@ export const pullRequestCommand = new Command()
     "Open the pull request in the browser after creating it",
   )
   .option(
-    "--head <branch:string>",
+    "--head <branch>",
     "The branch that contains commits for your pull request",
   )
-  .arguments("[issueId:string]")
-  .action(async ({ base, draft, title: customTitle, web, head }, issueId) => {
+  .argument("[issueId]")
+  .action(async (issueId: string | undefined, options) => {
+    const { base, draft, title: customTitle, web, head } = options
     try {
       const resolvedId = await getIssueIdentifier(issueId)
       if (!resolvedId) {
@@ -42,28 +43,30 @@ export const pullRequestCommand = new Command()
         shouldShowSpinner(),
       )
 
-      const process = new Deno.Command("gh", {
-        args: [
-          "pr",
-          "create",
-          "--title",
-          `${resolvedId} ${customTitle ?? title}`,
-          "--body",
-          url,
-          ...(base ? ["--base", base] : []),
-          ...(head ? ["--head", head] : []),
-          ...(draft ? ["--draft"] : []),
-          ...(web ? ["--web"] : []),
-        ],
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      })
+      const args = [
+        "pr",
+        "create",
+        "--title",
+        `${resolvedId} ${customTitle ?? title}`,
+        "--body",
+        url,
+        ...(base ? ["--base", base] : []),
+        ...(head ? ["--head", head] : []),
+        ...(draft ? ["--draft"] : []),
+        ...(web ? ["--web"] : []),
+      ]
 
-      const status = await process.spawn().status
-      if (!status.success) {
-        throw new CliError("Failed to create pull request")
-      }
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn("gh", args, { stdio: "inherit" })
+        proc.on("close", (code) => {
+          if (code !== 0) {
+            reject(new CliError("Failed to create pull request"))
+          } else {
+            resolve()
+          }
+        })
+        proc.on("error", reject)
+      })
     } catch (error) {
       handleError(error, "Failed to create pull request")
     }

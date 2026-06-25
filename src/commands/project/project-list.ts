@@ -1,6 +1,5 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { open } from "@opensrc/deno-open"
+import { Command } from "commander"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import type {
   GetProjectsQuery,
@@ -13,6 +12,9 @@ import { getTeamKey } from "../../utils/linear.ts"
 import { getOption } from "../../config.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { handleError, ValidationError } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 
 const GetProjects = gql(`
   query GetProjects($filter: ProjectFilter, $first: Int, $after: String) {
@@ -59,16 +61,17 @@ const GetProjects = gql(`
   }
 `)
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List projects")
-  .option("--team <team:string>", "Filter by team key")
+  .option("--team <team>", "Filter by team key")
   .option("--all-teams", "Show projects from all teams")
-  .option("--status <status:string>", "Filter by status name")
+  .option("--status <status>", "Filter by status name")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
   .option("-j, --json", "Output as JSON")
-  .action(async ({ team, allTeams, status, web, app, json }) => {
+  .action(async (options) => {
+    const { team, allTeams, status, web, app, json } = options
+
     if (web || app) {
       let workspace = getOption("workspace")
       if (!workspace) {
@@ -94,13 +97,13 @@ export const listCommand = new Command()
         : `${LINEAR_WEB_BASE_URL}/${workspace}/projects/all`
       const destination = app ? "Linear.app" : "web browser"
       console.log(`Opening ${url} in ${destination}`)
-      await open(url, app ? { app: { name: "Linear" } } : undefined)
+      const openMod = await import("open")
+      await openMod.default(url, app ? { app: { name: "Linear" } } : undefined)
       return
     }
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner() && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+
+    const spinner = createSpinner("", shouldShowSpinner() && !json)
+    spinner.start()
 
     try {
       // Validate conflicting flags
@@ -113,7 +116,7 @@ export const listCommand = new Command()
       // Determine team to filter by
       const teamKey = allTeams ? null : (team?.toUpperCase() || getTeamKey())
 
-      let filter = {}
+      let filter: Record<string, unknown> = {}
       if (teamKey) {
         filter = {
           ...filter,
@@ -154,7 +157,7 @@ export const listCommand = new Command()
         after = pageInfo.endCursor
       }
 
-      spinner?.stop()
+      spinner.stop()
 
       type Project = GetProjectsQuery["projects"]["nodes"][number]
       let projects: Project[] = allProjects
@@ -245,9 +248,7 @@ export const listCommand = new Command()
       }
 
       // Define column widths based on actual data
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
-        : { columns: 120 }
+      const { columns } = isStdoutTTY() ? getConsoleSize() : { columns: 120 }
       const SLUG_WIDTH = Math.max(
         4, // minimum width for "SLUG" header
         ...projects.map((project) => project.slugId.length),
@@ -302,7 +303,7 @@ export const listCommand = new Command()
         LEAD_WIDTH + TEAMS_WIDTH + DATE_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const maxNameWidth = Math.max(
-        ...projects.map((project) => unicodeWidth(project.name)),
+        ...projects.map((project) => stringWidth(project.name)),
       )
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
@@ -330,18 +331,11 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each project
       for (const project of projects) {
-        const priorityMap = {
-          0: "None",
-          1: "Urgent",
-          2: "High",
-          3: "Medium",
-          4: "Low",
-        }
-        const priority =
+        const priorityLabel =
           priorityMap[project.priority as keyof typeof priorityMap] || "None"
         const health = project.health || "Unknown"
         const lead = project.lead?.initials || "-"
@@ -353,21 +347,23 @@ export const listCommand = new Command()
           : padDisplay(project.name, nameWidth)
 
         console.log(
-          `${padDisplay(project.slugId, SLUG_WIDTH)} ${truncName} %c${
-            padDisplay(project.status.name, STATUS_WIDTH)
-          }%c ${padDisplay(priority, PRIORITY_WIDTH)} ${
-            padDisplay(health, HEALTH_WIDTH)
-          } ${padDisplay(lead, LEAD_WIDTH)} ${
-            padDisplay(teams, TEAMS_WIDTH)
-          } %c${padDisplay(dateDisplay, DATE_WIDTH)}%c`,
-          `color: ${project.status.color}`,
-          "",
-          "color: gray",
-          "",
+          applyConsoleFormat(
+            `${padDisplay(project.slugId, SLUG_WIDTH)} ${truncName} %c${
+              padDisplay(project.status.name, STATUS_WIDTH)
+            }%c ${padDisplay(priorityLabel, PRIORITY_WIDTH)} ${
+              padDisplay(health, HEALTH_WIDTH)
+            } ${padDisplay(lead, LEAD_WIDTH)} ${
+              padDisplay(teams, TEAMS_WIDTH)
+            } %c${padDisplay(dateDisplay, DATE_WIDTH)}%c`,
+            `color: ${project.status.color}`,
+            "",
+            "color: gray",
+            "",
+          ),
         )
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch projects")
     }
   })

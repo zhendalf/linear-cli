@@ -1,17 +1,18 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { listCommand } from "./milestone-list.ts"
 import { viewCommand } from "./milestone-view.ts"
 import { createCommand } from "./milestone-create.ts"
 import { updateCommand } from "./milestone-update.ts"
 import { deleteCommand } from "./milestone-delete.ts"
 
-export const milestoneCommand = new Command()
+export const milestoneCommand = new Command("milestone")
+  .alias("m")
   .description("Manage Linear project milestones")
-  .action(function () {
-    this.showHelp()
+  .action((_opts, cmd) => {
+    cmd.help()
   })
-  .command("list", listCommand)
-  .command("view", viewCommand)
-  .command("create", createCommand)
-  .command("update", updateCommand)
-  .command("delete", deleteCommand)
+  .addCommand(listCommand)
+  .addCommand(viewCommand)
+  .addCommand(createCommand)
+  .addCommand(updateCommand)
+  .addCommand(deleteCommand)

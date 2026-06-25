@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Input } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
@@ -9,24 +8,25 @@ import {
   validateFilePath,
 } from "../../utils/upload.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { input } from "../../utils/prompt.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
+import { readFile } from "node:fs/promises"
 
-export const commentAddCommand = new Command()
-  .name("add")
+export const commentAddCommand = new Command("add")
   .description("Add a comment to an issue or reply to a comment")
-  .arguments("[issueId:string]")
-  .option("-b, --body <text:string>", "Comment body text")
+  .argument("[issueId]")
+  .option("-b, --body <text>", "Comment body text")
   .option(
-    "--body-file <path:string>",
+    "--body-file <path>",
     "Read comment body from a file (preferred for markdown content)",
   )
-  .option("-p, --parent <id:string>", "Parent comment ID for replies")
+  .option("-p, --parent <id>", "Parent comment ID for replies")
   .option(
-    "-a, --attach <filepath:string>",
+    "-a, --attach <filepath>",
     "Attach a file to the comment (can be used multiple times)",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
   )
-  .action(async (options, issueId) => {
+  .action(async (issueId: string | undefined, options) => {
     const { body, bodyFile, parent, attach } = options
 
     try {
@@ -41,7 +41,7 @@ export const commentAddCommand = new Command()
       let commentBody = body
       if (bodyFile) {
         try {
-          commentBody = await Deno.readTextFile(bodyFile)
+          commentBody = await readFile(bodyFile, "utf8")
         } catch (error) {
           throw new ValidationError(
             `Failed to read body file: ${bodyFile}`,
@@ -63,7 +63,7 @@ export const commentAddCommand = new Command()
       }
 
       // Validate and upload attachments first
-      const attachments = attach || []
+      const attachments: string[] = attach || []
       const uploadedFiles: {
         filename: string
         assetUrl: string
@@ -92,7 +92,7 @@ export const commentAddCommand = new Command()
 
       // If no body provided and no attachments, prompt for it
       if (!commentBody && uploadedFiles.length === 0) {
-        commentBody = await Input.prompt({
+        commentBody = await input({
           message: "Comment body",
           default: "",
         })
@@ -141,17 +141,17 @@ export const commentAddCommand = new Command()
       `)
 
       const client = getGraphQLClient()
-      const input: Record<string, unknown> = {
+      const inputData: Record<string, unknown> = {
         body: commentBody,
         issueId: resolvedIdentifier,
       }
 
       if (parent) {
-        input.parentId = parent
+        inputData.parentId = parent
       }
 
       const data = await client.request(mutation, {
-        input,
+        input: inputData,
       })
 
       if (!data.commentCreate.success) {

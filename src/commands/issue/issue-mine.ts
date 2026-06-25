@@ -1,6 +1,6 @@
-import { Command, EnumType } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { rgb24 } from "@std/fmt/colors"
+import { Command, Option } from "commander"
+import stringWidth from "string-width"
+import chalk from "chalk"
 import { getOption } from "../../config.ts"
 import {
   getPriorityDisplay,
@@ -23,107 +23,101 @@ import { openTeamAssigneeView } from "../../utils/actions.ts"
 import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { header, muted, warning } from "../../utils/styling.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { isStdoutTTY, isStdinTTY, getConsoleSize } from "../../utils/runtime.ts"
 import {
   handleError,
   NotFoundError,
   ValidationError,
 } from "../../utils/errors.ts"
 
-const SortType = new EnumType(["manual", "priority"])
-const StateType = new EnumType([
-  "triage",
-  "backlog",
-  "unstarted",
-  "started",
-  "completed",
-  "canceled",
-])
-
-export const mineCommand = new Command()
-  .name("mine")
+export const mineCommand = new Command("mine")
+  .alias("list")
+  .alias("l")
   .description("List your issues")
-  .type("sort", SortType)
-  .type("state", StateType)
-  .option(
-    "-s, --state <state:state>",
-    "Filter by issue state (can be repeated for multiple states)",
-    {
-      default: ["unstarted"],
-      collect: true,
-    },
+  .addOption(
+    new Option(
+      "-s, --state <state>",
+      "Filter by issue state (can be repeated for multiple states)",
+    )
+      .argParser((val: string, prev: string[] = []) => [...prev, val])
+      .default(["unstarted"]),
   )
   .option(
     "--all-states",
     "Show issues from all states",
   )
-  .option(
-    "--sort <sort:sort>",
-    "Sort order (can also be set via LINEAR_ISSUE_SORT)",
-    {
-      required: false,
-    },
+  .addOption(
+    new Option(
+      "--sort <sort>",
+      "Sort order (can also be set via LINEAR_ISSUE_SORT)",
+    ).choices(["manual", "priority"]),
   )
   .option(
-    "--team <team:string>",
+    "--team <team>",
     "Team to list issues for (if not your default team)",
   )
   .option(
-    "--project <project:string>",
+    "--project <project>",
     "Filter by project name",
   )
   .option(
-    "--project-label <projectLabel:string>",
+    "--project-label <projectLabel>",
     "Filter by project label name (shows issues from all projects with this label)",
   )
   .option(
-    "--cycle <cycle:string>",
+    "--cycle <cycle>",
     "Filter by cycle name, number, or 'active'",
   )
   .option(
-    "--milestone <milestone:string>",
+    "--milestone <milestone>",
     "Filter by project milestone name (requires --project)",
   )
   .option(
-    "-l, --label <label:string>",
+    "-l, --label <label>",
     "Filter by label name (can be repeated for multiple labels)",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
+  )
+  .addOption(
+    new Option(
+      "--limit <n>",
+      "Maximum number of issues to fetch (default: 50, use 0 for unlimited)",
+    )
+      .argParser(Number)
+      .default(50),
   )
   .option(
-    "--limit <limit:number>",
-    "Maximum number of issues to fetch (default: 50, use 0 for unlimited)",
-    {
-      default: 50,
-    },
-  )
-  .option(
-    "--created-after <date:string>",
+    "--created-after <date>",
     "Filter issues created after this date (ISO 8601 or YYYY-MM-DD)",
   )
   .option(
-    "--updated-after <date:string>",
+    "--updated-after <date>",
     "Filter issues updated after this date (ISO 8601 or YYYY-MM-DD)",
   )
-  .option(
-    "--assignee <assignee:string>",
-    "Removed: use `issue query --assignee` instead",
-    { hidden: true },
+  .addOption(
+    new Option(
+      "--assignee <assignee>",
+      "Removed: use `issue query --assignee` instead",
+    ).hideHelp(),
   )
-  .option(
-    "-A, --all-assignees",
-    "Removed: use `issue query --all-assignees` instead",
-    { hidden: true },
+  .addOption(
+    new Option(
+      "-A, --all-assignees",
+      "Removed: use `issue query --all-assignees` instead",
+    ).hideHelp(),
   )
-  .option(
-    "-U, --unassigned",
-    "Removed: use `issue query --unassigned` instead",
-    { hidden: true },
+  .addOption(
+    new Option(
+      "-U, --unassigned",
+      "Removed: use `issue query --unassigned` instead",
+    ).hideHelp(),
   )
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
   .option("--no-pager", "Disable automatic paging for long output")
   .action(
-    async (
-      {
+    async (options) => {
+      const {
         sort: sortFlag,
         state,
         allStates,
@@ -142,8 +136,8 @@ export const mineCommand = new Command()
         pager,
         createdAfter,
         updatedAfter,
-      },
-    ) => {
+      } = options
+
       const usePager = pager !== false
       if (web || app) {
         await openTeamAssigneeView({ app: app })
@@ -182,9 +176,10 @@ export const mineCommand = new Command()
             "Sort must be provided via command line flag, configuration file, or LINEAR_ISSUE_SORT environment variable",
           )
         }
-        if (!SortType.values().includes(sort)) {
+        const validSortValues = ["manual", "priority"]
+        if (!validSortValues.includes(sort)) {
           throw new ValidationError(
-            `Sort must be one of: ${SortType.values().join(", ")}`,
+            `Sort must be one of: ${validSortValues.join(", ")}`,
           )
         }
         const teamKey = team || getTeamKey()
@@ -212,7 +207,7 @@ export const mineCommand = new Command()
             if (Object.keys(projectOptions).length === 0) {
               throw new NotFoundError("Project", project)
             }
-            if (!Deno.stdin.isTerminal()) {
+            if (!isStdinTTY()) {
               throw new ValidationError(
                 `Project "${project}" not found. Similar projects: ${
                   Object.values(projectOptions).join(", ")
@@ -259,10 +254,8 @@ export const mineCommand = new Command()
           ? labels.flat()
           : undefined
 
-        const { Spinner } = await import("@std/cli/unstable-spinner")
-        const showSpinner = shouldShowSpinner()
-        const spinner = showSpinner ? new Spinner() : null
-        spinner?.start()
+        const spinner = createSpinner("", shouldShowSpinner())
+        spinner.start()
 
         const result = await fetchIssuesForState(
           teamKey,
@@ -280,7 +273,7 @@ export const mineCommand = new Command()
           createdAfter,
           updatedAfter,
         )
-        spinner?.stop()
+        spinner.stop()
         const issues = result.issues?.nodes || []
 
         if (issues.length === 0) {
@@ -288,8 +281,8 @@ export const mineCommand = new Command()
           return
         }
 
-        const { columns } = Deno.stdout.isTerminal()
-          ? Deno.consoleSize()
+        const { columns } = isStdoutTTY()
+          ? getConsoleSize()
           : { columns: 120 }
         const PRIORITY_WIDTH = 3
         const BLOCKED_WIDTH = 1
@@ -302,7 +295,7 @@ export const mineCommand = new Command()
           Math.max(
             6, // minimum width for "LABELS" header
             ...issues.map((issue) =>
-              unicodeWidth(issue.labels.nodes.map((l) => l.name).join(", "))
+              stringWidth(issue.labels.nodes.map((l) => l.name).join(", "))
             ),
           ),
         )
@@ -311,15 +304,15 @@ export const mineCommand = new Command()
           20, // maximum width for state
           Math.max(
             5, // minimum width for "STATE" header
-            ...issues.map((issue) => unicodeWidth(issue.state.name)),
+            ...issues.map((issue) => stringWidth(issue.state.name)),
           ),
         )
         const SPACE_WIDTH = 4
         const updatedHeader = "UPDATED"
         const UPDATED_WIDTH = Math.max(
-          unicodeWidth(updatedHeader),
+          stringWidth(updatedHeader),
           ...issues.map((issue) =>
-            unicodeWidth(getTimeAgo(new Date(issue.updatedAt)))
+            stringWidth(getTimeAgo(new Date(issue.updatedAt)))
           ),
         )
 
@@ -335,23 +328,20 @@ export const mineCommand = new Command()
         }
 
         const tableData: Array<TableRow> = issues.map((issue) => {
-          let labels: string
+          let labelsStr: string
           if (issue.labels.nodes.length === 0) {
-            labels = " ".repeat(LABEL_WIDTH)
+            labelsStr = " ".repeat(LABEL_WIDTH)
           } else {
             const coloredLabels: string[] = []
             let currentWidth = 0
 
             for (let i = 0; i < issue.labels.nodes.length; i++) {
               const label = issue.labels.nodes[i]
-              const coloredLabel = rgb24(
-                label.name,
-                parseInt(label.color.replace("#", ""), 16),
-              )
+              const coloredLabel = chalk.hex(label.color)(label.name)
               const separator = i > 0 ? ", " : ""
               const testText = separator + label.name
 
-              if (currentWidth + unicodeWidth(testText) > LABEL_WIDTH) {
+              if (currentWidth + stringWidth(testText) > LABEL_WIDTH) {
                 const remainingWidth = LABEL_WIDTH - currentWidth
                 if (remainingWidth >= 4) { // Need at least 4 chars for "..."
                   const truncatedName = truncateText(
@@ -359,27 +349,23 @@ export const mineCommand = new Command()
                     remainingWidth - (separator.length),
                   )
                   coloredLabels.push(
-                    separator +
-                      rgb24(
-                        truncatedName,
-                        parseInt(label.color.replace("#", ""), 16),
-                      ),
+                    separator + chalk.hex(label.color)(truncatedName),
                   )
                 }
                 break
               }
 
               coloredLabels.push(separator + coloredLabel)
-              currentWidth += unicodeWidth(testText)
+              currentWidth += stringWidth(testText)
             }
 
-            labels = coloredLabels.join("")
-            const ansiRegex = new RegExp("\u001B\\[[0-9;]*m", "g")
-            const actualLabelsWidth = unicodeWidth(
+            labelsStr = coloredLabels.join("")
+            const ansiRegex = new RegExp("\\[[0-9;]*m", "g")
+            const actualLabelsWidth = stringWidth(
               coloredLabels.join("").replace(ansiRegex, ""),
             )
             const remainingSpace = Math.max(0, LABEL_WIDTH - actualLabelsWidth)
-            labels += " ".repeat(remainingSpace)
+            labelsStr += " ".repeat(remainingSpace)
           }
           const updatedAt = new Date(issue.updatedAt)
           const timeAgo = getTimeAgo(updatedAt)
@@ -387,13 +373,10 @@ export const mineCommand = new Command()
           const priorityStr = getPriorityDisplay(issue.priority)
 
           const stateName = truncateText(issue.state.name, STATE_WIDTH)
-          const stateColored = rgb24(
-            stateName,
-            parseInt(issue.state.color.replace("#", ""), 16),
-          )
+          const stateColored = chalk.hex(issue.state.color)(stateName)
           const stateRemainingSpace = Math.max(
             0,
-            STATE_WIDTH - unicodeWidth(stateName),
+            STATE_WIDTH - stringWidth(stateName),
           )
           const statePadded = stateColored + " ".repeat(stateRemainingSpace)
 
@@ -404,7 +387,7 @@ export const mineCommand = new Command()
             blockedStr,
             identifier: issue.identifier,
             title: issue.title,
-            labels,
+            labels: labelsStr,
             state: statePadded,
             timeAgo,
             estimate: issue.estimate,
@@ -416,7 +399,7 @@ export const mineCommand = new Command()
           LABEL_WIDTH + ESTIMATE_WIDTH + STATE_WIDTH + SPACE_WIDTH
         const PADDING = 1
         const maxTitleWidth = Math.max(
-          ...tableData.map((row) => unicodeWidth(row.title)),
+          ...tableData.map((row) => stringWidth(row.title)),
         )
         const availableWidth = Math.max(columns - PADDING - fixed, 0)
         const titleWidth = Math.min(maxTitleWidth, availableWidth) // use smaller of max title width or available space

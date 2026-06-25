@@ -1,8 +1,9 @@
-import { Command } from "@cliffy/command"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { resolveProjectId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 
 const UpdateProjectMilestone = gql(`
@@ -23,23 +24,20 @@ const UpdateProjectMilestone = gql(`
   }
 `)
 
-export const updateCommand = new Command()
-  .name("update")
+export const updateCommand = new Command("update")
   .description("Update an existing project milestone")
-  .arguments("<id:string>")
-  .option("--name <name:string>", "Milestone name")
-  .option("--description <description:string>", "Milestone description")
-  .option("--target-date <date:string>", "Target date (YYYY-MM-DD)")
-  .option(
-    "--sort-order <value:number>",
-    "Sort order relative to other milestones",
-  )
-  .option("--project <projectId:string>", "Move to a different project")
+  .argument("<id>", "Milestone ID")
+  .option("--name <name>", "Milestone name")
+  .option("--description <description>", "Milestone description")
+  .option("--target-date <date>", "Target date (YYYY-MM-DD)")
+  .addOption(new Option("--sort-order <value>", "Sort order relative to other milestones").argParser(Number))
+  .option("--project <projectId>", "Move to a different project")
   .action(
     async (
-      { name, description, targetDate, sortOrder, project: projectIdOrSlug },
-      id,
+      id: string,
+      options,
     ) => {
+      const { name, description, targetDate, sortOrder, project: projectIdOrSlug } = options
       if (
         !name && !description && !targetDate && sortOrder == null &&
         !projectIdOrSlug
@@ -53,10 +51,8 @@ export const updateCommand = new Command()
         )
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       try {
         const client = getGraphQLClient()
@@ -75,7 +71,7 @@ export const updateCommand = new Command()
           id,
           input,
         })
-        spinner?.stop()
+        spinner.stop()
 
         if (result.projectMilestoneUpdate.success) {
           const milestone = result.projectMilestoneUpdate.projectMilestone
@@ -92,7 +88,7 @@ export const updateCommand = new Command()
           throw new CliError("Failed to update milestone")
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to update milestone")
       }
     },

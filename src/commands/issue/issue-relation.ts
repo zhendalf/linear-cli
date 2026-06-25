@@ -1,7 +1,9 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
   handleError,
   isClientError,
@@ -22,27 +24,18 @@ function getApiRelationType(
   return type
 }
 
-const addRelationCommand = new Command()
-  .name("add")
+const addRelationCommand = new Command("add")
   .description("Add a relation between two issues")
-  .arguments("<issueId:string> <relationType:string> <relatedIssueId:string>")
-  .example(
-    "Mark issue as blocked by another",
-    "linear issue relation add ENG-123 blocked-by ENG-100",
-  )
-  .example(
-    "Mark issue as blocking another",
-    "linear issue relation add ENG-123 blocks ENG-456",
-  )
-  .example(
-    "Mark issues as related",
-    "linear issue relation add ENG-123 related ENG-456",
-  )
-  .example(
-    "Mark issue as duplicate",
-    "linear issue relation add ENG-123 duplicate ENG-100",
-  )
-  .action(async (_options, issueIdArg, relationTypeArg, relatedIssueIdArg) => {
+  .argument("<issueId>")
+  .argument("<relationType>")
+  .argument("<relatedIssueId>")
+  .addHelpText("after", `
+Examples:
+  $ linear issue relation add ENG-123 blocked-by ENG-100
+  $ linear issue relation add ENG-123 blocks ENG-456
+  $ linear issue relation add ENG-123 related ENG-456
+  $ linear issue relation add ENG-123 duplicate ENG-100`)
+  .action(async (issueIdArg: string, relationTypeArg: string, relatedIssueIdArg: string) => {
     try {
       // Validate relation type
       const relationType = relationTypeArg.toLowerCase() as RelationType
@@ -68,24 +61,22 @@ const addRelationCommand = new Command()
         )
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const { shouldShowSpinner } = await import("../../utils/hyperlink.ts")
-      const spinner = shouldShowSpinner() ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       // Get issue IDs
       let issueId: string | undefined
       try {
         issueId = await getIssueId(issueIdentifier)
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         if (isClientError(error) && isNotFoundError(error)) {
           throw new NotFoundError("Issue", issueIdentifier)
         }
         throw error
       }
       if (!issueId) {
-        spinner?.stop()
+        spinner.stop()
         throw new NotFoundError("Issue", issueIdentifier)
       }
 
@@ -93,14 +84,14 @@ const addRelationCommand = new Command()
       try {
         relatedIssueId = await getIssueId(relatedIssueIdentifier)
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         if (isClientError(error) && isNotFoundError(error)) {
           throw new NotFoundError("Issue", relatedIssueIdentifier)
         }
         throw error
       }
       if (!relatedIssueId) {
-        spinner?.stop()
+        spinner.stop()
         throw new NotFoundError("Issue", relatedIssueIdentifier)
       }
 
@@ -131,7 +122,7 @@ const addRelationCommand = new Command()
         },
       })
 
-      spinner?.stop()
+      spinner.stop()
 
       if (!data.issueRelationCreate.success) {
         throw new Error("Failed to create relation")
@@ -147,11 +138,12 @@ const addRelationCommand = new Command()
     }
   })
 
-const deleteRelationCommand = new Command()
-  .name("delete")
+const deleteRelationCommand = new Command("delete")
   .description("Delete a relation between two issues")
-  .arguments("<issueId:string> <relationType:string> <relatedIssueId:string>")
-  .action(async (_options, issueIdArg, relationTypeArg, relatedIssueIdArg) => {
+  .argument("<issueId>")
+  .argument("<relationType>")
+  .argument("<relatedIssueId>")
+  .action(async (issueIdArg: string, relationTypeArg: string, relatedIssueIdArg: string) => {
     try {
       // Validate relation type
       const relationType = relationTypeArg.toLowerCase() as RelationType
@@ -177,24 +169,22 @@ const deleteRelationCommand = new Command()
         )
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const { shouldShowSpinner } = await import("../../utils/hyperlink.ts")
-      const spinner = shouldShowSpinner() ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       // Get issue IDs
       let issueId: string | undefined
       try {
         issueId = await getIssueId(issueIdentifier)
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         if (isClientError(error) && isNotFoundError(error)) {
           throw new NotFoundError("Issue", issueIdentifier)
         }
         throw error
       }
       if (!issueId) {
-        spinner?.stop()
+        spinner.stop()
         throw new NotFoundError("Issue", issueIdentifier)
       }
 
@@ -202,14 +192,14 @@ const deleteRelationCommand = new Command()
       try {
         relatedIssueId = await getIssueId(relatedIssueIdentifier)
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         if (isClientError(error) && isNotFoundError(error)) {
           throw new NotFoundError("Issue", relatedIssueIdentifier)
         }
         throw error
       }
       if (!relatedIssueId) {
-        spinner?.stop()
+        spinner.stop()
         throw new NotFoundError("Issue", relatedIssueIdentifier)
       }
 
@@ -244,7 +234,7 @@ const deleteRelationCommand = new Command()
       )
 
       if (!relation) {
-        spinner?.stop()
+        spinner.stop()
         throw new NotFoundError(
           "Relation",
           `${relationType} between ${issueIdentifier} and ${relatedIssueIdentifier}`,
@@ -263,7 +253,7 @@ const deleteRelationCommand = new Command()
         id: relation.id,
       })
 
-      spinner?.stop()
+      spinner.stop()
 
       if (!deleteData.issueRelationDelete.success) {
         throw new Error("Failed to delete relation")
@@ -277,11 +267,10 @@ const deleteRelationCommand = new Command()
     }
   })
 
-const listRelationsCommand = new Command()
-  .name("list")
+const listRelationsCommand = new Command("list")
   .description("List relations for an issue")
-  .arguments("[issueId:string]")
-  .action(async (_options, issueIdArg) => {
+  .argument("[issueId]")
+  .action(async (issueIdArg: string | undefined) => {
     try {
       const issueIdentifier = await getIssueIdentifier(issueIdArg)
       if (!issueIdentifier) {
@@ -291,10 +280,8 @@ const listRelationsCommand = new Command()
         )
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const { shouldShowSpinner } = await import("../../utils/hyperlink.ts")
-      const spinner = shouldShowSpinner() ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       const listRelationsQuery = gql(`
         query ListIssueRelations($issueId: String!) {
@@ -332,14 +319,14 @@ const listRelationsCommand = new Command()
           issueId: issueIdentifier,
         })
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         if (isClientError(error) && isNotFoundError(error)) {
           throw new NotFoundError("Issue", issueIdentifier)
         }
         throw error
       }
 
-      spinner?.stop()
+      spinner.stop()
 
       if (!data.issue) {
         throw new NotFoundError("Issue", issueIdentifier)
@@ -384,12 +371,9 @@ const listRelationsCommand = new Command()
   })
 
 // Export the main command after subcommands are defined
-export const relationCommand = new Command()
-  .name("relation")
+export const relationCommand = new Command("relation")
   .description("Manage issue relations (dependencies)")
-  .action(function () {
-    this.showHelp()
-  })
-  .command("add", addRelationCommand)
-  .command("delete", deleteRelationCommand)
-  .command("list", listRelationsCommand)
+  .action((_opts, cmd) => cmd.help())
+  .addCommand(addRelationCommand)
+  .addCommand(deleteRelationCommand)
+  .addCommand(listRelationsCommand)

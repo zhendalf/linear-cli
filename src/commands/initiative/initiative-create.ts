@@ -1,10 +1,12 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import type { InitiativeStatus } from "../../__codegen__/graphql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { lookupUserId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, input } from "../../utils/prompt.ts"
 import {
   CliError,
   handleError,
@@ -47,25 +49,24 @@ const DEFAULT_COLORS = [
   { name: "Gray", value: "#6B6F76" },
 ]
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a new Linear initiative")
-  .option("-n, --name <name:string>", "Initiative name (required)")
-  .option("-d, --description <description:string>", "Initiative description")
+  .option("-n, --name <name>", "Initiative name (required)")
+  .option("-d, --description <description>", "Initiative description")
   .option(
-    "-s, --status <status:string>",
+    "-s, --status <status>",
     "Status: planned, active, completed (default: planned)",
   )
   .option(
-    "-o, --owner <owner:string>",
+    "-o, --owner <owner>",
     "Owner (username, email, or @me for yourself)",
   )
   .option(
-    "--target-date <targetDate:string>",
+    "--target-date <targetDate>",
     "Target completion date (YYYY-MM-DD)",
   )
-  .option("-c, --color <color:string>", "Color hex code (e.g., #5E6AD2)")
-  .option("--icon <icon:string>", "Icon name")
+  .option("-c, --color <color>", "Color hex code (e.g., #5E6AD2)")
+  .option("--icon <icon>", "Icon name")
   .option(
     "-i, --interactive",
     "Interactive mode (default if no flags provided)",
@@ -95,14 +96,14 @@ export const createCommand = new Command()
     // Determine if we should run in interactive mode
     const noFlagsProvided = !name
     const isInteractive = (noFlagsProvided || interactiveFlag) &&
-      Deno.stdout.isTerminal()
+      isStdoutTTY()
 
     if (isInteractive) {
       console.log("\nCreate a new initiative\n")
 
       // Name (required)
       if (!name) {
-        name = await Input.prompt({
+        name = await input({
           message: "Initiative name:",
           minLength: 1,
         })
@@ -110,7 +111,7 @@ export const createCommand = new Command()
 
       // Description (optional)
       if (!description) {
-        description = await Input.prompt({
+        description = await input({
           message: "Description (optional):",
         })
         if (!description) description = undefined
@@ -118,17 +119,17 @@ export const createCommand = new Command()
 
       // Status selection
       if (!status) {
-        const selectedStatus = await Select.prompt({
+        const selectedStatus = await select({
           message: "Status:",
-          options: INITIATIVE_STATUSES,
-          default: "planned",
+          choices: INITIATIVE_STATUSES,
+          default: "Planned",
         })
         status = selectedStatus
       }
 
       // Owner (optional)
       if (!owner) {
-        owner = await Input.prompt({
+        owner = await input({
           message: "Owner (username, email, or @me - press Enter to skip):",
         })
         if (!owner) owner = undefined
@@ -136,7 +137,7 @@ export const createCommand = new Command()
 
       // Target date (optional)
       if (!targetDate) {
-        targetDate = await Input.prompt({
+        targetDate = await input({
           message: "Target date (YYYY-MM-DD - press Enter to skip):",
         })
         if (!targetDate) targetDate = undefined
@@ -153,22 +154,22 @@ export const createCommand = new Command()
           { name: "Custom color", value: "__custom__" },
         ]
 
-        const selectedColor = await Select.prompt({
+        const selectedColor = await select({
           message: "Color (optional):",
-          options: colorOptions,
+          choices: colorOptions,
           default: "__skip__",
         })
 
         if (selectedColor === "__custom__") {
-          color = await Input.prompt({
+          color = await input({
             message: "Enter hex color (e.g., #FF5733):",
-            validate: (value) => {
-              if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
-                return "Please enter a valid hex color (e.g., #FF5733)"
-              }
-              return true
-            },
           })
+          // Validate after input since inquirer input wrapper doesn't have inline validate
+          if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            throw new ValidationError(
+              "Color must be a valid hex code (e.g., #5E6AD2)",
+            )
+          }
         } else if (selectedColor !== "__skip__") {
           color = selectedColor
         }
@@ -219,7 +220,7 @@ export const createCommand = new Command()
       }
     }
 
-    const input = {
+    const inputPayload = {
       name: name as string,
       ...(description && { description }),
       ...(status && { status: status as InitiativeStatus }),
@@ -229,21 +230,19 @@ export const createCommand = new Command()
       ...(icon && { icon }),
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     try {
-      const result = await client.request(CreateInitiative, { input })
+      const result = await client.request(CreateInitiative, { input: inputPayload })
 
       if (!result.initiativeCreate.success) {
-        spinner?.stop()
+        spinner.stop()
         throw new CliError("Failed to create initiative")
       }
 
       const initiative = result.initiativeCreate.initiative
-      spinner?.stop()
+      spinner.stop()
 
       console.log(`✓ Created initiative: ${initiative.name}`)
       console.log(`  Slug: ${initiative.slugId}`)
@@ -251,7 +250,7 @@ export const createCommand = new Command()
         console.log(`  URL: ${initiative.url}`)
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to create initiative")
     }
   })

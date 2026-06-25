@@ -10,7 +10,6 @@ import { whoamiCommand } from "./auth-whoami.ts"
 
 export const authCommand = new Command("auth")
   .description("Manage Linear authentication")
-  .passThroughOptions()
   .action((_opts, cmd) => {
     cmd.help()
   })

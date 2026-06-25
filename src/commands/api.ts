@@ -1,9 +1,4 @@
-import {
-  type ArgumentValue,
-  Command,
-  Type,
-  ValidationError,
-} from "@cliffy/command";
+import { Command, InvalidArgumentError } from "commander";
 import pkg from "../../package.json" with { type: "json" };
 import { getGraphQLEndpoint, getResolvedApiKey } from "../utils/graphql.ts";
 import {
@@ -11,31 +6,33 @@ import {
   handleError,
   ValidationError as AppValidationError,
 } from "../utils/errors.ts";
+import { isStdoutTTY, isNotFoundError } from "../utils/runtime.ts";
+import { readFile } from "node:fs/promises";
 
-class VariableType extends Type<[string, string]> {
-  parse({ value }: ArgumentValue): [string, string] {
-    const [key, ...rest] = value.split("=");
-    if (rest.length === 0) {
-      throw new ValidationError(
-        `Invalid variable format: ${value}. Variables must be in key=value format, e.g. --variable teamId=abc`,
-      );
-    }
-    return [key, rest.join("=")];
+/**
+ * argParser for --variable <key=value> options.
+ * Accumulates into an array (replaces cliffy collect:true + custom Type).
+ */
+function parseVariable(value: string, prev: [string, string][] = []): [string, string][] {
+  const [key, ...rest] = value.split("=");
+  if (rest.length === 0) {
+    throw new InvalidArgumentError(
+      `Invalid variable format: ${value}. Variables must be in key=value format, e.g. --variable teamId=abc`,
+    );
   }
+  return [...prev, [key, rest.join("=")]];
 }
 
-export const apiCommand = new Command()
-  .name("api")
+export const apiCommand = new Command("api")
   .description("Make a raw GraphQL API request")
-  .type("variable", new VariableType())
-  .arguments("[query:string]")
+  .argument("[query]", "GraphQL query string (use - to read from stdin)")
   .option(
-    "--variable <variable:variable>",
+    "--variable <variable>",
     "Variable in key=value format (coerces booleans, numbers, null; @file reads from path)",
-    { collect: true },
+    parseVariable,
   )
   .option(
-    "--variables-json <json:string>",
+    "--variables-json <json>",
     "JSON object of variables (merged with --variable, which takes precedence)",
   )
   .option(
@@ -46,7 +43,7 @@ export const apiCommand = new Command()
     "--silent",
     "Suppress response output (exit code still reflects errors)",
   )
-  .action(async (options, query?: string) => {
+  .action(async (query: string | undefined, options) => {
     try {
       const resolvedQuery = await resolveQuery(query);
       const variables = await buildVariables(
@@ -114,7 +111,7 @@ async function executeSingle(
     if (!silent) {
       console.error(text);
     }
-    Deno.exit(1);
+    process.exit(1);
   }
 
   let hasGraphQLErrors = false;
@@ -131,7 +128,7 @@ async function executeSingle(
   }
 
   if (hasGraphQLErrors) {
-    Deno.exit(1);
+    process.exit(1);
   }
 }
 
@@ -164,7 +161,7 @@ async function executePaginated(
       if (!silent) {
         console.error(text);
       }
-      Deno.exit(1);
+      process.exit(1);
     }
 
     let parsed: Record<string, unknown>;
@@ -174,14 +171,14 @@ async function executePaginated(
       if (!silent) {
         console.log(text);
       }
-      Deno.exit(1);
+      process.exit(1);
     }
 
     if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
       if (!silent) {
         outputJSON(parsed, text);
       }
-      Deno.exit(1);
+      process.exit(1);
     }
 
     if (allNodes.length === 0 && countConnections(parsed.data) > 1) {
@@ -279,16 +276,15 @@ function countConnections(obj: unknown): number {
 }
 
 function outputJSON(parsed: unknown, rawText: string): void {
-  if (Deno.stdout.isTerminal()) {
+  if (isStdoutTTY()) {
     try {
       console.log(JSON.stringify(parsed, null, 2));
     } catch {
       console.log(rawText);
     }
   } else {
-    Deno.stdout.writeSync(new TextEncoder().encode(
-      typeof parsed === "string" ? rawText : JSON.stringify(parsed),
-    ));
+    const out = typeof parsed === "string" ? rawText : JSON.stringify(parsed);
+    process.stdout.write(out);
   }
 }
 
@@ -299,7 +295,7 @@ async function resolveQuery(positionalArg?: string): Promise<string> {
 
   const explicit = positionalArg === "-";
 
-  if (explicit || !Deno.stdin.isTerminal()) {
+  if (explicit || !process.stdin.isTTY) {
     const content = explicit
       ? await readAllStdin()
       : await readStdinWithTimeout();
@@ -315,12 +311,15 @@ async function resolveQuery(positionalArg?: string): Promise<string> {
 }
 
 async function readAllStdin(): Promise<string | undefined> {
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of Deno.stdin.readable) {
-    chunks.push(chunk);
-  }
-  const text = new TextDecoder().decode(concatChunks(chunks)).trim();
-  return text.length > 0 ? text : undefined;
+  return new Promise<string | undefined>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const text = Buffer.concat(chunks).toString("utf8").trim();
+      resolve(text.length > 0 ? text : undefined);
+    });
+    process.stdin.on("error", reject);
+  });
 }
 
 async function readStdinWithTimeout(): Promise<string | undefined> {
@@ -333,17 +332,6 @@ async function readStdinWithTimeout(): Promise<string | undefined> {
   } catch {
     return undefined;
   }
-}
-
-function concatChunks(chunks: Uint8Array[]): Uint8Array {
-  const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-  const combined = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return combined;
 }
 
 async function buildVariables(
@@ -400,10 +388,10 @@ async function resolveTypedValue(value: string): Promise<unknown> {
   if (value.startsWith("@")) {
     const filePath = value.slice(1);
     try {
-      const content = await Deno.readTextFile(filePath);
+      const content = await readFile(filePath, "utf8");
       return parseJSONOrString(content.trim());
     } catch (error) {
-      if (error instanceof Deno.errors.NotFound) {
+      if (isNotFoundError(error)) {
         throw new AppValidationError(`File not found: ${filePath}`);
       }
       throw new CliError(

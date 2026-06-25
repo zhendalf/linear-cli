@@ -1,6 +1,6 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
-import type { Extension } from "@littletof/charmd"
+import { Command } from "commander"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
+import type { Extension } from "../../utils/charmd/mod.ts"
 import {
   fetchIssueDetails,
   fetchIssueDetailsRaw,
@@ -13,9 +13,9 @@ import type {
 import { openIssuePage } from "../../utils/actions.ts"
 import { formatRelativeTime, getPriorityDisplay } from "../../utils/display.ts"
 import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
-import { bold, underline } from "@std/fmt/colors"
-import { ensureDir } from "@std/fs"
-import { join } from "@std/path"
+import chalk from "chalk"
+import { mkdir, stat, writeFile } from "node:fs/promises"
+import { join } from "node:path"
 import { getOption } from "../../config.ts"
 import { getResolvedApiKey } from "../../utils/graphql.ts"
 import sanitize from "sanitize-filename"
@@ -32,12 +32,12 @@ import {
   getLinearUploadHost,
   replaceImageUrls,
 } from "../../utils/markdown-images.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 
-export const viewCommand = new Command()
-  .name("view")
+export const viewCommand = new Command("view")
   .description("View issue details (default) or open in browser/app")
   .alias("v")
-  .arguments("[issueId:string]")
+  .argument("[issueId]")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
   .option("--no-comments", "Exclude comments from the output")
@@ -48,7 +48,7 @@ export const viewCommand = new Command()
   .option("--no-pager", "Disable automatic paging for long output")
   .option("-j, --json", "Output issue data as JSON")
   .option("--no-download", "Keep remote URLs instead of downloading files")
-  .action(async (options, issueId) => {
+  .action(async (issueId: string | undefined, options) => {
     const { web, app, comments, showResolvedThreads, pager, json, download } =
       options
     const showComments = comments !== false
@@ -169,8 +169,8 @@ export const viewCommand = new Command()
         description ? "\n\n" + description : ""
       }`
 
-      if (Deno.stdout.isTerminal()) {
-        const { columns: terminalWidth } = Deno.consoleSize()
+      if (isStdoutTTY()) {
+        const { columns: terminalWidth } = getConsoleSize()
         const extensions = hyperlinkFormat
           ? [createHyperlinkExtension(hyperlinkFormat)]
           : []
@@ -305,23 +305,23 @@ function formatIssueHierarchyAsMarkdown(
   parent: IssueRef | null | undefined,
   children: IssueRef[] | undefined,
 ): string {
-  let markdown = ""
+  let markdownStr = ""
 
   if (parent) {
-    markdown += `\n\n## Parent\n\n`
-    markdown +=
+    markdownStr += `\n\n## Parent\n\n`
+    markdownStr +=
       `- **${parent.identifier}**: ${parent.title} _[${parent.state.name}]_\n`
   }
 
   if (children && children.length > 0) {
-    markdown += `\n\n## Sub-issues\n\n`
+    markdownStr += `\n\n## Sub-issues\n\n`
     for (const child of children) {
-      markdown +=
+      markdownStr +=
         `- **${child.identifier}**: ${child.title} _[${child.state.name}]_\n`
     }
   }
 
-  return markdown
+  return markdownStr
 }
 
 function deriveCommentView(
@@ -394,8 +394,8 @@ function formatCommentHeader(
   indent = "",
 ): string {
   const suffixText = suffix ? ` ${suffix}` : ""
-  return `${indent}${underline(bold(`@${author}`))} ${
-    underline(`commented ${date}`)
+  return `${indent}${chalk.underline(chalk.bold(`@${author}`))} ${
+    chalk.underline(`commented ${date}`)
   }${suffixText}`
 }
 
@@ -437,7 +437,7 @@ function formatCommentsAsMarkdown(
   rootComments: FetchedIssueComment[],
   repliesByRootId: Map<string, FetchedIssueComment[]>,
 ): string {
-  let markdown = ""
+  let markdownStr = ""
 
   for (const rootComment of rootComments) {
     const replies = repliesByRootId.get(rootComment.id) ?? []
@@ -445,10 +445,10 @@ function formatCommentsAsMarkdown(
     const rootDate = formatRelativeTime(rootComment.createdAt)
     const suffix = getThreadHeaderSuffix(rootComment, false)
 
-    markdown += `- **@${rootAuthor}** - *${rootDate}* ${suffix}
+    markdownStr += `- **@${rootAuthor}** - *${rootDate}* ${suffix}
 
 `
-    markdown += `  ${rootComment.body.split("\n").join("\n  ")}
+    markdownStr += `  ${rootComment.body.split("\n").join("\n  ")}
 
 `
 
@@ -456,16 +456,16 @@ function formatCommentsAsMarkdown(
       const replyAuthor = getCommentAuthor(reply)
       const replyDate = formatRelativeTime(reply.createdAt)
 
-      markdown += `  - **@${replyAuthor}** - *${replyDate}*
+      markdownStr += `  - **@${replyAuthor}** - *${replyDate}*
 
 `
-      markdown += `    ${reply.body.split("\n").join("\n    ")}
+      markdownStr += `    ${reply.body.split("\n").join("\n    ")}
 
 `
     }
   }
 
-  return markdown
+  return markdownStr
 }
 
 function captureCommentsForTerminal(
@@ -504,7 +504,7 @@ function captureCommentsForTerminal(
         extensions,
       })
       outputLines.push(
-        ...renderedReplyBody.split("\n").map((line) => "  " + line),
+        ...renderedReplyBody.split("\n").map((line: string) => "  " + line),
       )
     }
 
@@ -529,10 +529,10 @@ type DocumentInfo = FetchedIssueDetails["documents"][number]
 function getAttachmentCacheDir(): string {
   const configuredDir = getOption("attachment_dir")
   if (configuredDir) {
-    return configuredDir
+    return configuredDir as string
   }
   return join(
-    Deno.env.get("TMPDIR") || Deno.env.get("TMP") || Deno.env.get("TEMP") ||
+    process.env["TMPDIR"] || process.env["TMP"] || process.env["TEMP"] ||
       "/tmp",
     "linear-cli-attachments",
   )
@@ -549,7 +549,7 @@ async function downloadAttachments(
   const urlToPath = new Map<string, string>()
   const cacheDir = getAttachmentCacheDir()
   const issueDir = join(cacheDir, issueIdentifier)
-  await ensureDir(issueDir)
+  await mkdir(issueDir, { recursive: true })
 
   for (const attachment of attachments) {
     try {
@@ -564,7 +564,7 @@ async function downloadAttachments(
 
       // Check if file already exists
       try {
-        await Deno.stat(filepath)
+        await stat(filepath)
         urlToPath.set(attachment.url, filepath)
         continue
       } catch {
@@ -587,7 +587,7 @@ async function downloadAttachments(
       }
 
       const data = new Uint8Array(await response.arrayBuffer())
-      await Deno.writeFile(filepath, data)
+      await writeFile(filepath, data)
       urlToPath.set(attachment.url, filepath)
     } catch (error) {
       console.error(
@@ -612,7 +612,7 @@ function formatAttachmentsAsMarkdown(
     return ""
   }
 
-  let markdown = "\n\n## Attachments\n\n"
+  let markdownStr = "\n\n## Attachments\n\n"
 
   for (const attachment of attachments) {
     const localPath = localPaths?.get(attachment.url)
@@ -621,17 +621,17 @@ function formatAttachmentsAsMarkdown(
       : ""
 
     if (localPath) {
-      markdown += `- **${attachment.title}**: ${localPath}${sourceLabel}\n`
+      markdownStr += `- **${attachment.title}**: ${localPath}${sourceLabel}\n`
     } else {
-      markdown += `- **${attachment.title}**: ${attachment.url}${sourceLabel}\n`
+      markdownStr += `- **${attachment.title}**: ${attachment.url}${sourceLabel}\n`
     }
 
     if (attachment.subtitle) {
-      markdown += `  _${attachment.subtitle}_\n`
+      markdownStr += `  _${attachment.subtitle}_\n`
     }
   }
 
-  return markdown
+  return markdownStr
 }
 
 function formatDocumentsAsMarkdown(documents: DocumentInfo[]): string {
@@ -639,11 +639,11 @@ function formatDocumentsAsMarkdown(documents: DocumentInfo[]): string {
     return ""
   }
 
-  let markdown = "\n\n## Documents\n\n"
+  let markdownStr = "\n\n## Documents\n\n"
 
   for (const document of documents) {
-    markdown += `- **${document.title}**: ${document.url}\n`
+    markdownStr += `- **${document.title}**: ${document.url}\n`
   }
 
-  return markdown
+  return markdownStr
 }

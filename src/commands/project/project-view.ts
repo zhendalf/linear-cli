@@ -1,11 +1,14 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
+import { Command } from "commander"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
 import { openProjectPage } from "../../utils/actions.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { handleError, NotFoundError } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 
 const GetProjectDetails = gql(`
   query GetProjectDetails($id: String!) {
@@ -71,14 +74,13 @@ const GetProjectDetails = gql(`
   }
 `)
 
-export const viewCommand = new Command()
-  .name("view")
+export const viewCommand = new Command("view")
   .description("View project details")
   .alias("v")
-  .arguments("<projectId:string>")
+  .argument("<projectId>", "Project ID or slug")
   .option("-w, --web", "Open in web browser")
   .option("-a, --app", "Open in Linear.app")
-  .action(async (options, projectId) => {
+  .action(async (projectId: string, options) => {
     const { web, app } = options
 
     if (web || app) {
@@ -86,15 +88,13 @@ export const viewCommand = new Command()
       return
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
       const result = await client.request(GetProjectDetails, { id: projectId })
-      spinner?.stop()
+      spinner.stop()
 
       const project = result.project
       if (!project) {
@@ -113,10 +113,10 @@ export const viewCommand = new Command()
       lines.push(`**Slug:** ${project.slugId}`)
       lines.push(`**URL:** ${project.url}`)
 
-      // Status with color styling
+      // Status with color styling (inline — not added to lines array)
       const statusLine = `**Status:** ${project.status.name}`
-      if (Deno.stdout.isTerminal()) {
-        console.log(`%c${statusLine}%c`, `color: ${project.status.color}`, "")
+      if (isStdoutTTY()) {
+        console.log(applyConsoleFormat(`%c${statusLine}%c`, `color: ${project.status.color}`, ""))
       } else {
         lines.push(statusLine)
       }
@@ -241,14 +241,14 @@ export const viewCommand = new Command()
 
       const markdown = lines.join("\n")
 
-      if (Deno.stdout.isTerminal()) {
-        const terminalWidth = Deno.consoleSize().columns
+      if (isStdoutTTY()) {
+        const terminalWidth = getConsoleSize().columns
         console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
       } else {
         console.log(markdown)
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch project details")
     }
   })

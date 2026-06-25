@@ -1,12 +1,11 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { fetchIssueDetails, getIssueIdentifier } from "../../utils/linear.ts"
 import { handleError, ValidationError } from "../../utils/errors.ts"
 
-export const titleCommand = new Command()
-  .name("title")
+export const titleCommand = new Command("title")
   .description("Print the issue title")
-  .arguments("[issueId:string]")
-  .action(async (_, issueId) => {
+  .argument("[issueId]")
+  .action(async (issueId: string | undefined) => {
     try {
       const resolvedId = await getIssueIdentifier(issueId)
       if (!resolvedId) {

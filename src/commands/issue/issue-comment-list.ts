@@ -1,17 +1,16 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
-import { bold } from "@std/fmt/colors"
+import chalk from "chalk"
 import { handleError, ValidationError } from "../../utils/errors.ts"
 
-export const commentListCommand = new Command()
-  .name("list")
+export const commentListCommand = new Command("list")
   .description("List comments for an issue")
-  .arguments("[issueId:string]")
+  .argument("[issueId]")
   .option("-j, --json", "Output as JSON")
-  .action(async (options, issueId) => {
+  .action(async (issueId: string | undefined, options) => {
     const { json } = options
 
     try {
@@ -124,7 +123,7 @@ export const commentListCommand = new Command()
         const date = formatRelativeTime(rootComment.createdAt)
 
         console.log(
-          bold(`@${author}`) + ` commented ${date} [${rootComment.id}]`,
+          chalk.bold(`@${author}`) + ` commented ${date} [${rootComment.id}]`,
         )
         console.log(rootComment.body)
 
@@ -138,7 +137,7 @@ export const commentListCommand = new Command()
             const replyDate = formatRelativeTime(reply.createdAt)
 
             console.log(
-              `  ${bold(`@${replyAuthor}`)} replied ${replyDate} [${reply.id}]`,
+              `  ${chalk.bold(`@${replyAuthor}`)} replied ${replyDate} [${reply.id}]`,
             )
             const indentedBody = reply.body
               .split("\n")

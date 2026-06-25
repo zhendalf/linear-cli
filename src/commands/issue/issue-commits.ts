@@ -1,6 +1,7 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
 import { getVcs } from "../../utils/vcs.ts"
+import { spawn } from "node:child_process"
 import {
   handleError,
   isClientError,
@@ -9,11 +10,10 @@ import {
   ValidationError,
 } from "../../utils/errors.ts"
 
-export const commitsCommand = new Command()
-  .name("commits")
+export const commitsCommand = new Command("commits")
   .description("Show all commits for a Linear issue (jj only)")
-  .arguments("[issueId:string]")
-  .action(async (_options, issueId) => {
+  .argument("[issueId]")
+  .action(async (issueId: string | undefined) => {
     try {
       const vcs = getVcs()
 
@@ -50,21 +50,29 @@ export const commitsCommand = new Command()
       const revset = `description(regex:"(?m)^Linear-issue:.*${resolvedId}")`
 
       // First check if any commits exist
-      const checkProcess = new Deno.Command("jj", {
-        args: ["log", "-r", revset, "-T", "commit_id", "--no-graph"],
-        stdout: "piped",
-        stderr: "piped",
+      await new Promise<void>((resolve, reject) => {
+        const checkProcess = spawn("jj", ["log", "-r", revset, "-T", "commit_id", "--no-graph"], {
+          stdio: ["inherit", "pipe", "pipe"],
+        })
+        let stdout = ""
+        checkProcess.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString() })
+        checkProcess.on("close", (code) => {
+          if (code !== 0) {
+            reject(new NotFoundError("Commits", resolvedId))
+            return
+          }
+          if (!stdout.trim()) {
+            reject(new NotFoundError("Commits", resolvedId))
+            return
+          }
+          resolve()
+        })
+        checkProcess.on("error", reject)
       })
-      const checkResult = await checkProcess.output()
-      const commitIds = new TextDecoder().decode(checkResult.stdout).trim()
-
-      if (!commitIds) {
-        throw new NotFoundError("Commits", resolvedId)
-      }
 
       // Show the commits with full details
-      const process = new Deno.Command("jj", {
-        args: [
+      await new Promise<void>((resolve, reject) => {
+        const jjProcess = spawn("jj", [
           "log",
           "-r",
           revset,
@@ -73,13 +81,15 @@ export const commitsCommand = new Command()
           "--no-graph",
           "-T",
           "builtin_log_compact_full_description",
-        ],
-        stdout: "inherit",
-        stderr: "inherit",
+        ], {
+          stdio: "inherit",
+        })
+        jjProcess.on("close", (code) => {
+          process.exitCode = code ?? 0
+          resolve()
+        })
+        jjProcess.on("error", reject)
       })
-
-      const { code } = await process.output()
-      Deno.exit(code)
     } catch (error) {
       handleError(error, "Failed to show commits")
     }

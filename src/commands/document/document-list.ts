@@ -1,8 +1,11 @@
-import { Command } from "@cliffy/command"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getTimeAgo, padDisplay } from "../../utils/display.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import { handleError } from "../../utils/errors.ts"
 
 const ListDocuments = gql(`
@@ -34,23 +37,21 @@ const ListDocuments = gql(`
   }
 `)
 
-export const listCommand = new Command()
-  .name("list")
-  .description("List documents")
+export const listCommand = new Command("list")
   .alias("l")
-  .option("--project <project:string>", "Filter by project (slug or name)")
-  .option("--issue <issue:string>", "Filter by issue (identifier like TC-123)")
+  .description("List documents")
+  .option("--project <project>", "Filter by project (slug or name)")
+  .option("--issue <issue>", "Filter by issue (identifier like TC-123)")
   .option("--json", "Output as JSON")
-  .option("--limit <limit:number>", "Limit results", { default: 50 })
-  .action(async ({ project, issue, json, limit }) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner() && !json
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+  .addOption(new Option("--limit <limit>", "Limit results").argParser(Number).default(50))
+  .action(async (options) => {
+    const { project, issue, json, limit } = options
+    const spinner = createSpinner("", shouldShowSpinner() && !json)
+    spinner.start()
 
     try {
       // Build filter based on options
-      // deno-lint-ignore no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let filter: any = undefined
 
       if (project) {
@@ -72,7 +73,7 @@ export const listCommand = new Command()
         filter,
         first: limit,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const documentsConnection = result.documents ?? {
         nodes: [],
@@ -94,8 +95,8 @@ export const listCommand = new Command()
       }
 
       // Calculate column widths based on actual data
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
+      const { columns } = isStdoutTTY()
+        ? getConsoleSize()
         : { columns: 120 }
 
       const SLUG_WIDTH = Math.max(
@@ -148,7 +149,7 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each document
       for (const doc of documents) {
@@ -160,15 +161,17 @@ export const listCommand = new Command()
         const updated = getTimeAgo(new Date(doc.updatedAt))
 
         console.log(
-          `${padDisplay(doc.slugId, SLUG_WIDTH)} ${truncTitle} ${
-            padDisplay(attachment, ATTACHMENT_WIDTH)
-          } %c${padDisplay(updated, UPDATED_WIDTH)}%c`,
-          "color: gray",
-          "",
+          applyConsoleFormat(
+            `${padDisplay(doc.slugId, SLUG_WIDTH)} ${truncTitle} ${
+              padDisplay(attachment, ATTACHMENT_WIDTH)
+            } %c${padDisplay(updated, UPDATED_WIDTH)}%c`,
+            "color: gray",
+            "",
+          ),
         )
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to list documents")
     }
   })

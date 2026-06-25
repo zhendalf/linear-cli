@@ -1,13 +1,12 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { getTeamKey, getTeamMembers } from "../../utils/linear.ts"
 import { handleError, ValidationError } from "../../utils/errors.ts"
 
-export const membersCommand = new Command()
-  .name("members")
+export const membersCommand = new Command("members")
   .description("List team members")
-  .arguments("[teamKey:string]")
+  .argument("[teamKey]", "Team key")
   .option("-a, --all", "Include inactive members")
-  .action(async (options, teamKey?: string) => {
+  .action(async (teamKey: string | undefined, options) => {
     try {
       const resolvedTeamKey = teamKey || getTeamKey()
       if (!resolvedTeamKey) {

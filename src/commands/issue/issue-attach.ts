@@ -1,10 +1,10 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import type { AttachmentCreateInput } from "../../__codegen__/graphql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
 import { uploadFile, validateFilePath } from "../../utils/upload.ts"
-import { basename } from "@std/path"
+import { basename } from "node:path"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
   CliError,
@@ -15,16 +15,16 @@ import {
   ValidationError,
 } from "../../utils/errors.ts"
 
-export const attachCommand = new Command()
-  .name("attach")
+export const attachCommand = new Command("attach")
   .description("Attach a file to an issue")
-  .arguments("<issueId:string> <filepath:string>")
-  .option("-t, --title <title:string>", "Custom title for the attachment")
+  .argument("<issueId>")
+  .argument("<filepath>")
+  .option("-t, --title <title>", "Custom title for the attachment")
   .option(
-    "-c, --comment <body:string>",
+    "-c, --comment <body>",
     "Add a comment body linked to the attachment",
   )
-  .action(async (options, issueId, filepath) => {
+  .action(async (issueId: string, filepath: string, options) => {
     const { title, comment } = options
 
     try {

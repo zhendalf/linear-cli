@@ -1,6 +1,6 @@
-import { Command, EnumType } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { rgb24 } from "@std/fmt/colors"
+import { Command, Option } from "commander"
+import stringWidth from "string-width"
+import chalk from "chalk"
 import { getOption } from "../../config.ts"
 import {
   getPriorityDisplay,
@@ -22,30 +22,21 @@ import {
 } from "../../utils/linear.ts"
 import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { header, muted, warning } from "../../utils/styling.ts"
+import { isStdoutTTY, isStdinTTY, getConsoleSize } from "../../utils/runtime.ts"
 import {
   handleError,
   NotFoundError,
   ValidationError,
 } from "../../utils/errors.ts"
+import type { SpinnerHandle } from "../../utils/spinner.ts"
 
-const SortType = new EnumType(["manual", "priority"])
-const StateType = new EnumType([
-  "triage",
-  "backlog",
-  "unstarted",
-  "started",
-  "completed",
-  "canceled",
-])
-
-export const queryCommand = new Command()
-  .name("query")
+export const queryCommand = new Command("query")
+  .alias("q")
   .description("Query issues with structured filters")
-  .type("sort", SortType)
-  .type("state", StateType)
   .option(
-    "--search <term:string>",
+    "--search <term>",
     "Full-text search term",
   )
   .option(
@@ -53,60 +44,64 @@ export const queryCommand = new Command()
     "Also search inside issue comments (requires --search)",
   )
   .option(
-    "--team <team:string>",
+    "--team <team>",
     "Filter by team key (can be repeated for multiple teams)",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
   )
   .option("--all-teams", "Query across all teams")
   .option(
-    "-s, --state <state:state>",
+    "-s, --state <state>",
     "Filter by issue state (can be repeated for multiple states)",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
   )
   .option("--all-states", "Show issues from all states (this is the default)")
-  .option("--assignee <assignee:string>", "Filter by assignee (username)")
+  .option("--assignee <assignee>", "Filter by assignee (username)")
   .option(
     "-A, --all-assignees",
     "Show issues for all assignees (this is the default)",
   )
   .option("-U, --unassigned", "Show only unassigned issues")
-  .option(
-    "--sort <sort:sort>",
-    "Sort order: manual or priority (default: priority, not available with --search)",
-    { required: false },
+  .addOption(
+    new Option(
+      "--sort <sort>",
+      "Sort order: manual or priority (default: priority, not available with --search)",
+    ).choices(["manual", "priority"]),
   )
   .option(
-    "--project <project:string>",
+    "--project <project>",
     "Filter by project name",
   )
   .option(
-    "--project-label <projectLabel:string>",
+    "--project-label <projectLabel>",
     "Filter by project label name (shows issues from all projects with this label)",
   )
   .option(
-    "--cycle <cycle:string>",
+    "--cycle <cycle>",
     "Filter by cycle name, number, or 'active'",
   )
   .option(
-    "--milestone <milestone:string>",
+    "--milestone <milestone>",
     "Filter by project milestone name (requires --project)",
   )
   .option(
-    "-l, --label <label:string>",
+    "-l, --label <label>",
     "Filter by label name (can be repeated for multiple labels)",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
+  )
+  .addOption(
+    new Option(
+      "--limit <n>",
+      "Maximum number of issues to fetch (default: 50, use 0 for unlimited)",
+    )
+      .argParser(Number)
+      .default(50),
   )
   .option(
-    "--limit <limit:number>",
-    "Maximum number of issues to fetch (default: 50, use 0 for unlimited)",
-    { default: 50 },
-  )
-  .option(
-    "--created-after <date:string>",
+    "--created-after <date>",
     "Filter issues created after this date (ISO 8601 or YYYY-MM-DD)",
   )
   .option(
-    "--updated-after <date:string>",
+    "--updated-after <date>",
     "Filter issues updated after this date (ISO 8601 or YYYY-MM-DD)",
   )
   .option("--include-archived", "Include archived issues")
@@ -137,9 +132,7 @@ export const queryCommand = new Command()
       pager,
     } = options
 
-    let spinner:
-      | InstanceType<typeof import("@std/cli/unstable-spinner").Spinner>
-      | null = null
+    let spinner: SpinnerHandle | null = null
 
     try {
       // --- Validation ---
@@ -264,7 +257,7 @@ export const queryCommand = new Command()
           if (Object.keys(projectOptions).length === 0) {
             throw new NotFoundError("Project", project)
           }
-          if (!Deno.stdin.isTerminal()) {
+          if (!isStdinTTY()) {
             throw new ValidationError(
               `Project "${project}" not found. Similar projects: ${
                 Object.values(projectOptions).join(", ")
@@ -305,10 +298,9 @@ export const queryCommand = new Command()
 
       // --- Fetch ---
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
       const showSpinner = shouldShowSpinner() && !json
-      spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      spinner = createSpinner("", showSpinner)
+      spinner.start()
 
       // Resolve sort for non-search mode
       const sort = search ? undefined : (sortFlag ||
@@ -337,7 +329,7 @@ export const queryCommand = new Command()
           includeArchived,
         })
 
-        spinner?.stop()
+        spinner.stop()
 
         if (json) {
           console.log(JSON.stringify(result, null, 2))
@@ -376,7 +368,7 @@ export const queryCommand = new Command()
           includeArchived,
         })
 
-        spinner?.stop()
+        spinner.stop()
 
         if (json) {
           console.log(JSON.stringify(result, null, 2))
@@ -437,8 +429,8 @@ function formatIssueTable(
   showTeamColumn: boolean,
   showAssigneeColumn: boolean,
 ): string[] {
-  const { columns } = Deno.stdout.isTerminal()
-    ? Deno.consoleSize()
+  const { columns } = isStdoutTTY()
+    ? getConsoleSize()
     : { columns: 120 }
 
   const priorityWidth = 3
@@ -447,7 +439,7 @@ function formatIssueTable(
   const teamWidth = showTeamColumn
     ? Math.max(
       4,
-      ...issues.map((i) => unicodeWidth(i.team?.key ?? "")),
+      ...issues.map((i) => stringWidth(i.team?.key ?? "")),
     )
     : 0
   const labelWidth = Math.min(
@@ -455,7 +447,7 @@ function formatIssueTable(
     Math.max(
       6,
       ...issues.map((i) =>
-        unicodeWidth(i.labels.nodes.map((l) => l.name).join(", "))
+        stringWidth(i.labels.nodes.map((l) => l.name).join(", "))
       ),
     ),
   )
@@ -463,12 +455,12 @@ function formatIssueTable(
   const assigneeWidth = showAssigneeColumn ? 2 : 0
   const stateWidth = Math.min(
     20,
-    Math.max(5, ...issues.map((i) => unicodeWidth(i.state.name))),
+    Math.max(5, ...issues.map((i) => stringWidth(i.state.name))),
   )
   const updatedHeader = "UPDATED"
   const updatedWidth = Math.max(
-    unicodeWidth(updatedHeader),
-    ...issues.map((i) => unicodeWidth(getTimeAgo(new Date(i.updatedAt)))),
+    stringWidth(updatedHeader),
+    ...issues.map((i) => stringWidth(getTimeAgo(new Date(i.updatedAt)))),
   )
 
   const fixedCells = [
@@ -485,7 +477,7 @@ function formatIssueTable(
   const interCellSpacing = fixedCells.length + 1
   const fixedWidth = fixedCells.reduce((sum, w) => sum + w, 0) +
     interCellSpacing
-  const maxTitleWidth = Math.max(...issues.map((i) => unicodeWidth(i.title)))
+  const maxTitleWidth = Math.max(...issues.map((i) => stringWidth(i.title)))
   const titleWidth = Math.max(10, Math.min(maxTitleWidth, columns - fixedWidth))
 
   const headerCells = [
@@ -509,12 +501,9 @@ function formatIssueTable(
       titleWidth,
     )
     const stateName = truncateText(issue.state.name, stateWidth)
-    const coloredState = rgb24(
-      stateName,
-      parseInt(issue.state.color.replace("#", ""), 16),
-    )
+    const coloredState = chalk.hex(issue.state.color)(stateName)
     const state = coloredState +
-      " ".repeat(Math.max(0, stateWidth - unicodeWidth(stateName)))
+      " ".repeat(Math.max(0, stateWidth - stringWidth(stateName)))
     const timeAgo = muted(
       padDisplay(getTimeAgo(new Date(issue.updatedAt)), updatedWidth),
     )
@@ -557,14 +546,11 @@ function formatLabels(
 
   for (let i = 0; i < labels.length; i++) {
     const currentLabel = labels[i]
-    const coloredLabel = rgb24(
-      currentLabel.name,
-      parseInt(currentLabel.color.replace("#", ""), 16),
-    )
+    const coloredLabel = chalk.hex(currentLabel.color)(currentLabel.name)
     const separator = i > 0 ? ", " : ""
     const testText = separator + currentLabel.name
 
-    if (currentWidth + unicodeWidth(testText) > labelWidth) {
+    if (currentWidth + stringWidth(testText) > labelWidth) {
       const remainingWidth = labelWidth - currentWidth
       if (remainingWidth >= 4) {
         const truncatedName = truncateText(
@@ -572,22 +558,18 @@ function formatLabels(
           remainingWidth - separator.length,
         )
         coloredLabels.push(
-          separator +
-            rgb24(
-              truncatedName,
-              parseInt(currentLabel.color.replace("#", ""), 16),
-            ),
+          separator + chalk.hex(currentLabel.color)(truncatedName),
         )
       }
       break
     }
 
     coloredLabels.push(separator + coloredLabel)
-    currentWidth += unicodeWidth(testText)
+    currentWidth += stringWidth(testText)
   }
 
   const result = coloredLabels.join("")
-  const ansiRegex = new RegExp("\u001B\\[[0-9;]*m", "g")
-  const visibleWidth = unicodeWidth(result.replace(ansiRegex, ""))
+  const ansiRegex = new RegExp("\\[[0-9;]*m", "g")
+  const visibleWidth = stringWidth(result.replace(ansiRegex, ""))
   return result + " ".repeat(Math.max(0, labelWidth - visibleWidth))
 }

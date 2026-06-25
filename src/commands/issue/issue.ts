@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { attachCommand } from "./issue-attach.ts"
 import { commentCommand } from "./issue-comment.ts"
 import { createCommand } from "./issue-create.ts"
@@ -18,29 +18,25 @@ import { updateCommand } from "./issue-update.ts"
 import { urlCommand } from "./issue-url.ts"
 import { viewCommand } from "./issue-view.ts"
 
-export const issueCommand = new Command()
+export const issueCommand = new Command("issue")
+  .alias("i")
   .description("Manage Linear issues")
-  .action(function () {
-    this.showHelp()
-  })
-  .command("id", idCommand)
-  .command("mine", mineCommand)
-  .alias("list")
-  .alias("l")
-  .command("query", queryCommand)
-  .alias("q")
-  .command("title", titleCommand)
-  .command("start", startCommand)
-  .command("view", viewCommand)
-  .command("url", urlCommand)
-  .command("describe", describeCommand)
-  .command("commits", commitsCommand)
-  .command("pull-request", pullRequestCommand)
-  .command("delete", deleteCommand)
-  .command("create", createCommand)
-  .command("update", updateCommand)
-  .command("comment", commentCommand)
-  .command("attach", attachCommand)
-  .command("link", linkCommand)
-  .command("relation", relationCommand)
-  .command("agent-session", agentSessionCommand)
+  .action((_opts, cmd) => cmd.help())
+  .addCommand(idCommand)
+  .addCommand(mineCommand)   // has aliases: list, l
+  .addCommand(queryCommand)  // has alias: q
+  .addCommand(titleCommand)
+  .addCommand(startCommand)
+  .addCommand(viewCommand)
+  .addCommand(urlCommand)
+  .addCommand(describeCommand)
+  .addCommand(commitsCommand)
+  .addCommand(pullRequestCommand)
+  .addCommand(deleteCommand)
+  .addCommand(createCommand)
+  .addCommand(updateCommand)
+  .addCommand(commentCommand)
+  .addCommand(attachCommand)
+  .addCommand(linkCommand)
+  .addCommand(relationCommand)
+  .addCommand(agentSessionCommand)

@@ -1,10 +1,13 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
+import { Command, Option } from "commander"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay } from "../../utils/display.ts"
 import { resolveProjectId } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import { handleError } from "../../utils/errors.ts"
 
 const GetProjectMilestones = gql(`
@@ -28,15 +31,13 @@ const GetProjectMilestones = gql(`
   }
 `)
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List milestones for a project")
-  .option("--project <projectId:string>", "Project ID", { required: true })
-  .action(async ({ project: projectIdOrSlug }) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+  .requiredOption("--project <projectId>", "Project ID")
+  .action(async (options) => {
+    const { project: projectIdOrSlug } = options
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     try {
       // Resolve project slug to full UUID
@@ -46,7 +47,7 @@ export const listCommand = new Command()
       const result = await client.request(GetProjectMilestones, {
         projectId,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const milestones = result.project?.projectMilestones?.nodes || []
 
@@ -67,8 +68,8 @@ export const listCommand = new Command()
       })
 
       // Calculate column widths
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
+      const { columns } = isStdoutTTY()
+        ? getConsoleSize()
         : { columns: 120 }
 
       const ID_WIDTH = 36 // UUID format
@@ -77,7 +78,7 @@ export const listCommand = new Command()
         30,
         Math.max(
           7, // minimum width for "PROJECT" header
-          ...sortedMilestones.map((m) => unicodeWidth(m.project.name)),
+          ...sortedMilestones.map((m) => stringWidth(m.project.name)),
         ),
       )
 
@@ -85,7 +86,7 @@ export const listCommand = new Command()
       const fixed = ID_WIDTH + TARGET_DATE_WIDTH + PROJECT_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const maxNameWidth = Math.max(
-        ...sortedMilestones.map((m) => unicodeWidth(m.name)),
+        ...sortedMilestones.map((m) => stringWidth(m.name)),
       )
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
@@ -109,7 +110,7 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each milestone
       for (const milestone of sortedMilestones) {
@@ -129,7 +130,7 @@ export const listCommand = new Command()
         )
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch milestones")
     }
   })

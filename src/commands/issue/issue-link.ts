@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
@@ -15,24 +15,17 @@ function looksLikeUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://")
 }
 
-export const linkCommand = new Command()
-  .name("link")
+export const linkCommand = new Command("link")
   .description("Link a URL to an issue")
-  .arguments("<urlOrIssueId:string> [url:string]")
-  .option("-t, --title <title:string>", "Custom title for the link")
-  .example(
-    "Link a URL to issue detected from branch",
-    "linear issue link https://github.com/org/repo/pull/123",
-  )
-  .example(
-    "Link a URL to a specific issue",
-    "linear issue link ENG-123 https://github.com/org/repo/pull/123",
-  )
-  .example(
-    "Link with a custom title",
-    'linear issue link ENG-123 https://example.com --title "Design doc"',
-  )
-  .action(async (options, urlOrIssueId, url) => {
+  .argument("<urlOrIssueId>")
+  .argument("[url]")
+  .option("-t, --title <title>", "Custom title for the link")
+  .addHelpText("after", `
+Examples:
+  $ linear issue link https://github.com/org/repo/pull/123
+  $ linear issue link ENG-123 https://github.com/org/repo/pull/123
+  $ linear issue link ENG-123 https://example.com --title "Design doc"`)
+  .action(async (urlOrIssueId: string, url: string | undefined, options) => {
     const { title } = options
 
     try {

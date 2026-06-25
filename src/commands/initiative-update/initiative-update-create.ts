@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
 import { getEditor, openEditor } from "../../utils/editor.ts"
@@ -11,6 +10,10 @@ import {
 } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdinTTY, isStdoutTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, input } from "../../utils/prompt.ts"
+import { readFile } from "node:fs/promises"
 
 const HEALTH_VALUES = ["onTrack", "atRisk", "offTrack"] as const
 type HealthValue = (typeof HEALTH_VALUES)[number]
@@ -20,7 +23,7 @@ type HealthValue = (typeof HEALTH_VALUES)[number]
  */
 async function readContentFromStdin(): Promise<string | undefined> {
   // Check if stdin has data (not a TTY)
-  if (Deno.stdin.isTerminal()) {
+  if (isStdinTTY()) {
     return undefined
   }
 
@@ -38,7 +41,7 @@ async function readContentFromStdin(): Promise<string | undefined> {
  * Resolve initiative ID from UUID, slug, or name
  */
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {
@@ -96,19 +99,19 @@ async function resolveInitiativeId(
   return undefined
 }
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a new status update for an initiative")
   .alias("c")
-  .arguments("<initiativeId:string>")
-  .option("--body <body:string>", "Update content (markdown)")
-  .option("--body-file <path:string>", "Read content from file")
+  .argument("<initiativeId>")
+  .option("--body <body>", "Update content (markdown)")
+  .option("--body-file <path>", "Read content from file")
   .option(
-    "--health <health:string>",
+    "--health <health>",
     "Health status (onTrack, atRisk, offTrack)",
   )
   .option("-i, --interactive", "Interactive mode with prompts")
-  .action(async ({ body, bodyFile, health, interactive }, initiativeId) => {
+  .action(async (initiativeId: string, options) => {
+    const { body, bodyFile, health, interactive } = options
     try {
       const client = getGraphQLClient()
 
@@ -138,11 +141,11 @@ export const createCommand = new Command()
       }
 
       // Determine if we should use interactive mode
-      let useInteractive = interactive && Deno.stdout.isTerminal()
+      let useInteractive = interactive && isStdoutTTY()
 
       // If no flags provided and we have a TTY, enter interactive mode
       const noFlagsProvided = !body && !bodyFile && !health
-      if (noFlagsProvided && Deno.stdout.isTerminal()) {
+      if (noFlagsProvided && isStdoutTTY()) {
         useInteractive = true
       }
 
@@ -167,9 +170,10 @@ export const createCommand = new Command()
       } else if (bodyFile) {
         // Content from file via --body-file
         try {
-          finalBody = await Deno.readTextFile(bodyFile)
+          finalBody = await readFile(bodyFile, "utf8")
         } catch (error) {
-          if (error instanceof Deno.errors.NotFound) {
+          const err = error as NodeJS.ErrnoException
+          if (err.code === "ENOENT") {
             throw new NotFoundError("File", bodyFile)
           }
           throw new CliError(
@@ -179,13 +183,13 @@ export const createCommand = new Command()
             { cause: error },
           )
         }
-      } else if (!Deno.stdin.isTerminal()) {
+      } else if (!isStdinTTY()) {
         // Try reading from stdin if piped
         const stdinContent = await readContentFromStdin()
         if (stdinContent) {
           finalBody = stdinContent
         }
-      } else if (Deno.stdout.isTerminal()) {
+      } else if (isStdoutTTY()) {
         // No content provided, open editor
         console.log("Opening editor for status update content...")
         finalBody = await openEditor()
@@ -222,9 +226,9 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
   console.log(`\nCreating status update for: ${initiativeName}\n`)
 
   // Prompt for health status
-  const healthChoice = await Select.prompt({
+  const healthChoice = await select({
     message: "Health status",
-    options: [
+    choices: [
       { name: "Skip (no change)", value: "skip" },
       { name: "On Track", value: "onTrack" },
       { name: "At Risk", value: "atRisk" },
@@ -241,9 +245,9 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
   const editorName = await getEditor()
   const editorDisplayName = editorName ? editorName.split("/").pop() : null
 
-  const contentMethod = await Select.prompt({
+  const contentMethod = await select({
     message: "How would you like to enter the update content?",
-    options: [
+    choices: [
       { name: "Skip (no content)", value: "skip" },
       { name: "Enter inline", value: "inline" },
       ...(editorDisplayName
@@ -257,7 +261,7 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
   let body: string | undefined
 
   if (contentMethod === "inline") {
-    const inlineContent = await Input.prompt({
+    const inlineContent = await input({
       message: "Content (markdown)",
       default: "",
     })
@@ -269,11 +273,11 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
       console.log(`Content entered (${body.length} characters)`)
     }
   } else if (contentMethod === "file") {
-    const filePath = await Input.prompt({
+    const filePath = await input({
       message: "File path",
     })
     try {
-      body = await Deno.readTextFile(filePath)
+      body = await readFile(filePath, "utf8")
     } catch (error) {
       throw new CliError(
         `Failed to read file: ${
@@ -288,7 +292,7 @@ async function promptInteractiveCreate(initiativeName: string): Promise<{
 }
 
 async function createInitiativeUpdate(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   options: {
     initiativeId: string
@@ -298,10 +302,8 @@ async function createInitiativeUpdate(
 ): Promise<void> {
   const { initiativeId, body, health } = options
 
-  const { Spinner } = await import("@std/cli/unstable-spinner")
-  const showSpinner = shouldShowSpinner()
-  const spinner = showSpinner ? new Spinner() : null
-  spinner?.start()
+  const spinner = createSpinner("", shouldShowSpinner())
+  spinner.start()
 
   const createMutation = gql(`
     mutation CreateInitiativeUpdate($input: InitiativeUpdateCreateInput!) {
@@ -323,22 +325,22 @@ async function createInitiativeUpdate(
   `)
 
   // Build input - only include fields that are provided
-  // deno-lint-ignore no-explicit-any
-  const input: Record<string, any> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inputPayload: Record<string, any> = {
     initiativeId,
   }
 
   if (body != null) {
-    input.body = body
+    inputPayload.body = body
   }
 
   if (health != null) {
-    input.health = health
+    inputPayload.health = health
   }
 
-  const result = await client.request(createMutation, { input })
+  const result = await client.request(createMutation, { input: inputPayload })
 
-  spinner?.stop()
+  spinner.stop()
 
   if (!result.initiativeUpdateCreate.success) {
     throw new CliError("Failed to create initiative status update")

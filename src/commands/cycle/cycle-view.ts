@@ -1,5 +1,5 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
+import { Command } from "commander"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
@@ -9,6 +9,8 @@ import {
   getTeamKey,
 } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import {
   handleError,
   NotFoundError,
@@ -50,13 +52,13 @@ const GetCycleDetails = gql(`
   }
 `)
 
-export const viewCommand = new Command()
-  .name("view")
-  .description("View cycle details")
+export const viewCommand = new Command("view")
   .alias("v")
-  .arguments("<cycleRef:string>")
-  .option("--team <team:string>", "Team key (defaults to current team)")
-  .action(async ({ team }, cycleRef) => {
+  .description("View cycle details")
+  .argument("<cycleRef>", "Cycle reference (name or number)")
+  .option("--team <team>", "Team key (defaults to current team)")
+  .action(async (cycleRef: string, options) => {
+    const { team } = options
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
@@ -72,14 +74,12 @@ export const viewCommand = new Command()
 
       const cycleId = await getCycleIdByNameOrNumber(cycleRef, teamId)
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       const client = getGraphQLClient()
       const result = await client.request(GetCycleDetails, { id: cycleId })
-      spinner?.stop()
+      spinner.stop()
 
       const cycle = result.cycle
       if (!cycle) {
@@ -173,8 +173,8 @@ export const viewCommand = new Command()
 
       const markdown = lines.join("\n")
 
-      if (Deno.stdout.isTerminal()) {
-        const terminalWidth = Deno.consoleSize().columns
+      if (isStdoutTTY()) {
+        const terminalWidth = getConsoleSize().columns
         console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
       } else {
         console.log(markdown)

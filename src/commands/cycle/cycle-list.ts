@@ -1,12 +1,15 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
-import { green } from "@std/fmt/colors"
+import { Command } from "commander"
+import chalk from "chalk"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay } from "../../utils/display.ts"
 import { getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { header, muted } from "../../utils/styling.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { muted } from "../../utils/styling.ts"
+import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
 import {
   handleError,
   NotFoundError,
@@ -52,11 +55,11 @@ function formatDate(dateString: string): string {
   return dateString.slice(0, 10)
 }
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List cycles for a team")
-  .option("--team <team:string>", "Team key (defaults to current team)")
-  .action(async ({ team }) => {
+  .option("--team <team>", "Team key (defaults to current team)")
+  .action(async (options) => {
+    const { team } = options
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
@@ -70,14 +73,12 @@ export const listCommand = new Command()
         throw new NotFoundError("Team", teamKey)
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       const client = getGraphQLClient()
       const result = await client.request(GetTeamCycles, { teamId })
-      spinner?.stop()
+      spinner.stop()
 
       const cycles = result.team?.cycles?.nodes || []
 
@@ -90,8 +91,8 @@ export const listCommand = new Command()
         b.startsAt.localeCompare(a.startsAt)
       )
 
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
+      const { columns } = isStdoutTTY()
+        ? getConsoleSize()
         : { columns: 120 }
 
       const NUMBER_WIDTH = Math.max(
@@ -108,7 +109,7 @@ export const listCommand = new Command()
       const PADDING = 1
       const maxNameWidth = Math.max(
         4,
-        ...sortedCycles.map((c) => unicodeWidth(c.name || `Cycle ${c.number}`)),
+        ...sortedCycles.map((c) => stringWidth(c.name || `Cycle ${c.number}`)),
       )
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, availableWidth)
@@ -121,7 +122,7 @@ export const listCommand = new Command()
         padDisplay("STATUS", STATUS_WIDTH),
       ]
 
-      console.log(header(headerCells.join(" ")))
+      console.log(chalk.bold.underline(headerCells.join(" ")))
 
       for (const cycle of sortedCycles) {
         const name = cycle.name || `Cycle ${cycle.number}`
@@ -133,7 +134,7 @@ export const listCommand = new Command()
         const statusStr = padDisplay(status, STATUS_WIDTH)
         let statusDisplay: string
         if (cycle.isActive) {
-          statusDisplay = green(statusStr)
+          statusDisplay = chalk.green(statusStr)
         } else if (cycle.isPast || cycle.completedAt != null) {
           statusDisplay = muted(statusStr)
         } else {

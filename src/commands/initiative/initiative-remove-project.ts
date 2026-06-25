@@ -1,8 +1,10 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { confirm } from "../../utils/prompt.ts"
 import {
   CliError,
   handleError,
@@ -35,7 +37,7 @@ const RemoveProjectFromInitiative = gql(`
 `)
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<{ id: string; name: string } | undefined> {
@@ -114,7 +116,7 @@ async function resolveInitiativeId(
 }
 
 async function resolveProjectId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<{ id: string; name: string } | undefined> {
@@ -192,17 +194,18 @@ async function resolveProjectId(
   return undefined
 }
 
-export const removeProjectCommand = new Command()
-  .name("remove-project")
+export const removeProjectCommand = new Command("remove-project")
   .description("Unlink a project from an initiative")
-  .arguments("<initiative:string> <project:string>")
+  .argument("<initiative>")
+  .argument("<project>")
   .option("-y, --force", "Skip confirmation prompt")
   .action(
     async (
-      { force },
-      initiativeArg,
-      projectArg,
+      initiativeArg: string,
+      projectArg: string,
+      options,
     ) => {
+      const { force } = options
       const client = getGraphQLClient()
 
       // Resolve initiative
@@ -227,7 +230,7 @@ export const removeProjectCommand = new Command()
 
         // Filter client-side for the matching link
         const link = linkResult.initiativeToProjects?.nodes?.find(
-          (node) =>
+          (node: { initiative?: { id: string }; project?: { id: string }; id: string }) =>
             node.initiative?.id === initiative.id &&
             node.project?.id === project.id,
         )
@@ -247,12 +250,12 @@ export const removeProjectCommand = new Command()
 
       // Confirm removal
       if (!force) {
-        if (!Deno.stdin.isTerminal()) {
+        if (!isStdinTTY()) {
           throw new ValidationError(
             "Interactive confirmation required. Use --force to skip.",
           )
         }
-        const confirmed = await Confirm.prompt({
+        const confirmed = await confirm({
           message:
             `Remove "${project.name}" from initiative "${initiative.name}"?`,
           default: true,
@@ -264,17 +267,15 @@ export const removeProjectCommand = new Command()
         }
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       try {
         const result = await client.request(RemoveProjectFromInitiative, {
           id: linkId,
         })
 
-        spinner?.stop()
+        spinner.stop()
 
         if (!result.initiativeToProjectDelete.success) {
           throw new CliError("Failed to remove project from initiative")
@@ -284,7 +285,7 @@ export const removeProjectCommand = new Command()
           `✓ Removed "${project.name}" from initiative "${initiative.name}"`,
         )
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to remove project from initiative")
       }
     },

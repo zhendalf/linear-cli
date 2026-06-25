@@ -1,69 +1,67 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, input } from "../../utils/prompt.ts"
+import { isStdoutTTY } from "../../utils/runtime.ts"
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a linear team")
-  .option("-n, --name <name:string>", "Name of the team")
-  .option("-d, --description <description:string>", "Description of the team")
+  .option("-n, --name <name>", "Name of the team")
+  .option("-d, --description <description>", "Description of the team")
   .option(
-    "-k, --key <key:string>",
+    "-k, --key <key>",
     "Team key (if not provided, will be generated from name)",
   )
   .option("--private", "Make the team private")
   .option("--no-interactive", "Disable interactive prompts")
   .action(
-    async ({
-      name,
-      description,
-      key,
-      private: isPrivate,
-      interactive,
-    }) => {
-      interactive = interactive && Deno.stdout.isTerminal()
+    async (options) => {
+      let {
+        name,
+        description,
+        key,
+        private: isPrivate,
+        interactive,
+      } = options
+
+      interactive = interactive && isStdoutTTY()
 
       // If no flags are provided, use interactive mode
       const noFlagsProvided = !name && !description && !key &&
         isPrivate === undefined
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner() && interactive
-      const spinner = showSpinner ? new Spinner() : null
+      const spinner = createSpinner("", shouldShowSpinner() && interactive)
 
       try {
         if (noFlagsProvided && interactive) {
           console.log("Creating a new team...\n")
 
           // Prompt for name
-          name = await Input.prompt({
+          name = await input({
             message: "Team name:",
-            validate: (input: string) => {
-              if (!input || input.trim().length === 0) {
-                return "Team name is required"
-              }
-              return true
-            },
+            minLength: 1,
           })
 
           // Prompt for description
-          description = await Input.prompt({
+          const descResult = await input({
             message: "Team description (optional):",
-          }) || undefined
+          })
+          description = descResult || undefined
 
           // Prompt for key
-          key = await Input.prompt({
+          const keyResult = await input({
             message:
               "Team key (optional, will be generated from name if not provided):",
-          }) || undefined
+          })
+          key = keyResult || undefined
 
           // Prompt for privacy
-          const privacyChoice = await Select.prompt({
+          const privacyChoice = await select({
             message: "Team visibility:",
-            options: [
+            choices: [
               { name: "Public", value: "public" },
               { name: "Private", value: "private" },
             ],
@@ -117,7 +115,7 @@ export const createCommand = new Command()
         }
 
         console.log(`Creating team "${name}"`)
-        spinner?.start()
+        spinner.start()
 
         const createTeamMutation = gql(`
           mutation CreateTeam($input: TeamCreateInput!) {
@@ -147,10 +145,10 @@ export const createCommand = new Command()
           throw new CliError("Team creation failed - no team returned")
         }
 
-        spinner?.stop()
+        spinner.stop()
         console.log(`✓ Created team ${team.key}: ${team.name}`)
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to create team")
       }
     },

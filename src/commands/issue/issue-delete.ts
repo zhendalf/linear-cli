@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
@@ -10,6 +9,8 @@ import {
   isBulkMode,
   printBulkSummary,
 } from "../../utils/bulk.ts"
+import { confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 import {
   CliError,
   handleError,
@@ -21,26 +22,23 @@ interface IssueDeleteResult extends BulkOperationResult {
   identifier?: string
 }
 
-export const deleteCommand = new Command()
-  .name("delete")
+export const deleteCommand = new Command("delete")
   .description("Delete an issue")
   .alias("d")
-  .arguments("[issueId:string]")
+  .argument("[issueId]")
   .option("-y, --confirm", "Skip confirmation prompt")
   .option(
-    "--bulk <ids...:string>",
+    "--bulk <ids...>",
     "Delete multiple issues by identifier (e.g., TC-123 TC-124)",
   )
   .option(
-    "--bulk-file <file:string>",
+    "--bulk-file <file>",
     "Read issue identifiers from a file (one per line)",
   )
   .option("--bulk-stdin", "Read issue identifiers from stdin")
   .action(
-    async (
-      { confirm, bulk, bulkFile, bulkStdin },
-      issueId,
-    ) => {
+    async (issueId: string | undefined, options) => {
+      const { confirm: confirmFlag, bulk, bulkFile, bulkStdin } = options
       try {
         const client = getGraphQLClient()
 
@@ -50,7 +48,7 @@ export const deleteCommand = new Command()
             bulk,
             bulkFile,
             bulkStdin,
-            confirm,
+            confirm: confirmFlag,
           })
           return
         }
@@ -63,7 +61,7 @@ export const deleteCommand = new Command()
           )
         }
 
-        await handleSingleDelete(client, issueId, { confirm })
+        await handleSingleDelete(client, issueId, { confirm: confirmFlag })
       } catch (error) {
         handleError(error, "Failed to delete issue")
       }
@@ -71,12 +69,12 @@ export const deleteCommand = new Command()
   )
 
 async function handleSingleDelete(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   issueId: string,
   options: { confirm?: boolean },
 ): Promise<void> {
-  const { confirm } = options
+  const { confirm: confirmFlag } = options
 
   // First resolve the issue ID to get the issue details
   const resolvedId = await getIssueIdentifier(issueId)
@@ -100,14 +98,14 @@ async function handleSingleDelete(
   const { title, identifier } = issueDetails.issue
 
   // Show confirmation prompt unless --confirm flag is used
-  if (!confirm) {
-    if (!Deno.stdin.isTerminal()) {
+  if (!confirmFlag) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         "Interactive confirmation required",
         { suggestion: "Use --confirm to skip." },
       )
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Are you sure you want to delete "${identifier}: ${title}"?`,
       default: false,
     })
@@ -141,7 +139,7 @@ async function handleSingleDelete(
 }
 
 async function handleBulkDelete(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   options: {
     bulk?: string[]
@@ -150,7 +148,7 @@ async function handleBulkDelete(
     confirm?: boolean
   },
 ): Promise<void> {
-  const { confirm } = options
+  const { confirm: confirmFlag } = options
 
   // Collect all IDs
   const ids = await collectBulkIds({
@@ -166,14 +164,14 @@ async function handleBulkDelete(
   console.log(`Found ${ids.length} issue(s) to delete.`)
 
   // Confirm bulk operation
-  if (!confirm) {
-    if (!Deno.stdin.isTerminal()) {
+  if (!confirmFlag) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         "Interactive confirmation required",
         { suggestion: "Use --confirm to skip." },
       )
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Delete ${ids.length} issue(s)?`,
       default: false,
     })
@@ -262,6 +260,6 @@ async function handleBulkDelete(
 
   // Exit with error code if any failed
   if (summary.failed > 0) {
-    Deno.exit(1)
+    process.exitCode = 1
   }
 }

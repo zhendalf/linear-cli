@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Checkbox, Input, Select } from "@cliffy/prompt"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getEditor, openEditor } from "../../utils/editor.ts"
@@ -26,6 +25,11 @@ import {
   type WorkflowState,
 } from "../../utils/linear.ts"
 import { startWorkOnIssue } from "../../utils/actions.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdoutTTY } from "../../utils/runtime.ts"
+import { select, searchSelect, checkbox, input } from "../../utils/prompt.ts"
+import { readFile } from "node:fs/promises"
 import {
   CliError,
   handleError,
@@ -65,9 +69,9 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
 
       const defaultState = states.find((s) => s.type === "unstarted") ||
         states[0]
-      return await Select.prompt({
+      return await select({
         message: "Which workflow state should this issue be in?",
-        options: states.map((state) => ({
+        choices: states.map((state) => ({
           name: `${state.name} (${state.type})`,
           value: state.id,
         })),
@@ -79,32 +83,33 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
     key: "assignee",
     label: "Assignee",
     handler: async () => {
-      const assignToSelf = await Select.prompt({
+      const assignToSelf = await select({
         message: "Assign this issue to yourself?",
-        options: [
-          { name: "No", value: false },
-          { name: "Yes", value: true },
+        choices: [
+          { name: "No", value: "no" },
+          { name: "Yes", value: "yes" },
         ],
-        default: false,
+        default: "no",
       })
-      return assignToSelf ? await lookupUserId("self") : undefined
+      return assignToSelf === "yes" ? await lookupUserId("self") : undefined
     },
   },
   {
     key: "priority",
     label: "Priority",
     handler: async () => {
-      return await Select.prompt({
+      const val = await select({
         message: "What priority should this issue have?",
-        options: [
-          { name: `${getPriorityDisplay(0)} No priority`, value: 0 },
-          { name: `${getPriorityDisplay(1)} Urgent`, value: 1 },
-          { name: `${getPriorityDisplay(2)} High`, value: 2 },
-          { name: `${getPriorityDisplay(3)} Medium`, value: 3 },
-          { name: `${getPriorityDisplay(4)} Low`, value: 4 },
+        choices: [
+          { name: `${getPriorityDisplay(0)} No priority`, value: "0" },
+          { name: `${getPriorityDisplay(1)} Urgent`, value: "1" },
+          { name: `${getPriorityDisplay(2)} High`, value: "2" },
+          { name: `${getPriorityDisplay(3)} Medium`, value: "3" },
+          { name: `${getPriorityDisplay(4)} Low`, value: "4" },
         ],
-        default: 0,
+        default: "0",
       })
+      return parseInt(val, 10)
     },
   },
   {
@@ -121,11 +126,11 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
       const labels = preloaded?.labels ?? await getLabelsForTeam(teamKey)
       if (labels.length === 0) return []
 
-      return await Checkbox.prompt({
+      // Note: cliffy's `search: true` on Checkbox has no inquirer equivalent.
+      // We render the full list without a search box (accepted behaviour change).
+      return await checkbox({
         message: "Select labels (use space to select, enter to confirm)",
-        search: true,
-        searchLabel: "Search labels",
-        options: labels.map((label) => ({
+        choices: labels.map((label) => ({
           name: label.name,
           value: label.id,
         })),
@@ -136,7 +141,7 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
     key: "estimate",
     label: "Estimate",
     handler: async () => {
-      const estimate = await Input.prompt({
+      const estimate = await input({
         message: "Estimate (leave blank for none)",
         default: "",
       })
@@ -175,9 +180,9 @@ async function promptAdditionalFields(
     }
     return { name, value: field.key }
   })
-  const selectedFields = await Checkbox.prompt({
+  const selectedFields = await checkbox({
     message: "Select additional fields to configure",
-    options: additionalFieldOptions,
+    choices: additionalFieldOptions,
   })
 
   // Initialize default values
@@ -290,7 +295,7 @@ async function promptInteractiveIssueCreation(
     console.log()
   }
 
-  const title = await Input.prompt({
+  const title = await input({
     message: "What's the title of your issue?",
     minLength: 1,
   })
@@ -305,11 +310,9 @@ async function promptInteractiveIssueCreation(
     // Need to prompt for team selection
     const teams = await getAllTeams()
 
-    const selectedTeamId = await Select.prompt({
+    const selectedTeamId = await searchSelect({
       message: "Which team should this issue belong to?",
-      search: true,
-      searchLabel: "Search teams",
-      options: teams.map((team) => ({
+      choices: teams.map((team) => ({
         name: `${team.name} (${team.key})`,
         value: team.id,
       })),
@@ -340,7 +343,7 @@ async function promptInteractiveIssueCreation(
     ? `Description [(e) to launch ${editorDisplayName}]`
     : "Description"
 
-  const description = await Input.prompt({
+  const description = await input({
     message: promptMessage,
     default: "",
   })
@@ -375,9 +378,9 @@ async function promptInteractiveIssueCreation(
   }
 
   // What's next? prompt
-  const nextAction = await Select.prompt({
+  const nextAction = await select({
     message: "What's next?",
-    options: [
+    choices: [
       { name: "Submit issue", value: "submit" },
       { name: "Add more fields", value: "more_fields" },
     ],
@@ -419,15 +422,16 @@ async function promptInteractiveIssueCreation(
   }
 
   // Ask about starting work (always show this)
-  const start = await Select.prompt({
+  const startVal = await select({
     message:
       "Start working on this issue now? (creates branch and updates status)",
-    options: [
-      { name: "No", value: false },
-      { name: "Yes", value: true },
+    choices: [
+      { name: "No", value: "no" },
+      { name: "Yes", value: "yes" },
     ],
-    default: false,
+    default: "no",
   })
+  const start = startVal === "yes"
 
   return {
     title,
@@ -444,64 +448,67 @@ async function promptInteractiveIssueCreation(
   }
 }
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a linear issue")
   .option(
     "--start",
     "Start the issue after creation",
   )
   .option(
-    "-a, --assignee <assignee:string>",
+    "-a, --assignee <assignee>",
     "Assign the issue to 'self' or someone (by username or name)",
   )
   .option(
-    "--due-date <dueDate:string>",
+    "--due-date <dueDate>",
     "Due date of the issue",
   )
   .option(
-    "--parent <parent:string>",
+    "--parent <parent>",
     "Parent issue (if any) as a team_number code",
   )
-  .option(
-    "-p, --priority <priority:number>",
-    "Priority of the issue (1-4, descending priority)",
+  .addOption(
+    new Option(
+      "-p, --priority <priority>",
+      "Priority of the issue (1-4, descending priority)",
+    ).argParser(Number),
+  )
+  .addOption(
+    new Option(
+      "--estimate <estimate>",
+      "Points estimate of the issue",
+    ).argParser(Number),
   )
   .option(
-    "--estimate <estimate:number>",
-    "Points estimate of the issue",
-  )
-  .option(
-    "-d, --description <description:string>",
+    "-d, --description <description>",
     "Description of the issue",
   )
   .option(
-    "--description-file <path:string>",
+    "--description-file <path>",
     "Read description from a file (preferred for markdown content)",
   )
   .option(
-    "-l, --label <label:string>",
+    "-l, --label <label>",
     "Issue label associated with the issue. May be repeated.",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
   )
   .option(
-    "--team <team:string>",
+    "--team <team>",
     "Team associated with the issue (if not your default team)",
   )
   .option(
-    "--project <project:string>",
+    "--project <project>",
     "Name or slug ID of the project with the issue",
   )
   .option(
-    "-s, --state <state:string>",
+    "-s, --state <state>",
     "Workflow state for the issue (by name or type)",
   )
   .option(
-    "--milestone <milestone:string>",
+    "--milestone <milestone>",
     "Name of the project milestone",
   )
   .option(
-    "--cycle <cycle:string>",
+    "--cycle <cycle>",
     "Cycle name, number, or 'active'",
   )
   .option(
@@ -509,10 +516,10 @@ export const createCommand = new Command()
     "Do not use default template for the issue",
   )
   .option("--no-interactive", "Disable interactive prompts")
-  .option("-t, --title <title:string>", "Title of the issue")
+  .option("-t, --title <title>", "Title of the issue")
   .action(
-    async (
-      {
+    async (options) => {
+      let {
         start,
         assignee,
         dueDate,
@@ -530,9 +537,9 @@ export const createCommand = new Command()
         cycle,
         interactive,
         title,
-      },
-    ) => {
-      interactive = interactive && Deno.stdout.isTerminal()
+      } = options
+
+      interactive = interactive && isStdoutTTY()
 
       // Validate that description and descriptionFile are not both provided
       if (description && descriptionFile) {
@@ -545,7 +552,7 @@ export const createCommand = new Command()
       let finalDescription = description
       if (descriptionFile) {
         try {
-          finalDescription = await Deno.readTextFile(descriptionFile)
+          finalDescription = await readFile(descriptionFile, "utf8")
         } catch (error) {
           throw new ValidationError(
             `Failed to read description file: ${descriptionFile}`,
@@ -663,10 +670,8 @@ export const createCommand = new Command()
         )
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const { shouldShowSpinner } = await import("../../utils/hyperlink.ts")
-      const spinner = shouldShowSpinner() ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
       try {
         team = (team == null) ? getTeamKey() : team.toUpperCase()
         if (!team) {
@@ -677,9 +682,9 @@ export const createCommand = new Command()
         let teamId = await getTeamIdByKey(team)
         if (interactive && !teamId) {
           const teamIds = await searchTeamsByKeySubstring(team)
-          spinner?.stop()
+          spinner.stop()
           teamId = await selectOption("Team", team, teamIds)
-          spinner?.start()
+          spinner.start()
         }
         if (!teamId) {
           throw new NotFoundError("Team", team)
@@ -722,13 +727,13 @@ export const createCommand = new Command()
           for (const label of labels) {
             let labelId = await getIssueLabelIdByNameForTeam(label, team)
             if (!labelId && interactive) {
-              const labelIds = await getIssueLabelOptionsByNameForTeam(
+              const labelOptions = await getIssueLabelOptionsByNameForTeam(
                 label,
                 team,
               )
-              spinner?.stop()
-              labelId = await selectOption("Issue label", label, labelIds)
-              spinner?.start()
+              spinner.stop()
+              labelId = await selectOption("Issue label", label, labelOptions)
+              spinner.start()
             }
             if (!labelId) {
               throw new NotFoundError("Issue label", label)
@@ -741,9 +746,9 @@ export const createCommand = new Command()
           projectId = await getProjectIdByName(project)
           if (projectId === undefined && interactive) {
             const projectIds = await getProjectOptionsByName(project)
-            spinner?.stop()
+            spinner.stop()
             projectId = await selectOption("Project", project, projectIds)
-            spinner?.start()
+            spinner.start()
           }
           if (projectId === undefined) {
             throw new NotFoundError("Project", project)
@@ -799,7 +804,7 @@ export const createCommand = new Command()
           parentData = await fetchParentIssueData(parentId)
         }
 
-        const input = {
+        const inputData = {
           title,
           assigneeId,
           dueDate,
@@ -815,10 +820,10 @@ export const createCommand = new Command()
           useDefaultTemplate,
           description: finalDescription,
         }
-        spinner?.stop()
+        spinner.stop()
         console.log(`Creating issue in ${team}`)
         console.log()
-        spinner?.start()
+        spinner.start()
 
         const createIssueMutation = gql(`
           mutation CreateIssue($input: IssueCreateInput!) {
@@ -830,7 +835,7 @@ export const createCommand = new Command()
         `)
 
         const client = getGraphQLClient()
-        const data = await client.request(createIssueMutation, { input })
+        const data = await client.request(createIssueMutation, { input: inputData })
         if (!data.issueCreate.success) {
           throw new CliError("Issue creation failed")
         }
@@ -839,14 +844,14 @@ export const createCommand = new Command()
           throw new CliError("Issue creation failed - no issue returned")
         }
         const issueId = issue.id
-        spinner?.stop()
+        spinner.stop()
         console.log(issue.url)
 
         if (start) {
           await startWorkOnIssue(issueId, issue.team.key)
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to create issue")
       }
     },

@@ -1,5 +1,5 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
+import { readFile } from "node:fs/promises"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getEditor, openEditor } from "../../utils/editor.ts"
@@ -12,6 +12,9 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, input } from "../../utils/prompt.ts"
+import { isStdinTTY, isStdoutTTY, isNotFoundError } from "../../utils/runtime.ts"
 
 type ProjectUpdateHealth = "onTrack" | "atRisk" | "offTrack"
 
@@ -20,7 +23,7 @@ type ProjectUpdateHealth = "onTrack" | "atRisk" | "offTrack"
  */
 async function readContentFromStdin(): Promise<string | undefined> {
   // Check if stdin has data (not a TTY)
-  if (Deno.stdin.isTerminal()) {
+  if (isStdinTTY()) {
     return undefined
   }
 
@@ -53,24 +56,23 @@ const CreateProjectUpdate = gql(`
   }
 `)
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a new status update for a project")
   .alias("c")
-  .arguments("<projectId:string>")
-  .option("--body <body:string>", "Update content (inline)")
-  .option("--body-file <path:string>", "Read content from file")
+  .argument("<projectId>", "Project ID or slug")
+  .option("--body <body>", "Update content (inline)")
+  .option("--body-file <path>", "Read content from file")
   .option(
-    "--health <health:string>",
+    "--health <health>",
     "Project health status (onTrack, atRisk, offTrack)",
   )
   .option("-i, --interactive", "Interactive mode with prompts")
   .action(
     async (
-      { body, bodyFile, health, interactive },
-      projectId,
+      projectId: string,
+      options,
     ) => {
-      const { Spinner } = await import("@std/cli/unstable-spinner")
+      const { body, bodyFile, health, interactive } = options
       const client = getGraphQLClient()
 
       try {
@@ -78,12 +80,12 @@ export const createCommand = new Command()
         const resolvedProjectId = await resolveProjectId(projectId)
 
         // Determine if we should use interactive mode
-        let useInteractive = interactive && Deno.stdout.isTerminal()
+        let useInteractive = interactive && isStdoutTTY()
 
         // If no flags provided and is TTY, enter interactive mode
         const noFlagsProvided = !body && !bodyFile && !health
         if (
-          noFlagsProvided && Deno.stdout.isTerminal() && Deno.stdin.isTerminal()
+          noFlagsProvided && isStdoutTTY() && isStdinTTY()
         ) {
           useInteractive = true
         }
@@ -92,7 +94,7 @@ export const createCommand = new Command()
         if (useInteractive) {
           const result = await promptInteractiveCreate()
 
-          const input: {
+          const updateInput: {
             projectId: string
             body?: string
             health?: ProjectUpdateHealth
@@ -101,14 +103,14 @@ export const createCommand = new Command()
           }
 
           if (result.body) {
-            input.body = result.body
+            updateInput.body = result.body
           }
 
           if (result.health) {
-            input.health = result.health
+            updateInput.health = result.health
           }
 
-          await createProjectUpdate(client, input)
+          await createProjectUpdate(client, updateInput)
           return
         }
 
@@ -121,9 +123,9 @@ export const createCommand = new Command()
         } else if (bodyFile) {
           // Content from file via --body-file
           try {
-            finalBody = await Deno.readTextFile(bodyFile)
+            finalBody = await readFile(bodyFile, "utf8")
           } catch (error) {
-            if (error instanceof Deno.errors.NotFound) {
+            if (isNotFoundError(error)) {
               throw new NotFoundError("File", bodyFile)
             } else {
               throw new CliError(
@@ -133,13 +135,13 @@ export const createCommand = new Command()
               )
             }
           }
-        } else if (!Deno.stdin.isTerminal()) {
+        } else if (!isStdinTTY()) {
           // Try reading from stdin if piped
           const stdinContent = await readContentFromStdin()
           if (stdinContent) {
             finalBody = stdinContent
           }
-        } else if (Deno.stdout.isTerminal()) {
+        } else if (isStdoutTTY()) {
           // No content provided, open editor
           console.log("Opening editor for update content...")
           finalBody = await openEditor()
@@ -161,7 +163,7 @@ export const createCommand = new Command()
         }
 
         // Build input
-        const input: {
+        const updateInput: {
           projectId: string
           body?: string
           health?: ProjectUpdateHealth
@@ -170,21 +172,20 @@ export const createCommand = new Command()
         }
 
         if (finalBody) {
-          input.body = finalBody
+          updateInput.body = finalBody
         }
 
         if (validatedHealth) {
-          input.health = validatedHealth
+          updateInput.health = validatedHealth
         }
 
-        const showSpinner = shouldShowSpinner()
-        const spinner = showSpinner ? new Spinner() : null
-        spinner?.start()
+        const spinner = createSpinner("", shouldShowSpinner())
+        spinner.start()
 
         try {
-          await createProjectUpdate(client, input)
+          await createProjectUpdate(client, updateInput)
         } finally {
-          spinner?.stop()
+          spinner.stop()
         }
       } catch (error) {
         handleError(error, "Failed to create project update")
@@ -197,9 +198,9 @@ async function promptInteractiveCreate(): Promise<{
   health?: ProjectUpdateHealth
 }> {
   // Prompt for health status
-  const health = await Select.prompt({
+  const health = await select({
     message: "Project health status",
-    options: [
+    choices: [
       { name: "On Track", value: "onTrack" },
       { name: "At Risk", value: "atRisk" },
       { name: "Off Track", value: "offTrack" },
@@ -212,9 +213,9 @@ async function promptInteractiveCreate(): Promise<{
   const editorName = await getEditor()
   const editorDisplayName = editorName ? editorName.split("/").pop() : null
 
-  const bodyMethod = await Select.prompt({
+  const bodyMethod = await select({
     message: "How would you like to enter the update content?",
-    options: [
+    choices: [
       { name: "Skip (no content)", value: "skip" },
       { name: "Enter inline", value: "inline" },
       ...(editorDisplayName
@@ -228,7 +229,7 @@ async function promptInteractiveCreate(): Promise<{
   let body: string | undefined
 
   if (bodyMethod === "inline") {
-    const inlineContent = await Input.prompt({
+    const inlineContent = await input({
       message: "Update content (markdown)",
       default: "",
     })
@@ -240,13 +241,13 @@ async function promptInteractiveCreate(): Promise<{
       console.log(`Content entered (${body.length} characters)`)
     }
   } else if (bodyMethod === "file") {
-    const filePath = await Input.prompt({
+    const filePath = await input({
       message: "File path",
     })
     try {
-      body = await Deno.readTextFile(filePath)
+      body = await readFile(filePath, "utf8")
     } catch (error) {
-      if (error instanceof Deno.errors.NotFound) {
+      if (isNotFoundError(error)) {
         throw new NotFoundError("File", filePath)
       } else {
         throw new CliError(
@@ -265,16 +266,16 @@ async function promptInteractiveCreate(): Promise<{
 }
 
 async function createProjectUpdate(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
-  input: {
+  updateInput: {
     projectId: string
     body?: string
     health?: ProjectUpdateHealth
   },
 ): Promise<void> {
   try {
-    const result = await client.request(CreateProjectUpdate, { input })
+    const result = await client.request(CreateProjectUpdate, { input: updateInput })
 
     if (!result.projectUpdateCreate.success) {
       throw new CliError("Failed to create project update")

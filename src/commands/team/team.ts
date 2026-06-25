@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 
 import { idCommand } from "./team-id.ts"
 import { autolinksCommand } from "./team-autolinks.ts"
@@ -7,14 +7,15 @@ import { listCommand } from "./team-list.ts"
 import { createCommand } from "./team-create.ts"
 import { deleteCommand } from "./team-delete.ts"
 
-export const teamCommand = new Command()
+export const teamCommand = new Command("team")
+  .alias("t")
   .description("Manage Linear teams")
-  .action(function () {
-    this.showHelp()
+  .action((_opts, cmd) => {
+    cmd.help()
   })
-  .command("create", createCommand)
-  .command("delete", deleteCommand)
-  .command("list", listCommand)
-  .command("id", idCommand)
-  .command("autolinks", autolinksCommand)
-  .command("members", membersCommand)
+  .addCommand(createCommand)
+  .addCommand(deleteCommand)
+  .addCommand(listCommand)
+  .addCommand(idCommand)
+  .addCommand(autolinksCommand)
+  .addCommand(membersCommand)

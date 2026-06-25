@@ -1,8 +1,10 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { confirm } from "../../utils/prompt.ts"
 import {
   CliError,
   handleError,
@@ -10,12 +12,12 @@ import {
   ValidationError,
 } from "../../utils/errors.ts"
 
-export const unarchiveCommand = new Command()
-  .name("unarchive")
+export const unarchiveCommand = new Command("unarchive")
   .description("Unarchive a Linear initiative")
-  .arguments("<initiativeId:string>")
+  .argument("<initiativeId>")
   .option("-y, --force", "Skip confirmation prompt")
-  .action(async ({ force }, initiativeId) => {
+  .action(async (initiativeId: string, options) => {
+    const { force } = options
     const client = getGraphQLClient()
 
     // Resolve initiative ID
@@ -61,12 +63,12 @@ export const unarchiveCommand = new Command()
 
     // Confirm unarchive
     if (!force) {
-      if (!Deno.stdin.isTerminal()) {
+      if (!isStdinTTY()) {
         throw new ValidationError(
           "Interactive confirmation required. Use --force to skip.",
         )
       }
-      const confirmed = await Confirm.prompt({
+      const confirmed = await confirm({
         message: `Are you sure you want to unarchive "${initiative.name}"?`,
         default: true,
       })
@@ -77,10 +79,8 @@ export const unarchiveCommand = new Command()
       }
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     // Unarchive the initiative
     const unarchiveMutation = gql(`
@@ -102,7 +102,7 @@ export const unarchiveCommand = new Command()
         id: resolvedId,
       })
 
-      spinner?.stop()
+      spinner.stop()
 
       if (!result.initiativeUnarchive.success) {
         throw new CliError("Failed to unarchive initiative")
@@ -114,13 +114,13 @@ export const unarchiveCommand = new Command()
         console.log(unarchived.url)
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to unarchive initiative")
     }
   })
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {

@@ -1,9 +1,11 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getAllTeams, getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { input, select } from "../../utils/prompt.ts"
+import { isStdoutTTY } from "../../utils/runtime.ts"
 import {
   CliError,
   handleError,
@@ -43,17 +45,16 @@ const DEFAULT_COLORS = [
   { name: "Gray", value: "#6B6F76" },
 ]
 
-export const createCommand = new Command()
-  .name("create")
+export const createCommand = new Command("create")
   .description("Create a new issue label")
-  .option("-n, --name <name:string>", "Label name (required)")
+  .option("-n, --name <name>", "Label name (required)")
   .option(
-    "-c, --color <color:string>",
+    "-c, --color <color>",
     "Color hex code (e.g., #EB5757)",
   )
-  .option("-d, --description <description:string>", "Label description")
+  .option("-d, --description <description>", "Label description")
   .option(
-    "-t, --team <teamKey:string>",
+    "-t, --team <teamKey>",
     "Team key for team-specific label (omit for workspace label)",
   )
   .option(
@@ -80,14 +81,14 @@ export const createCommand = new Command()
       // Determine if we should run in interactive mode
       const noFlagsProvided = !name
       const isInteractive = (noFlagsProvided || interactiveFlag) &&
-        Deno.stdout.isTerminal()
+        isStdoutTTY()
 
       if (isInteractive) {
         console.log("\nCreate a new label\n")
 
         // Name (required)
         if (!name) {
-          name = await Input.prompt({
+          name = await input({
             message: "Label name:",
             minLength: 1,
           })
@@ -103,21 +104,15 @@ export const createCommand = new Command()
             { name: "Custom color", value: "custom" },
           ]
 
-          const selectedColor = await Select.prompt({
+          const selectedColor = await select({
             message: "Color:",
-            options: colorOptions,
+            choices: colorOptions,
             default: DEFAULT_COLORS[6].value, // Indigo
           })
 
           if (selectedColor === "custom") {
-            color = await Input.prompt({
+            color = await input({
               message: "Enter hex color (e.g., #FF5733):",
-              validate: (value) => {
-                if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
-                  return "Please enter a valid hex color (e.g., #FF5733)"
-                }
-                return true
-              },
             })
           } else {
             color = selectedColor
@@ -126,10 +121,10 @@ export const createCommand = new Command()
 
         // Description (optional)
         if (!description) {
-          description = await Input.prompt({
+          const desc = await input({
             message: "Description (optional):",
           })
-          if (!description) description = undefined
+          description = desc.trim() || undefined
         }
 
         // Team selection (optional)
@@ -145,16 +140,14 @@ export const createCommand = new Command()
 
           // Try to get default team from config
           const defaultTeam = getTeamKey()
-          const defaultIndex = defaultTeam
-            ? teamOptions.findIndex((t) => t.value === defaultTeam)
-            : 0
+          const defaultValue = defaultTeam
+            ? (teamOptions.find((t) => t.value === defaultTeam)?.value ?? "__workspace__")
+            : "__workspace__"
 
-          const selectedTeam = await Select.prompt({
+          const selectedTeam = await select({
             message: "Team:",
-            options: teamOptions,
-            default: defaultIndex >= 0
-              ? teamOptions[defaultIndex].value
-              : "__workspace__",
+            choices: teamOptions,
+            default: defaultValue,
           })
 
           teamKey = selectedTeam === "__workspace__" ? undefined : selectedTeam
@@ -189,28 +182,26 @@ export const createCommand = new Command()
         }
       }
 
-      const input = {
+      const labelInput = {
         name,
         color,
         ...(description && { description }),
         ...(teamId && { teamId }),
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       try {
-        const result = await client.request(CreateIssueLabel, { input })
+        const result = await client.request(CreateIssueLabel, { input: labelInput })
 
         if (!result.issueLabelCreate.success) {
-          spinner?.stop()
+          spinner.stop()
           throw new CliError("Failed to create label")
         }
 
         const label = result.issueLabelCreate.issueLabel
-        spinner?.stop()
+        spinner.stop()
 
         console.log(`✓ Created label: ${label.name}`)
         console.log(`  Color: ${label.color}`)
@@ -225,7 +216,7 @@ export const createCommand = new Command()
           }`,
         )
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         throw error
       }
     } catch (error) {

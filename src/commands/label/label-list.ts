@@ -1,11 +1,14 @@
-import { Command } from "@cliffy/command"
-import { unicodeWidth } from "@std/cli"
+import { Command } from "commander"
+import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import type { GetIssueLabelsQuery } from "../../__codegen__/graphql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { padDisplay } from "../../utils/display.ts"
 import { getTeamKey } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { applyConsoleFormat } from "../../utils/styling.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import { handleError } from "../../utils/errors.ts"
 
 const GetIssueLabels = gql(`
@@ -31,11 +34,10 @@ const GetIssueLabels = gql(`
 
 type Label = NonNullable<GetIssueLabelsQuery["issueLabels"]>["nodes"][number]
 
-export const listCommand = new Command()
-  .name("list")
+export const listCommand = new Command("list")
   .description("List issue labels")
   .option(
-    "--team <teamKey:string>",
+    "--team <teamKey>",
     "Filter by team (e.g., TC). Shows team-specific labels only.",
   )
   .option(
@@ -47,17 +49,16 @@ export const listCommand = new Command()
     "Show all labels (both workspace and team)",
   )
   .option("-j, --json", "Output as JSON")
-  .action(async ({ team: teamKey, workspace, all, json }) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = !json && shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+  .action(async (options) => {
+    const { team: teamKey, workspace, all, json } = options
+    const spinner = createSpinner("", !json && shouldShowSpinner())
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
 
       // Build filter based on options
-      // deno-lint-ignore no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let filter: any = {}
 
       if (workspace) {
@@ -118,7 +119,7 @@ export const listCommand = new Command()
         after = pageInfo.endCursor
       }
 
-      spinner?.stop()
+      spinner.stop()
 
       if (allLabels.length === 0) {
         if (json) {
@@ -154,8 +155,8 @@ export const listCommand = new Command()
       }
 
       // Calculate column widths
-      const { columns } = Deno.stdout.isTerminal()
-        ? Deno.consoleSize()
+      const { columns } = isStdoutTTY()
+        ? getConsoleSize()
         : { columns: 120 }
 
       const ID_WIDTH = 36 // UUID length
@@ -164,7 +165,7 @@ export const listCommand = new Command()
         15,
         Math.max(
           4, // minimum width for "TEAM" header
-          ...sortedLabels.map((l) => unicodeWidth(l.team?.key || "Workspace")),
+          ...sortedLabels.map((l) => stringWidth(l.team?.key || "Workspace")),
         ),
       )
 
@@ -172,7 +173,7 @@ export const listCommand = new Command()
       const fixed = ID_WIDTH + COLOR_WIDTH + TEAM_WIDTH + SPACE_WIDTH
       const PADDING = 1
       const maxNameWidth = Math.max(
-        ...sortedLabels.map((l) => unicodeWidth(l.name)),
+        ...sortedLabels.map((l) => stringWidth(l.name)),
       )
       const availableWidth = Math.max(columns - PADDING - fixed, 0)
       const nameWidth = Math.min(maxNameWidth, Math.max(20, availableWidth))
@@ -196,7 +197,7 @@ export const listCommand = new Command()
           headerStyles.push("text-decoration: underline")
         }
       })
-      console.log(headerMsg, ...headerStyles)
+      console.log(applyConsoleFormat(headerMsg, ...headerStyles))
 
       // Print each label
       for (const label of sortedLabels) {
@@ -215,7 +216,7 @@ export const listCommand = new Command()
 
       console.log(`\n${sortedLabels.length} labels found.`)
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch labels")
     }
   })

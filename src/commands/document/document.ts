@@ -1,20 +1,19 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { listCommand } from "./document-list.ts"
 import { viewCommand } from "./document-view.ts"
 import { createCommand } from "./document-create.ts"
 import { updateCommand } from "./document-update.ts"
 import { deleteCommand } from "./document-delete.ts"
 
-export const documentCommand = new Command()
-  .name("document")
-  .description("Manage Linear documents")
+export const documentCommand = new Command("document")
   .alias("docs")
   .alias("doc")
-  .action(() => {
-    console.log("Use --help to see available subcommands")
+  .description("Manage Linear documents")
+  .action((_opts, cmd) => {
+    cmd.help()
   })
-  .command("list", listCommand)
-  .command("view", viewCommand)
-  .command("create", createCommand)
-  .command("update", updateCommand)
-  .command("delete", deleteCommand)
+  .addCommand(listCommand)
+  .addCommand(viewCommand)
+  .addCommand(createCommand)
+  .addCommand(updateCommand)
+  .addCommand(deleteCommand)

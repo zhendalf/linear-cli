@@ -1,7 +1,8 @@
-import { Command } from "@cliffy/command"
+import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 import { CliError, handleError, NotFoundError } from "../../utils/errors.ts"
 
 const AddProjectToInitiative = gql(`
@@ -16,7 +17,7 @@ const AddProjectToInitiative = gql(`
 `)
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<{ id: string; name: string } | undefined> {
@@ -95,7 +96,7 @@ async function resolveInitiativeId(
 }
 
 async function resolveProjectId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<{ id: string; name: string } | undefined> {
@@ -173,17 +174,20 @@ async function resolveProjectId(
   return undefined
 }
 
-export const addProjectCommand = new Command()
-  .name("add-project")
+export const addProjectCommand = new Command("add-project")
   .description("Link a project to an initiative")
-  .arguments("<initiative:string> <project:string>")
-  .option("--sort-order <sortOrder:number>", "Sort order within initiative")
+  .argument("<initiative>")
+  .argument("<project>")
+  .addOption(
+    new Option("--sort-order <sortOrder>", "Sort order within initiative").argParser(Number),
+  )
   .action(
     async (
-      { sortOrder },
-      initiativeArg,
-      projectArg,
+      initiativeArg: string,
+      projectArg: string,
+      options,
     ) => {
+      const { sortOrder } = options
       const client = getGraphQLClient()
 
       // Resolve initiative
@@ -198,22 +202,20 @@ export const addProjectCommand = new Command()
         throw new NotFoundError("Project", projectArg)
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       // Build input
-      const input = {
+      const inputPayload = {
         initiativeId: initiative.id,
         projectId: project.id,
         ...(sortOrder !== undefined && { sortOrder }),
       }
 
       try {
-        const result = await client.request(AddProjectToInitiative, { input })
+        const result = await client.request(AddProjectToInitiative, { input: inputPayload })
 
-        spinner?.stop()
+        spinner.stop()
 
         if (!result.initiativeToProjectCreate.success) {
           throw new CliError("Failed to add project to initiative")
@@ -223,7 +225,7 @@ export const addProjectCommand = new Command()
           `✓ Added "${project.name}" to initiative "${initiative.name}"`,
         )
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         // Check if the error is because the link already exists
         const errorMessage = String(error)
         if (

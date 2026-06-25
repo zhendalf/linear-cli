@@ -1,9 +1,11 @@
-import { Command } from "@cliffy/command"
-import { renderMarkdown } from "@littletof/charmd"
+import { Command } from "commander"
+import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { isStdoutTTY, getConsoleSize } from "../../utils/runtime.ts"
 import { handleError, NotFoundError } from "../../utils/errors.ts"
 
 const GetMilestoneDetails = gql(`
@@ -37,23 +39,20 @@ const GetMilestoneDetails = gql(`
   }
 `)
 
-export const viewCommand = new Command()
-  .name("view")
-  .description("View milestone details")
+export const viewCommand = new Command("view")
   .alias("v")
-  .arguments("<milestoneId:string>")
-  .action(async (_options, milestoneId) => {
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+  .description("View milestone details")
+  .argument("<milestoneId>", "Milestone ID")
+  .action(async (milestoneId: string) => {
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
       const result = await client.request(GetMilestoneDetails, {
         id: milestoneId,
       })
-      spinner?.stop()
+      spinner.stop()
 
       const milestone = result.projectMilestone
       if (!milestone) {
@@ -148,14 +147,14 @@ export const viewCommand = new Command()
 
       const markdown = lines.join("\n")
 
-      if (Deno.stdout.isTerminal()) {
-        const terminalWidth = Deno.consoleSize().columns
+      if (isStdoutTTY()) {
+        const terminalWidth = getConsoleSize().columns
         console.log(renderMarkdown(markdown, { lineWidth: terminalWidth }))
       } else {
         console.log(markdown)
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to fetch milestone details")
     }
   })

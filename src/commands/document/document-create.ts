@@ -1,9 +1,11 @@
-import { Command } from "@cliffy/command"
-import { Input, Select } from "@cliffy/prompt"
+import { Command } from "commander"
+import { readFile } from "node:fs/promises"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getEditor, openEditor } from "../../utils/editor.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
+import { input, select } from "../../utils/prompt.ts"
+import { isStdoutTTY, isStdinTTY } from "../../utils/runtime.ts"
 import {
   CliError,
   handleError,
@@ -16,7 +18,7 @@ import {
  */
 async function readContentFromStdin(): Promise<string | undefined> {
   // Check if stdin has data (not a TTY)
-  if (Deno.stdin.isTerminal()) {
+  if (isStdinTTY()) {
     return undefined
   }
 
@@ -36,38 +38,38 @@ async function readContentFromStdin(): Promise<string | undefined> {
   }
 }
 
-export const createCommand = new Command()
-  .name("create")
-  .description("Create a new document")
+export const createCommand = new Command("create")
   .alias("c")
-  .option("-t, --title <title:string>", "Document title (required)")
-  .option("-c, --content <content:string>", "Markdown content (inline)")
-  .option("-f, --content-file <path:string>", "Read content from file")
-  .option("--project <project:string>", "Attach to project (slug or ID)")
-  .option("--issue <issue:string>", "Attach to issue (identifier like TC-123)")
-  .option("--icon <icon:string>", "Document icon (emoji)")
+  .description("Create a new document")
+  .option("-t, --title <title>", "Document title (required)")
+  .option("-c, --content <content>", "Markdown content (inline)")
+  .option("-f, --content-file <path>", "Read content from file")
+  .option("--project <project>", "Attach to project (slug or ID)")
+  .option("--issue <issue>", "Attach to issue (identifier like TC-123)")
+  .option("--icon <icon>", "Document icon (emoji)")
   .option("-i, --interactive", "Interactive mode with prompts")
   .action(
-    async ({
-      title,
-      content,
-      contentFile,
-      project,
-      issue,
-      icon,
-      interactive,
-    }) => {
+    async (options) => {
+      const {
+        title,
+        content,
+        contentFile,
+        project,
+        issue,
+        icon,
+        interactive,
+      } = options
       try {
         const client = getGraphQLClient()
 
         // Determine if we should use interactive mode
-        let useInteractive = interactive && Deno.stdout.isTerminal()
+        let useInteractive = interactive && isStdoutTTY()
 
         // If no title and not interactive, check if we should enter interactive mode
         const noFlagsProvided = !title && !content && !contentFile &&
           !project &&
           !issue && !icon
-        if (noFlagsProvided && Deno.stdout.isTerminal()) {
+        if (noFlagsProvided && isStdoutTTY()) {
           useInteractive = true
         }
 
@@ -79,7 +81,7 @@ export const createCommand = new Command()
             throw new ValidationError("Title is required")
           }
 
-          const input: Record<string, string | undefined> = {
+          const inputData: Record<string, string | undefined> = {
             title: result.title,
             content: result.content,
             icon: result.icon,
@@ -88,13 +90,13 @@ export const createCommand = new Command()
           }
 
           // Remove undefined values
-          Object.keys(input).forEach((key) => {
-            if (input[key] === undefined) {
-              delete input[key]
+          Object.keys(inputData).forEach((key) => {
+            if (inputData[key] === undefined) {
+              delete inputData[key]
             }
           })
 
-          await createDocument(client, input)
+          await createDocument(client, inputData)
           return
         }
 
@@ -114,9 +116,10 @@ export const createCommand = new Command()
         } else if (contentFile) {
           // Content from file via --content-file
           try {
-            finalContent = await Deno.readTextFile(contentFile)
+            finalContent = await readFile(contentFile, "utf8")
           } catch (error) {
-            if (error instanceof Deno.errors.NotFound) {
+            const nodeErr = error as NodeJS.ErrnoException
+            if (nodeErr?.code === "ENOENT") {
               throw new NotFoundError("File", contentFile)
             }
             throw new CliError(
@@ -126,13 +129,13 @@ export const createCommand = new Command()
               { cause: error },
             )
           }
-        } else if (!Deno.stdin.isTerminal()) {
+        } else if (!isStdinTTY()) {
           // Try reading from stdin if piped
           const stdinContent = await readContentFromStdin()
           if (stdinContent) {
             finalContent = stdinContent
           }
-        } else if (Deno.stdout.isTerminal()) {
+        } else if (isStdoutTTY()) {
           // No content provided, open editor
           console.log("Opening editor for document content...")
           finalContent = await openEditor()
@@ -166,7 +169,7 @@ export const createCommand = new Command()
         }
 
         // Build input
-        const input: Record<string, string | undefined> = {
+        const inputData: Record<string, string | undefined> = {
           title,
           content: finalContent,
           icon,
@@ -175,13 +178,13 @@ export const createCommand = new Command()
         }
 
         // Remove undefined values
-        Object.keys(input).forEach((key) => {
-          if (input[key] === undefined) {
-            delete input[key]
+        Object.keys(inputData).forEach((key) => {
+          if (inputData[key] === undefined) {
+            delete inputData[key]
           }
         })
 
-        await createDocument(client, input)
+        await createDocument(client, inputData)
       } catch (error) {
         handleError(error, "Failed to create document")
       }
@@ -196,7 +199,7 @@ async function promptInteractiveCreate(): Promise<{
   issueId?: string
 }> {
   // Prompt for title
-  const title = await Input.prompt({
+  const title = await input({
     message: "Document title",
     minLength: 1,
   })
@@ -205,9 +208,9 @@ async function promptInteractiveCreate(): Promise<{
   const editorName = await getEditor()
   const editorDisplayName = editorName ? editorName.split("/").pop() : null
 
-  const contentMethod = await Select.prompt({
+  const contentMethod = await select({
     message: "How would you like to enter content?",
-    options: [
+    choices: [
       { name: "Skip (no content)", value: "skip" },
       { name: "Enter inline", value: "inline" },
       ...(editorDisplayName
@@ -221,7 +224,7 @@ async function promptInteractiveCreate(): Promise<{
   let content: string | undefined
 
   if (contentMethod === "inline") {
-    const inlineContent = await Input.prompt({
+    const inlineContent = await input({
       message: "Content (markdown)",
       default: "",
     })
@@ -233,13 +236,14 @@ async function promptInteractiveCreate(): Promise<{
       console.log(`Content entered (${content.length} characters)`)
     }
   } else if (contentMethod === "file") {
-    const filePath = await Input.prompt({
+    const filePath = await input({
       message: "File path",
     })
     try {
-      content = await Deno.readTextFile(filePath)
+      content = await readFile(filePath, "utf8")
     } catch (error) {
-      if (error instanceof Deno.errors.NotFound) {
+      const nodeErr = error as NodeJS.ErrnoException
+      if (nodeErr?.code === "ENOENT") {
         throw new NotFoundError("File", filePath)
       }
       throw new CliError(
@@ -252,15 +256,15 @@ async function promptInteractiveCreate(): Promise<{
   }
 
   // Prompt for icon
-  const icon = await Input.prompt({
+  const iconInput = await input({
     message: "Icon (emoji, leave blank for none)",
     default: "",
   })
 
   // Ask about attachment
-  const attachTo = await Select.prompt({
+  const attachTo = await select({
     message: "Attach document to",
-    options: [
+    choices: [
       { name: "Nothing (workspace document)", value: "none" },
       { name: "Project", value: "project" },
       { name: "Issue", value: "issue" },
@@ -272,7 +276,7 @@ async function promptInteractiveCreate(): Promise<{
   let issueId: string | undefined
 
   if (attachTo === "project") {
-    const projectInput = await Input.prompt({
+    const projectInput = await input({
       message: "Project slug or ID",
     })
     const client = getGraphQLClient()
@@ -283,7 +287,7 @@ async function promptInteractiveCreate(): Promise<{
       })
     }
   } else if (attachTo === "issue") {
-    const issueInput = await Input.prompt({
+    const issueInput = await input({
       message: "Issue identifier (e.g., TC-123)",
     })
     const client = getGraphQLClient()
@@ -298,14 +302,14 @@ async function promptInteractiveCreate(): Promise<{
   return {
     title,
     content,
-    icon: icon.trim() || undefined,
+    icon: iconInput.trim() || undefined,
     projectId,
     issueId,
   }
 }
 
 async function resolveProjectId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   projectInput: string,
 ): Promise<string | undefined> {
@@ -357,7 +361,7 @@ async function resolveProjectId(
 }
 
 async function resolveIssueId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   issueIdentifier: string,
 ): Promise<string | undefined> {
@@ -383,9 +387,9 @@ async function resolveIssueId(
 }
 
 async function createDocument(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
-  input: Record<string, string | undefined>,
+  inputData: Record<string, string | undefined>,
 ): Promise<void> {
   const createMutation = gql(`
     mutation CreateDocument($input: DocumentCreateInput!) {
@@ -401,7 +405,7 @@ async function createDocument(
     }
   `)
 
-  const result = await client.request(createMutation, { input })
+  const result = await client.request(createMutation, { input: inputData })
 
   if (!result.documentCreate.success) {
     throw new CliError("Document creation failed")

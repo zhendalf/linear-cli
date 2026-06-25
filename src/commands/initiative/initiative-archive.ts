@@ -1,5 +1,4 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import {
@@ -10,6 +9,9 @@ import {
   printBulkSummary,
 } from "../../utils/bulk.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { confirm } from "../../utils/prompt.ts"
 import {
   CliError,
   handleError,
@@ -21,25 +23,25 @@ interface InitiativeArchiveResult extends BulkOperationResult {
   name: string
 }
 
-export const archiveCommand = new Command()
-  .name("archive")
+export const archiveCommand = new Command("archive")
   .description("Archive a Linear initiative")
-  .arguments("[initiativeId:string]")
+  .argument("[initiativeId]")
   .option("-y, --force", "Skip confirmation prompt")
   .option(
-    "--bulk <ids...:string>",
+    "--bulk <ids...>",
     "Archive multiple initiatives by ID, slug, or name",
   )
   .option(
-    "--bulk-file <file:string>",
+    "--bulk-file <file>",
     "Read initiative IDs from a file (one per line)",
   )
   .option("--bulk-stdin", "Read initiative IDs from stdin")
   .action(
     async (
-      { force, bulk, bulkFile, bulkStdin },
-      initiativeId,
+      initiativeId: string | undefined,
+      options,
     ) => {
+      const { force, bulk, bulkFile, bulkStdin } = options
       const client = getGraphQLClient()
 
       // Check if bulk mode
@@ -65,7 +67,7 @@ export const archiveCommand = new Command()
   )
 
 async function handleSingleArchive(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   initiativeId: string,
   options: { force?: boolean },
@@ -111,12 +113,12 @@ async function handleSingleArchive(
 
   // Confirm archival
   if (!force) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         "Interactive confirmation required. Use --force to skip.",
       )
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Archive initiative "${initiative.name}"?`,
       default: true,
     })
@@ -127,10 +129,8 @@ async function handleSingleArchive(
     }
   }
 
-  const { Spinner } = await import("@std/cli/unstable-spinner")
-  const showSpinner = shouldShowSpinner()
-  const spinner = showSpinner ? new Spinner() : null
-  spinner?.start()
+  const spinner = createSpinner("", shouldShowSpinner())
+  spinner.start()
 
   // Archive the initiative
   const archiveMutation = gql(`
@@ -144,7 +144,7 @@ async function handleSingleArchive(
   try {
     const result = await client.request(archiveMutation, { id: resolvedId })
 
-    spinner?.stop()
+    spinner.stop()
 
     if (!result.initiativeArchive.success) {
       throw new CliError("Failed to archive initiative")
@@ -152,13 +152,13 @@ async function handleSingleArchive(
 
     console.log(`✓ Archived initiative: ${initiative.name}`)
   } catch (error) {
-    spinner?.stop()
+    spinner.stop()
     handleError(error, "Failed to archive initiative")
   }
 }
 
 async function handleBulkArchive(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   options: {
     bulk?: string[]
@@ -184,12 +184,12 @@ async function handleBulkArchive(
 
   // Confirm bulk operation
   if (!force) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         "Interactive confirmation required. Use --force to skip.",
       )
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Archive ${ids.length} initiative(s)?`,
       default: false,
     })
@@ -290,12 +290,12 @@ async function handleBulkArchive(
 
   // Exit with error code if any failed
   if (summary.failed > 0) {
-    Deno.exit(1)
+    process.exit(1)
   }
 }
 
 async function resolveInitiativeId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   idOrSlugOrName: string,
 ): Promise<string | undefined> {

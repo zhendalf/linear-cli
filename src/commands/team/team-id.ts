@@ -1,9 +1,8 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { getTeamKey } from "../../utils/linear.ts"
 import { handleError, ValidationError } from "../../utils/errors.ts"
 
-export const idCommand = new Command()
-  .name("id")
+export const idCommand = new Command("id")
   .description("Print the configured team id")
   .action(() => {
     try {

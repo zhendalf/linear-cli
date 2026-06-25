@@ -1,9 +1,11 @@
-import { Command } from "@cliffy/command"
-import { Confirm, Select } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getTeamKey } from "../../utils/linear.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { select, confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 import {
   CliError,
   handleError,
@@ -61,7 +63,7 @@ interface Label {
 }
 
 async function resolveLabelId(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   nameOrId: string,
   teamKey?: string,
@@ -114,20 +116,20 @@ async function resolveLabelId(
 
   // If multiple labels with same name exist, let user choose
   if (labels.length > 1) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError(
         `Multiple labels named "${nameOrId}" found`,
         { suggestion: "Use --team to disambiguate." },
       )
     }
-    const options = labels.map((l) => ({
+    const choices = labels.map((l) => ({
       name: `${l.name} (${l.team?.key || "Workspace"}) - ${l.color}`,
       value: l.id,
     }))
 
-    const selectedId = await Select.prompt({
+    const selectedId = await select({
       message: `Multiple labels named "${nameOrId}" found. Which one?`,
-      options,
+      choices,
     })
 
     return labels.find((l) => l.id === selectedId)
@@ -137,16 +139,16 @@ async function resolveLabelId(
   return labels[0]
 }
 
-export const deleteCommand = new Command()
-  .name("delete")
+export const deleteCommand = new Command("delete")
   .description("Delete an issue label")
-  .arguments("<nameOrId:string>")
+  .argument("<nameOrId>", "Label name or ID")
   .option(
-    "-t, --team <teamKey:string>",
+    "-t, --team <teamKey>",
     "Team key to disambiguate labels with same name",
   )
   .option("-f, --force", "Skip confirmation prompt")
-  .action(async ({ team: teamKey, force }, nameOrId) => {
+  .action(async (nameOrId: string, options) => {
+    const { team: teamKey, force } = options
     try {
       const client = getGraphQLClient()
 
@@ -167,12 +169,12 @@ export const deleteCommand = new Command()
 
       // Confirmation prompt unless --force is used
       if (!force) {
-        if (!Deno.stdin.isTerminal()) {
+        if (!isStdinTTY()) {
           throw new ValidationError("Interactive confirmation required", {
             suggestion: "Use --force to skip confirmation.",
           })
         }
-        const confirmed = await Confirm.prompt({
+        const confirmed = await confirm({
           message: `Are you sure you want to delete label "${labelDisplay}"?`,
           default: false,
         })
@@ -183,16 +185,14 @@ export const deleteCommand = new Command()
         }
       }
 
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
-      spinner?.start()
+      const spinner = createSpinner("", shouldShowSpinner())
+      spinner.start()
 
       try {
         const result = await client.request(DeleteIssueLabel, {
           id: label.id,
         })
-        spinner?.stop()
+        spinner.stop()
 
         if (result.issueLabelDelete.success) {
           console.log(`✓ Deleted label: ${labelDisplay}`)
@@ -200,7 +200,7 @@ export const deleteCommand = new Command()
           throw new CliError("Failed to delete label")
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         throw error
       }
     } catch (error) {

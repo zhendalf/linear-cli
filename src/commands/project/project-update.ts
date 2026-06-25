@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import {
@@ -13,6 +13,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../utils/errors.ts"
+import { createSpinner } from "../../utils/spinner.ts"
 
 const UpdateProject = gql(`
   mutation UpdateProject($id: String!, $input: ProjectUpdateInput!) {
@@ -52,27 +53,29 @@ const STATUS_TYPE_MAPPING: Record<string, string> = {
   "backlog": "backlog",
 }
 
-export const updateCommand = new Command()
-  .name("update")
+export const updateCommand = new Command("update")
   .description("Update a Linear project")
-  .arguments("<projectId:string>")
-  .option("-n, --name <name:string>", "Project name")
-  .option("-d, --description <description:string>", "Project description")
+  .argument("<projectId>", "Project ID or slug")
+  .option("-n, --name <name>", "Project name")
+  .option("-d, --description <description>", "Project description")
   .option(
-    "-s, --status <status:string>",
+    "-s, --status <status>",
     "Status (planned, started, paused, completed, canceled, backlog)",
   )
-  .option("-l, --lead <lead:string>", "Project lead (username, email, or @me)")
-  .option("--start-date <startDate:string>", "Start date (YYYY-MM-DD)")
-  .option("--target-date <targetDate:string>", "Target date (YYYY-MM-DD)")
+  .option("-l, --lead <lead>", "Project lead (username, email, or @me)")
+  .option("--start-date <startDate>", "Start date (YYYY-MM-DD)")
+  .option("--target-date <targetDate>", "Target date (YYYY-MM-DD)")
   .option(
-    "-t, --team <team:string>",
+    "-t, --team <team>",
     "Team key (can be repeated for multiple teams)",
-    { collect: true },
+    (val: string, prev: string[] = []) => [...prev, val],
   )
   .action(
     async (
-      {
+      projectId: string,
+      options,
+    ) => {
+      const {
         name,
         description,
         status,
@@ -80,12 +83,9 @@ export const updateCommand = new Command()
         startDate,
         targetDate,
         team: teams,
-      },
-      projectId,
-    ) => {
-      const { Spinner } = await import("@std/cli/unstable-spinner")
-      const showSpinner = shouldShowSpinner()
-      const spinner = showSpinner ? new Spinner() : null
+      } = options
+
+      const spinner = createSpinner("", shouldShowSpinner())
 
       try {
         if (
@@ -109,7 +109,7 @@ export const updateCommand = new Command()
           throw new ValidationError("Target date must be in YYYY-MM-DD format")
         }
 
-        spinner?.start()
+        spinner.start()
         const client = getGraphQLClient()
         const resolvedId = await resolveProjectId(projectId)
 
@@ -124,7 +124,7 @@ export const updateCommand = new Command()
           const statusLower = status.toLowerCase()
           const apiStatusType = STATUS_TYPE_MAPPING[statusLower]
           if (!apiStatusType) {
-            spinner?.stop()
+            spinner.stop()
             throw new ValidationError(`Invalid status: ${status}`, {
               suggestion:
                 "Valid values: planned, started, paused, completed, canceled, backlog",
@@ -136,7 +136,7 @@ export const updateCommand = new Command()
             (s: { type: string }) => s.type === apiStatusType,
           )
           if (!matchingStatus) {
-            spinner?.stop()
+            spinner.stop()
             throw new NotFoundError("Project status", apiStatusType)
           }
           input.statusId = matchingStatus.id
@@ -145,7 +145,7 @@ export const updateCommand = new Command()
         if (lead) {
           const leadId = await lookupUserId(lead)
           if (!leadId) {
-            spinner?.stop()
+            spinner.stop()
             throw new NotFoundError("Lead", lead)
           }
           input.leadId = leadId
@@ -156,7 +156,7 @@ export const updateCommand = new Command()
           for (const teamKey of teams) {
             const teamId = await getTeamIdByKey(teamKey.toUpperCase())
             if (!teamId) {
-              spinner?.stop()
+              spinner.stop()
               throw new NotFoundError("Team", teamKey)
             }
             teamIds.push(teamId)
@@ -168,7 +168,7 @@ export const updateCommand = new Command()
           id: resolvedId,
           input,
         })
-        spinner?.stop()
+        spinner.stop()
 
         if (!result.projectUpdate.success) {
           throw new CliError("Failed to update project")
@@ -182,7 +182,7 @@ export const updateCommand = new Command()
           }
         }
       } catch (error) {
-        spinner?.stop()
+        spinner.stop()
         handleError(error, "Failed to update project")
       }
     },

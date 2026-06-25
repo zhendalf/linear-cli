@@ -1,14 +1,6 @@
 {
-  "//": "Incremental green gate: only hand-ported files. Must typecheck with 0 errors. Grows each phase; converges to tsconfig.json at D7 (when main.ts + all commands are ported).",
+  "//": "Incremental green gate. As of D7 every file is ported, so this converges to the full project (same scope as tsconfig.json). Must typecheck with 0 errors.",
   "extends": "./tsconfig.json",
-  "include": [
-    "src/config.ts",
-    "src/credentials.ts",
-    "src/const.ts",
-    "src/utils",
-    "src/commands/auth",
-    "src/__codegen__",
-    "codegen.ts"
-  ],
+  "include": ["src", "codegen.ts"],
   "exclude": ["dist", "node_modules"]
 }

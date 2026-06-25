@@ -1,7 +1,8 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
+import { confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 import {
   type BulkOperationResult,
   collectBulkIds,
@@ -20,26 +21,26 @@ interface DocumentDeleteResult extends BulkOperationResult {
   title?: string
 }
 
-export const deleteCommand = new Command()
-  .name("delete")
-  .description("Delete a document (moves to trash)")
+export const deleteCommand = new Command("delete")
   .alias("d")
-  .arguments("[documentId:string]")
+  .description("Delete a document (moves to trash)")
+  .argument("[documentId]", "Document ID or slug")
   .option("-y, --yes", "Skip confirmation prompt")
   .option(
-    "--bulk <ids...:string>",
+    "--bulk <ids...>",
     "Delete multiple documents by slug or ID",
   )
   .option(
-    "--bulk-file <file:string>",
+    "--bulk-file <file>",
     "Read document slugs/IDs from a file (one per line)",
   )
   .option("--bulk-stdin", "Read document slugs/IDs from stdin")
   .action(
     async (
-      { yes, bulk, bulkFile, bulkStdin },
-      documentId,
+      documentId: string | undefined,
+      options,
     ) => {
+      const { yes, bulk, bulkFile, bulkStdin } = options
       try {
         const client = getGraphQLClient()
 
@@ -69,7 +70,7 @@ export const deleteCommand = new Command()
   )
 
 async function handleSingleDelete(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   documentId: string,
   options: { yes?: boolean },
@@ -97,12 +98,12 @@ async function handleSingleDelete(
 
   // Confirm deletion
   if (!yes) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError("Interactive confirmation required", {
         suggestion: "Use --yes to skip.",
       })
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Are you sure you want to delete "${document.title}"?`,
       default: false,
     })
@@ -132,7 +133,7 @@ async function handleSingleDelete(
 }
 
 async function handleBulkDelete(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   options: {
     bulk?: string[]
@@ -158,12 +159,12 @@ async function handleBulkDelete(
 
   // Confirm bulk operation
   if (!yes) {
-    if (!Deno.stdin.isTerminal()) {
+    if (!isStdinTTY()) {
       throw new ValidationError("Interactive confirmation required", {
         suggestion: "Use --yes to skip.",
       })
     }
-    const confirmed = await Confirm.prompt({
+    const confirmed = await confirm({
       message: `Delete ${ids.length} document(s)?`,
       default: false,
     })
@@ -250,6 +251,6 @@ async function handleBulkDelete(
 
   // Exit with error code if any failed
   if (summary.failed > 0) {
-    Deno.exit(1)
+    process.exit(1)
   }
 }

@@ -1,11 +1,13 @@
-import { Command } from "@cliffy/command"
-import { prompt, Select } from "@cliffy/prompt"
-import { join } from "@std/path"
+import { Command } from "commander"
+import { join } from "node:path"
+import { writeFile, stat } from "node:fs/promises"
 import { gql } from "../__codegen__/gql.ts"
 import { getGraphQLClient } from "../utils/graphql.ts"
 import { getDefaultWorkspace, getWorkspaces } from "../credentials.ts"
 import { getCliWorkspace, getOption, setCliWorkspace } from "../config.ts"
 import { AuthError, handleError, NotFoundError } from "../utils/errors.ts"
+import { select, searchSelect } from "../utils/prompt.ts"
+import { runCommand } from "../utils/runtime.ts"
 
 const configQuery = gql(`
   query Config {
@@ -24,8 +26,7 @@ const configQuery = gql(`
   }
 `)
 
-export const configCommand = new Command()
-  .name("config")
+export const configCommand = new Command("config")
   .description("Interactively generate .linear.toml configuration")
   .action(async () => {
     try {
@@ -38,7 +39,7 @@ export const configCommand = new Command()
 `)
 
       // Check for explicit API key sources (env var, config, or --workspace flag)
-      const hasExplicitApiKey = Deno.env.get("LINEAR_API_KEY") ||
+      const hasExplicitApiKey = process.env["LINEAR_API_KEY"] ||
         getOption("api_key") ||
         getCliWorkspace()
 
@@ -56,9 +57,9 @@ export const configCommand = new Command()
         } else {
           // Multiple workspaces - prompt to select
           const defaultWorkspace = getDefaultWorkspace()
-          const selected = await Select.prompt({
+          const selected = await select({
             message: "Select workspace:",
-            options: workspaces.map((ws) => ({
+            choices: workspaces.map((ws) => ({
               name: ws + (ws === defaultWorkspace ? " (default)" : ""),
               value: ws,
             })),
@@ -77,17 +78,10 @@ export const configCommand = new Command()
         a.name.toLowerCase().localeCompare(b.name.toLowerCase())
       )
 
-      interface Team {
-        id: string
-        key: string
-        name: string
-      }
-
-      const selectedTeamId = await Select.prompt({
+      // searchSelect replaces Select.prompt({ search: true })
+      const selectedTeamId = await searchSelect({
         message: "Select a team:",
-        search: true,
-        searchLabel: "Search teams",
-        options: teams.map((team) => ({
+        choices: teams.map((team) => ({
           name: `${team.name} (${team.key})`,
           value: team.id,
         })),
@@ -99,30 +93,30 @@ export const configCommand = new Command()
         throw new NotFoundError("Team", selectedTeamId)
       }
 
-      const responses = await prompt([
-        {
-          name: "sort",
-          message: "Select sort order:",
-          type: Select,
-          options: [
-            { name: "manual", value: "manual" },
-            { name: "priority", value: "priority" },
-          ],
-        },
-      ])
+      // Replace cliffy grouped prompt([...]) with individual await select(...)
+      const sortChoice = await select({
+        message: "Select sort order:",
+        choices: [
+          { name: "manual", value: "manual" },
+          { name: "priority", value: "priority" },
+        ],
+      })
       const teamKey = team.key
-      const sortChoice = responses.sort
 
       // Determine file path for .linear.toml: prefer git root .config dir, then git root, then cwd.
       let filePath: string
       try {
-        const gitRootProcess = await new Deno.Command("git", {
-          args: ["rev-parse", "--show-toplevel"],
-        }).output()
-        const gitRoot = new TextDecoder().decode(gitRootProcess.stdout).trim()
+        const gitRootResult = await runCommand("git", [
+          "rev-parse",
+          "--show-toplevel",
+        ])
+        if (!gitRootResult.success) {
+          throw new Error("git rev-parse failed")
+        }
+        const gitRoot = gitRootResult.stdout.trim()
         const configDir = join(gitRoot, ".config")
         try {
-          await Deno.stat(configDir)
+          await stat(configDir)
           filePath = join(configDir, "linear.toml")
         } catch {
           filePath = join(gitRoot, ".linear.toml")
@@ -139,7 +133,7 @@ team_id = "${teamKey}"
 issue_sort = "${sortChoice}"
 `
 
-      await Deno.writeTextFile(filePath, tomlContent)
+      await writeFile(filePath, tomlContent, "utf8")
       console.log("Configuration written to", filePath)
     } catch (error) {
       handleError(error, "Failed to generate configuration")

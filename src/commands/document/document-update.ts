@@ -1,8 +1,13 @@
-import { Command } from "@cliffy/command"
+import { Command } from "commander"
+import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
+import { spawn } from "node:child_process"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getEditor } from "../../utils/editor.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 import {
   CliError,
   handleError,
@@ -25,28 +30,29 @@ async function openEditorWithContent(
   }
 
   // Create a temporary file with initial content
-  const tempFile = await Deno.makeTempFile({ suffix: ".md" })
+  const dir = await mkdtemp(join(tmpdir(), "linear-cli-"))
+  const tempFile = join(dir, "edit.md")
 
   try {
     // Write initial content to temp file
-    await Deno.writeTextFile(tempFile, initialContent)
+    await writeFile(tempFile, initialContent, "utf8")
 
     // Open the editor
-    const process = new Deno.Command(editor, {
-      args: [tempFile],
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
+    const exitCode = await new Promise<number>((resolve, reject) => {
+      const child = spawn(editor, [tempFile], {
+        stdio: "inherit",
+        shell: false,
+      })
+      child.on("error", reject)
+      child.on("close", (code) => resolve(code ?? 1))
     })
 
-    const { success } = await process.output()
-
-    if (!success) {
+    if (exitCode !== 0) {
       throw new CliError("Editor exited with an error")
     }
 
     // Read the content back
-    const content = await Deno.readTextFile(tempFile)
+    const content = await readFile(tempFile, "utf8")
     const cleaned = content.trim()
 
     return cleaned.length > 0 ? cleaned : undefined
@@ -63,7 +69,8 @@ async function openEditorWithContent(
   } finally {
     // Clean up the temporary file
     try {
-      await Deno.remove(tempFile)
+      await rm(tempFile, { force: true })
+      await rm(dir, { recursive: true, force: true })
     } catch {
       // Ignore cleanup errors
     }
@@ -75,7 +82,7 @@ async function openEditorWithContent(
  */
 async function readContentFromStdin(): Promise<string | undefined> {
   // Check if stdin has data (not a TTY)
-  if (Deno.stdin.isTerminal()) {
+  if (isStdinTTY()) {
     return undefined
   }
 
@@ -95,38 +102,38 @@ async function readContentFromStdin(): Promise<string | undefined> {
   }
 }
 
-export const updateCommand = new Command()
-  .name("update")
-  .description("Update an existing document")
+export const updateCommand = new Command("update")
   .alias("u")
-  .arguments("<documentId:string>")
-  .option("-t, --title <title:string>", "New title for the document")
-  .option("-c, --content <content:string>", "New markdown content (inline)")
+  .description("Update an existing document")
+  .argument("<documentId>", "Document ID or slug")
+  .option("-t, --title <title>", "New title for the document")
+  .option("-c, --content <content>", "New markdown content (inline)")
   .option(
-    "-f, --content-file <path:string>",
+    "-f, --content-file <path>",
     "Read new content from file",
   )
-  .option("--icon <icon:string>", "New icon (emoji)")
+  .option("--icon <icon>", "New icon (emoji)")
   .option("-e, --edit", "Open current content in $EDITOR for editing")
   .action(
     async (
-      { title, content, contentFile, icon, edit },
-      documentId,
+      documentId: string,
+      options,
     ) => {
+      const { title, content, contentFile, icon, edit } = options
       try {
         const client = getGraphQLClient()
 
         // Build the update input
-        const input: Record<string, string> = {}
+        const inputData: Record<string, string> = {}
 
         // Add title if provided
         if (title) {
-          input.title = title
+          inputData.title = title
         }
 
         // Add icon if provided
         if (icon) {
-          input.icon = icon
+          inputData.icon = icon
         }
 
         // Resolve content from various sources
@@ -138,9 +145,10 @@ export const updateCommand = new Command()
         } else if (contentFile) {
           // Content from file
           try {
-            finalContent = await Deno.readTextFile(contentFile)
+            finalContent = await readFile(contentFile, "utf8")
           } catch (error) {
-            if (error instanceof Deno.errors.NotFound) {
+            const nodeErr = error as NodeJS.ErrnoException
+            if (nodeErr?.code === "ENOENT") {
               throw new NotFoundError("File", contentFile)
             }
             throw new CliError(
@@ -186,7 +194,7 @@ export const updateCommand = new Command()
             return
           }
         } else if (
-          !Deno.stdin.isTerminal() && Object.keys(input).length === 0
+          !isStdinTTY() && Object.keys(inputData).length === 0
         ) {
           // Only try reading from stdin if no other update fields were provided
           // This avoids hanging when stdin is piped but has no data (e.g., in test environments)
@@ -198,11 +206,11 @@ export const updateCommand = new Command()
 
         // Add content to input if resolved
         if (finalContent !== undefined) {
-          input.content = finalContent
+          inputData.content = finalContent
         }
 
         // Validate that at least one field is being updated
-        if (Object.keys(input).length === 0) {
+        if (Object.keys(inputData).length === 0) {
           throw new ValidationError("No update fields provided", {
             suggestion:
               "Use --title, --content, --content-file, --icon, or --edit.",
@@ -227,7 +235,7 @@ export const updateCommand = new Command()
 
         const result = await client.request(updateMutation, {
           id: documentId,
-          input,
+          input: inputData,
         })
 
         if (!result.documentUpdate.success) {

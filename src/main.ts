@@ -93,31 +93,18 @@ Environment Variables:
 // ---------------------------------------------------------------------------
 
 program.addCommand(authCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(issueCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(teamCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(projectCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(projectUpdateCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(cycleCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(milestoneCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(initiativeCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(initiativeUpdateCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(labelCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(documentCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(configCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(schemaCommand)
-// @ts-ignore — cliffy Command ≠ commander Command; clears in Phase D
 program.addCommand(apiCommand)
 
 // completions command intentionally dropped — see PORT_PLAN.md §7 locked decision.

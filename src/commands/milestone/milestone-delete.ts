@@ -1,8 +1,10 @@
-import { Command } from "@cliffy/command"
-import { Confirm } from "@cliffy/prompt"
+import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
+import { createSpinner } from "../../utils/spinner.ts"
+import { confirm } from "../../utils/prompt.ts"
+import { isStdinTTY } from "../../utils/runtime.ts"
 import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 
 const DeleteProjectMilestone = gql(`
@@ -13,20 +15,20 @@ const DeleteProjectMilestone = gql(`
   }
 `)
 
-export const deleteCommand = new Command()
-  .name("delete")
+export const deleteCommand = new Command("delete")
   .description("Delete a project milestone")
-  .arguments("<id:string>")
+  .argument("<id>", "Milestone ID")
   .option("-f, --force", "Skip confirmation prompt")
-  .action(async ({ force }, id) => {
+  .action(async (id: string, options) => {
+    const { force } = options
     // Confirmation prompt unless --force is used
     if (!force) {
-      if (!Deno.stdin.isTerminal()) {
+      if (!isStdinTTY()) {
         throw new ValidationError("Interactive confirmation required", {
           suggestion: "Use --force to skip confirmation.",
         })
       }
-      const confirmed = await Confirm.prompt({
+      const confirmed = await confirm({
         message: `Are you sure you want to delete milestone ${id}?`,
         default: false,
       })
@@ -37,17 +39,15 @@ export const deleteCommand = new Command()
       }
     }
 
-    const { Spinner } = await import("@std/cli/unstable-spinner")
-    const showSpinner = shouldShowSpinner()
-    const spinner = showSpinner ? new Spinner() : null
-    spinner?.start()
+    const spinner = createSpinner("", shouldShowSpinner())
+    spinner.start()
 
     try {
       const client = getGraphQLClient()
       const result = await client.request(DeleteProjectMilestone, {
         id,
       })
-      spinner?.stop()
+      spinner.stop()
 
       if (result.projectMilestoneDelete.success) {
         console.log(`✓ Deleted milestone ${id}`)
@@ -55,7 +55,7 @@ export const deleteCommand = new Command()
         throw new CliError("Failed to delete milestone")
       }
     } catch (error) {
-      spinner?.stop()
+      spinner.stop()
       handleError(error, "Failed to delete milestone")
     }
   })
