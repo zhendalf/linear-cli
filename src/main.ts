@@ -57,14 +57,25 @@ Environment Variables:
   // any nesting depth regardless of which command actually parsed it.
   .option("--workspace <slug>", "Target workspace (uses credentials)")
   .hook("preAction", (_thisCommand, actionCommand) => {
-    // optsWithGlobals() merges the root program's options into the subcommand's
-    // option object, so workspace is visible regardless of where it appeared.
-    // A command may define its OWN boolean `--workspace` (e.g. label list's
-    // scope filter), in which case optsWithGlobals() yields `true` — only the
-    // global `--workspace <slug>` produces a string. Guard on typeof so a
-    // command-level boolean filter never drives the credential selector.
-    const opts = actionCommand.optsWithGlobals<{ workspace?: string | boolean }>()
-    setCliWorkspace(typeof opts.workspace === "string" ? opts.workspace : undefined)
+    // Resolve the GLOBAL `--workspace` credential selector. It may appear before
+    // the subcommand (parsed by the root) or after it (parsed by whichever
+    // command we injected `--workspace <slug>` onto). Walk from the action
+    // command up to the root and take the first value from a command that holds
+    // the GLOBAL option — i.e. the root, or a command in `injectedWorkspace`.
+    // Commands that define their OWN `--workspace` (config's write-value,
+    // label-list's boolean filter) carry a different meaning and are skipped, so
+    // they never drive credential selection.
+    let workspace: string | undefined
+    for (let cmd: Command | null = actionCommand; cmd; cmd = cmd.parent) {
+      if (cmd === program || injectedWorkspace.has(cmd)) {
+        const value = cmd.opts().workspace
+        if (typeof value === "string") {
+          workspace = value
+          break
+        }
+      }
+    }
+    setCliWorkspace(workspace)
   })
   // Default action when no subcommand is given — print help.
   .action(() => {
@@ -116,22 +127,23 @@ program.addCommand(apiCommand)
 // resolved value via optsWithGlobals().
 //
 // Two interacting concerns:
-//   1. A command may define its OWN `--workspace` (e.g. label-list's boolean
-//      scope filter). It must keep that meaning, so we never inject the global
-//      `--workspace <slug>` onto a command whose subtree already defines its
-//      own `--workspace`. The leaf keeps its boolean; group ancestors stay
-//      clean so the flag isn't intercepted on the way down.
+//   1. A command may define its OWN `--workspace` (label-list's boolean scope
+//      filter, config's write-value). Inject the global `--workspace <slug>`
+//      onto every OTHER command, but skip a command that defines its own — only
+//      that exact command keeps its meaning. Ancestors and siblings still get
+//      the global, so e.g. `label --workspace acme create` works while
+//      `label list --workspace` stays the boolean filter (the leaf shadows it
+//      via positional/passthrough parsing below).
 //   2. Group commands (those with subcommands) call `.passThroughOptions()` so
 //      that, combined with the root's `.enablePositionalOptions()`, a flag
 //      appearing after the leaf's name is forwarded to the leaf rather than
 //      consumed by the group.
 const injectedWorkspace = new Set<Command>()
 
-function subtreeDefinesOwnWorkspace(cmd: Command): boolean {
-  if (cmd.options.some((o) => o.long === "--workspace") && !injectedWorkspace.has(cmd)) {
-    return true
-  }
-  return cmd.commands.some(subtreeDefinesOwnWorkspace)
+// True only when the command defines `--workspace` in its own module (not one
+// we injected) — i.e. it owns the flag's meaning and must not be overwritten.
+function ownsWorkspaceOption(cmd: Command): boolean {
+  return cmd.options.some((o) => o.long === "--workspace") && !injectedWorkspace.has(cmd)
 }
 
 function addWorkspaceOptionDeep(cmd: Command): void {
@@ -144,7 +156,7 @@ function addWorkspaceOptionDeep(cmd: Command): void {
       sub.enablePositionalOptions()
       sub.passThroughOptions()
     }
-    if (!subtreeDefinesOwnWorkspace(sub)) {
+    if (!ownsWorkspaceOption(sub)) {
       sub.option("--workspace <slug>", "Target workspace (uses credentials)")
       injectedWorkspace.add(sub)
     }
