@@ -33,7 +33,7 @@ The command surface grew over a long series of releases. Notable milestones:
 ### Teams, projects, cycles, milestones, documents
 
 - `team` list/id/members/create/delete and GitHub autolinks
-- `project` list/view/create/update/delete with `--json`
+- `project` list/view/create/update/delete (`--json` output on list and create)
 - `cycle` list/view and `--cycle` filtering
 - `milestone` list/view/create/update/delete
 - `document` list/view/create/update/delete

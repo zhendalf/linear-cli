@@ -300,8 +300,9 @@ this will:
 
 > **note:** `SKILL.md` is the authoritative quick reference. The reference files
 > under `skills/linear-cli/references/` are supplementary and may lag behind the
-> current `--help` output; regenerate with
-> `LINEAR_CLI="node dist/main.js" bun run generate-skill-docs`.
+> current `--help` output. The reference generator does not yet parse aliased
+> command help (e.g. `issue|i`), so it would only discover the unaliased
+> top-level commands — don't regenerate the references until it's updated.
 
 ### code formatting
 
