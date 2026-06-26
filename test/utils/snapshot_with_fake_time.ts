@@ -125,6 +125,34 @@ export async function captureOutput(
   const origConsoleWarn = console.warn
   const origExit = process.exit
 
+  // Pin a deterministic non-TTY environment for the duration of the capture.
+  // Commands size tables off `isStdoutTTY()`/`getConsoleSize()` (i.e.
+  // `process.stdout.isTTY`/`.columns`) and gate interactivity/spinners off TTY
+  // state. Without pinning, snapshots only match when run piped (isTTY=undefined,
+  // the fixed fallback width); in an interactive terminal the real isTTY/width
+  // leaks in and table-width snapshots fail. Force the piped behaviour here.
+  // `isTTY`/`columns` are getter-only on real terminal streams (plain assignment
+  // throws "readonly"), so override via defineProperty and restore exactly.
+  const restorePins: Array<() => void> = []
+  const pinProp = (obj: object, prop: string, value: unknown) => {
+    const orig = Object.getOwnPropertyDescriptor(obj, prop)
+    Object.defineProperty(obj, prop, {
+      value,
+      configurable: true,
+      writable: true,
+      enumerable: true,
+    })
+    restorePins.push(() => {
+      if (orig) Object.defineProperty(obj, prop, orig)
+      else delete (obj as Record<string, unknown>)[prop]
+    })
+  }
+  pinProp(process.stdout, "isTTY", false)
+  pinProp(process.stderr, "isTTY", false)
+  pinProp(process.stdin, "isTTY", false)
+  pinProp(process.stdout, "columns", undefined)
+  pinProp(process.stdout, "rows", undefined)
+
   process.stdout.write = (chunk: string | Uint8Array, ...args: unknown[]) => {
     stdoutBuf += typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString()
     return true
@@ -166,6 +194,7 @@ export async function captureOutput(
     console.error = origConsoleError
     console.warn = origConsoleWarn
     process.exit = origExit
+    for (const restore of restorePins) restore()
   }
 
   // Only suppress commander control-flow exits (help/version/normal exit).
