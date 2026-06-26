@@ -2,9 +2,8 @@
  * Credentials store — JSON-backed, 0600 permissions.
  *
  * File format: { "default": "<workspace>", "<workspace>": "lin_api_...", ... }
- *
- * All keyring/migration code has been removed (PORT_PLAN.md §7, locked decision).
- * Users must re-run `linear auth login` after upgrading from the Deno release.
+ * The `default` key names the active workspace; every other key maps a
+ * workspace slug to its API key.
  */
 
 import { existsSync } from "node:fs"

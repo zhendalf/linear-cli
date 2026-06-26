@@ -120,8 +120,7 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
       const labels = preloaded?.labels ?? (await getLabelsForTeam(teamKey))
       if (labels.length === 0) return []
 
-      // Note: cliffy's `search: true` on Checkbox has no inquirer equivalent.
-      // We render the full list without a search box (accepted behaviour change).
+      // The multi-select renders the full label list without a search box.
       return await checkbox({
         message: "Select labels (use space to select, enter to confirm)",
         choices: labels.map((label) => ({
@@ -761,7 +760,9 @@ export const createCommand = new Command("create")
         `)
 
       const client = getGraphQLClient()
-      const data = await client.request(createIssueMutation, { input: inputData })
+      const data = await client.request(createIssueMutation, {
+        input: inputData,
+      })
       if (!data.issueCreate.success) {
         throw new CliError("Issue creation failed")
       }

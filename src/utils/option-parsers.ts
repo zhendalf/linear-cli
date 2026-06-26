@@ -14,8 +14,8 @@ export function collect(value: string, previous: string[] = []): string[] {
 }
 
 /**
- * Accumulate repeated values, validating each against an allow-list (replaces
- * cliffy `EnumType` on a repeatable option). Throws at parse time on bad input.
+ * Accumulate repeated values, validating each against an allow-list for a
+ * repeatable option. Throws at parse time on bad input.
  */
 export function collectEnum(allowed: readonly string[], label: string) {
   return (value: string, previous: string[] = []): string[] => {

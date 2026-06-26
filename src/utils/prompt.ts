@@ -1,27 +1,8 @@
 /**
- * Thin wrappers over @inquirer/prompts (+ @inquirer/search) that command
- * modules call instead of importing cliffy directly.
- *
- * Cliffy call-shape → inquirer mapping:
- *
- *   Select.prompt({ message, options: [{name,value}], default?, search? })
- *     → select({ message, choices: [{name,value}], default? })
- *       or search({ message, source }) when search:true
- *
- *   Checkbox.prompt({ message, options: [{name,value}], search? })
- *     → checkbox({ message, choices: [{name,value}] })
- *
- *   Input.prompt({ message, default?, minLength? })
- *     → input({ message, default?, validate? })
- *
- *   Confirm.prompt({ message, default? })
- *     → confirm({ message, default? })
- *
- *   Secret.prompt({ message, hint? })
- *     → password({ message })
- *
- * Choice objects: cliffy used {name, value}; @inquirer/prompts also uses
- * {name, value} — the shape is compatible and needs no adaptation.
+ * Thin wrappers over @inquirer/prompts (+ @inquirer/search). Command modules
+ * import these helpers (`select`, `searchSelect`, `checkbox`, `input`,
+ * `confirm`, `password`) so all interactive prompts share one small, typed API
+ * and a consistent `{ message, choices: [{ name, value }] }` shape.
  */
 
 import {
@@ -34,24 +15,20 @@ import {
 import _search from "@inquirer/search"
 
 // ---------------------------------------------------------------------------
-// Shared choice type — mirrors cliffy {name, value} and inquirer {name, value}
+// Shared choice type — { name, value } pairs used by every prompt helper.
 // ---------------------------------------------------------------------------
 
 export interface Choice<T = string> {
   name: string
   value: T
-  /** Optional: render the choice differently from its value (unused by cliffy). */
+  /** Disable the choice, optionally with a reason string. */
   disabled?: boolean | string
 }
 
 // ---------------------------------------------------------------------------
 // select
 //
-// Cliffy: Select.prompt({ message, options, default?, search? })
-// Maps to inquirer `select` (or `search` when the caller passes search:true).
-// The `search` flag is surfaced as a separate `searchSelect` export below so
-// Phase D callers can replace `Select.prompt({ ..., search: true })` with the
-// appropriate helper without any runtime branching here.
+// A plain single-select prompt. For a filterable variant, use `searchSelect`.
 // ---------------------------------------------------------------------------
 
 export interface SelectOptions<T = string> {
@@ -60,7 +37,7 @@ export interface SelectOptions<T = string> {
   default?: T
 }
 
-/** Non-searchable select — replaces `Select.prompt(...)` without search:true. */
+/** Non-searchable single-select prompt. */
 export async function select<T = string>(opts: SelectOptions<T>): Promise<T> {
   return _select<T>({
     message: opts.message,
@@ -72,17 +49,17 @@ export async function select<T = string>(opts: SelectOptions<T>): Promise<T> {
 // ---------------------------------------------------------------------------
 // searchSelect
 //
-// Cliffy: Select.prompt({ message, options, search: true })
-// Maps to @inquirer/search which provides fuzzy-filter as the user types.
+// Single-select prompt with fuzzy-filter as the user types (via
+// @inquirer/search).
 // ---------------------------------------------------------------------------
 
 export interface SearchSelectOptions<T = string> {
   message: string
   choices: Choice<T>[]
-  // Note: @inquirer/search has no 'default' config field (unlike Select).
+  // Note: @inquirer/search has no 'default' config field.
 }
 
-/** Searchable select — replaces `Select.prompt({ ..., search: true })`. */
+/** Searchable single-select prompt. */
 export async function searchSelect<T = string>(opts: SearchSelectOptions<T>): Promise<T> {
   return _search<T>({
     message: opts.message,
@@ -100,13 +77,11 @@ export async function searchSelect<T = string>(opts: SearchSelectOptions<T>): Pr
 // ---------------------------------------------------------------------------
 // checkbox
 //
-// Cliffy: Checkbox.prompt({ message, options: [{name,value}], search? })
-// Maps to inquirer checkbox.
+// Multi-select prompt.
 //
-// ⚠️ Cliffy's `search: true` / `searchLabel` (filterable multi-select, used by
-// issue-create for labels) has NO inquirer equivalent — @inquirer/checkbox
-// cannot filter. We render the full list without a search box; this is an
-// accepted behaviour change. Sort the most-likely choices first for long lists.
+// ⚠️ @inquirer/checkbox has no built-in filtering, so the full list is rendered
+// without a search box. For long lists (e.g. labels in issue-create), sort the
+// most-likely choices first.
 // ---------------------------------------------------------------------------
 
 export interface CheckboxOptions<T = string> {
@@ -114,7 +89,7 @@ export interface CheckboxOptions<T = string> {
   choices: Choice<T>[]
 }
 
-/** Multi-select checkbox — replaces `Checkbox.prompt(...)`. */
+/** Multi-select checkbox prompt. */
 export async function checkbox<T = string>(opts: CheckboxOptions<T>): Promise<T[]> {
   return _checkbox<T>({
     message: opts.message,
@@ -125,18 +100,17 @@ export async function checkbox<T = string>(opts: CheckboxOptions<T>): Promise<T[
 // ---------------------------------------------------------------------------
 // input
 //
-// Cliffy: Input.prompt({ message, default?, minLength? })
-// Maps to inquirer input with optional validate for minLength.
+// Single-line text input, with optional minimum-length validation.
 // ---------------------------------------------------------------------------
 
 export interface InputOptions {
   message: string
   default?: string
-  /** Minimum required length (cliffy minLength). */
+  /** Minimum required length. */
   minLength?: number
 }
 
-/** Single-line text input — replaces `Input.prompt(...)`. */
+/** Single-line text input. */
 export async function input(opts: InputOptions): Promise<string> {
   return _input({
     message: opts.message,
@@ -154,8 +128,7 @@ export async function input(opts: InputOptions): Promise<string> {
 // ---------------------------------------------------------------------------
 // confirm
 //
-// Cliffy: Confirm.prompt({ message, default? })
-// Maps to inquirer confirm.
+// Boolean yes/no prompt.
 // ---------------------------------------------------------------------------
 
 export interface ConfirmOptions {
@@ -163,7 +136,7 @@ export interface ConfirmOptions {
   default?: boolean
 }
 
-/** Boolean yes/no confirm — replaces `Confirm.prompt(...)`. */
+/** Boolean yes/no confirm. */
 export async function confirm(opts: ConfirmOptions): Promise<boolean> {
   return _confirm({
     message: opts.message,
@@ -174,9 +147,8 @@ export async function confirm(opts: ConfirmOptions): Promise<boolean> {
 // ---------------------------------------------------------------------------
 // password
 //
-// Cliffy: Secret.prompt({ message, hint? })
-// Maps to inquirer password (hint is surfaced as part of the message string
-// by the caller if needed; there is no direct hint field in inquirer).
+// Masked secret input. There is no dedicated hint field; callers that want a
+// hint should fold it into the message.
 // ---------------------------------------------------------------------------
 
 export interface PasswordOptions {
@@ -185,7 +157,7 @@ export interface PasswordOptions {
   hint?: string
 }
 
-/** Masked password/secret input — replaces `Secret.prompt(...)`. */
+/** Masked password/secret input. */
 export async function password(opts: PasswordOptions): Promise<string> {
   return _password({
     message: opts.message,

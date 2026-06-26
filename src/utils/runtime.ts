@@ -1,6 +1,7 @@
 /**
- * Deno → Node shim: subprocess, TTY, console-size, ENOENT, platform helpers.
- * All later phases import from here instead of calling Node APIs directly.
+ * Runtime helpers: subprocess, TTY, console-size, ENOENT, and platform checks.
+ * Commands and utils import these instead of calling the Node APIs directly,
+ * keeping environment handling consistent in one place.
  */
 
 import { execFile } from "node:child_process"
@@ -25,9 +26,9 @@ export async function runCommand(
   opts?: { cwd?: string; env?: Record<string, string> },
 ): Promise<RunCommandResult> {
   try {
-    // Match Deno.Command semantics: `env` overrides MERGE with the parent
-    // environment (Deno inherits unless clearEnv is set), so a single override
-    // must not drop PATH and break executable resolution.
+    // `env` overrides MERGE with the parent environment so that a single
+    // override (e.g. one variable) does not drop PATH and break executable
+    // resolution.
     const env = opts?.env ? { ...process.env, ...opts.env } : process.env
     const { stdout, stderr } = await execFileAsync(cmd, args, {
       cwd: opts?.cwd,

@@ -1,6 +1,6 @@
 /**
  * In-process snapshot test harness for commander-based commands.
- * Replaces the cliffy/Deno subprocess-based snapshot test approach.
+ * Runs the command in-process (no subprocess) and snapshots its output.
  *
  * Usage:
  *   await snapshotTest({
@@ -93,7 +93,11 @@ function isControlFlowExit(err: unknown): boolean {
     return true
   }
   if (err && typeof err === "object") {
-    const e = err as { name?: string; code?: string; constructor?: { name?: string } }
+    const e = err as {
+      name?: string
+      code?: string
+      constructor?: { name?: string }
+    }
     // commander.CommanderError instances carry a `code` like
     // "commander.helpDisplayed" / "commander.version" / "commander.help".
     if (typeof e.code === "string" && e.code.startsWith("commander.")) {
@@ -175,8 +179,7 @@ export async function captureOutput(
 }
 
 /**
- * Register a snapshot test using bun:test.
- * The old cliffy harness spawned a subprocess per test; this runs in-process.
+ * Register a snapshot test using bun:test. Runs the command in-process.
  */
 export async function snapshotTest(options: SnapshotTestWithFakeTimeOptions): Promise<void> {
   const {
@@ -219,7 +222,7 @@ export async function snapshotTest(options: SnapshotTestWithFakeTimeOptions): Pr
         const cleanStdout = colors ? stdout : stripAnsi(stdout)
         const cleanStderr = colors ? stderr : stripAnsi(stderr)
 
-        // Format output like the old cliffy harness: stdout + stderr combined
+        // Combine stdout + stderr into a single snapshot string
         const output = `stdout:\n"${cleanStdout}"\nstderr:\n"${cleanStderr}"`
 
         expect(output).toMatchSnapshot()

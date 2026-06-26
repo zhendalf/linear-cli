@@ -1,6 +1,6 @@
 # Conventions
 
-This is a native Node/Bun TypeScript project (not Deno).
+This is a native Node/Bun TypeScript project.
 
 The substantive contributor conventions — toolchain commands, credentials model,
 error handling, CLI-flag rules, and test layout — live in [AGENTS.md](AGENTS.md)

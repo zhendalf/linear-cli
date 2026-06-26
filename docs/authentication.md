@@ -31,11 +31,6 @@ and every other key maps a workspace slug to its API key.
 }
 ```
 
-> **Migrating from the original Deno release:** earlier versions stored tokens in
-> the OS keyring (macOS Keychain, libsecret, Windows Credential Manager). That
-> keyring backend has been removed. After upgrading you must re-run
-> `linear auth login` for each workspace to populate `credentials.json`.
-
 ### commands
 
 ```bash

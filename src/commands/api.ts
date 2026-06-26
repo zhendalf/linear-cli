@@ -7,7 +7,7 @@ import { isNotFoundError, isStdoutTTY } from "../utils/runtime.ts"
 
 /**
  * argParser for --variable <key=value> options.
- * Accumulates into an array (replaces cliffy collect:true + custom Type).
+ * Accumulates each key=value pair into an array.
  */
 function parseVariable(value: string, prev: [string, string][] = []): [string, string][] {
   const [key, ...rest] = value.split("=")

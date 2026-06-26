@@ -31,8 +31,7 @@ jobs:
         run: bun run build
 
       # NOTE: skill-docs generation (`bun run generate-skill-docs`) is intentionally
-      # NOT run in CI yet — its parser was written for cliffy's --help format and
-      # needs reworking for commander's output. Run it manually after that update:
+      # NOT run in CI — run it manually when command help text changes:
       #   LINEAR_CLI="node dist/main.js" bun run generate-skill-docs
 
   node-parity:

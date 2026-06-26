@@ -1,11 +1,9 @@
 /**
  * Entry point — commander shell.
  *
- * Originally ported from Deno/cliffy (see docs/dev/ for the historical plan):
- *   - @cliffy/command  → commander@13
- *   - shell `completions` command dropped (to be revisited)
- *   - globalOption(--workspace) + globalAction → root .option + preAction hook
- *   - .parse(Deno.args) → await program.parseAsync(process.argv)
+ * Builds the root `commander` program: registers the global `--workspace`
+ * option (resolved in a preAction hook), wires up every top-level command
+ * group, and dispatches via `program.parseAsync(process.argv)`.
  */
 
 // Side-effect inits: config (reads .linear.toml + .env) then credentials.
@@ -68,7 +66,7 @@ Environment Variables:
     const opts = actionCommand.optsWithGlobals<{ workspace?: string | boolean }>()
     setCliWorkspace(typeof opts.workspace === "string" ? opts.workspace : undefined)
   })
-  // Default action when no subcommand is given — mirror cliffy behaviour.
+  // Default action when no subcommand is given — print help.
   .action(() => {
     program.help()
   })
@@ -76,7 +74,7 @@ Environment Variables:
 // ---------------------------------------------------------------------------
 // Register subcommands
 //
-// Convention (see docs/dev/PORTING-RECIPE.md):
+// Convention (see docs/dev/COMMANDS.md):
 //   Each command MODULE is responsible for its own name, alias, and
 //   description. It exports a configured commander Command that
 //   main.ts picks up via program.addCommand(). main.ts never sets
@@ -111,8 +109,6 @@ program.addCommand(documentCommand)
 program.addCommand(configCommand)
 program.addCommand(schemaCommand)
 program.addCommand(apiCommand)
-
-// completions command intentionally dropped during the port (to be revisited).
 
 // Make --workspace position-independent: register it on every command in the
 // tree (Commander won't parse a parent option appearing after the subcommand

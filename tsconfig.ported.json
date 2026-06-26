@@ -1,6 +1,0 @@
-{
-  "//": "Incremental green gate. As of D7 every file is ported, so this converges to the full project (same scope as tsconfig.json). Must typecheck with 0 errors.",
-  "extends": "./tsconfig.json",
-  "include": ["src", "codegen.ts"],
-  "exclude": ["dist", "node_modules"]
-}

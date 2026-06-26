@@ -1,7 +1,7 @@
 {
   "name": "@zhendalf/linear-cli",
   "version": "2.0.0",
-  "description": "Handy Linear commands from the command line — git/jj-aware, agent-friendly. Native Node/Bun fork of schpet/linear-cli.",
+  "description": "Handy Linear commands from the command line — git/jj-aware, agent-friendly, runs on Node and Bun.",
   "type": "module",
   "bin": {
     "linear": "./dist/main.js"
@@ -41,7 +41,7 @@
     "build": "bun run codegen && bun run scripts/build.ts",
     "codegen": "graphql-codegen --config codegen.ts",
     "typecheck": "tsc --noEmit",
-    "typecheck:ported": "tsc -p tsconfig.ported.json",
+    "typecheck:strict": "tsc -p tsconfig.strict.json",
     "test": "bun test",
     "lint": "biome check .",
     "format": "biome format --write .",

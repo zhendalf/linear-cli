@@ -172,10 +172,9 @@ linear api
 
 ## Reference Documentation
 
-> Note: the per-command files under `references/` were generated from the old
-> cliffy help format and are stale after the commander port. Treat this `SKILL.md`
-> and `--help` output as authoritative; the reference files need regeneration once
-> the doc generator's parser is updated for commander.
+> Note: the per-command files under `references/` are supplementary. Treat this
+> `SKILL.md` and `--help` output as authoritative; the reference files may lag
+> behind the current help output.
 
 - [auth](references/auth.md) - Manage Linear authentication
 - [issue](references/issue.md) - Manage Linear issues

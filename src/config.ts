@@ -2,13 +2,9 @@
  * Config loader: reads `.linear.toml` (global + project + git-root) and
  * `.env` files, then exposes a typed `getOption()` accessor.
  *
- * Ported from Deno: @std/toml → smol-toml, @std/path → node:path,
- * @std/dotenv → dotenv (programmatic parse), Deno.Command → runCommand,
- * Deno.env → process.env, Deno.build.os → isWindows.
- *
- * Module-top `await` replaced with an explicit `init()` for testability, but
- * the module still calls `init()` at import time to preserve the existing
- * behaviour (config is ready by the time any command runs).
+ * `init()` does the loading and is exported so tests can run it in a
+ * controlled environment; the module also calls `init()` at import time so
+ * config is ready by the time any command runs.
  */
 
 import { readFileSync } from "node:fs"

@@ -24,7 +24,7 @@ Commands:
   default  [workspace]  - Set the default workspace                      
   token                 - Print the configured API token                 
   whoami                - Print information about the authenticated user 
-  migrate               - Migrate plaintext credentials to system keyring
+  status                - Show how auth resolves in the current directory 
 ```
 
 ## Subcommands
@@ -45,7 +45,6 @@ Options:
   -h, --help           - Show this help.                                              
   --workspace  <slug>  - Target workspace (uses credentials)                          
   -k, --key    <key>   - API key (prompted if not provided)                           
-  --plaintext          - Store API key in credentials file instead of system keyring
 ```
 
 ### logout
@@ -134,16 +133,16 @@ Options:
   --workspace  <slug>  - Target workspace (uses credentials)
 ```
 
-### migrate
+### status
 
-> Migrate plaintext credentials to system keyring
+> Show how auth resolves in the current directory
 
 ```
-Usage:   linear auth migrate
+Usage:   linear auth status
 
 Description:
 
-  Migrate plaintext credentials to system keyring
+  Show how auth resolves in the current directory
 
 Options:
 

@@ -47,5 +47,5 @@ await snapshotTest({
   },
 })
 
-// Note: Deletion failure test not included because it calls Deno.exit(1)
-// which is not well-supported by the snapshot testing framework
+// Note: deletion-failure test not included because the failure path exits the
+// process (via handleError), which the snapshot harness does not capture well.

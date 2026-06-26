@@ -1,24 +1,20 @@
 /**
- * charmd deps — repointed from Deno/@std to npm equivalents.
- *
- * Original used:
- *   - jsr:@std/fmt/colors  → chalk@5 (ESM)
- *   - mdast-util-from-markdown (via shimmed bundle) → npm mdast-util-from-markdown
- *   - mdast-util-gfm-strikethrough → npm mdast-util-gfm-strikethrough
- *   - micromark-extension-gfm-strikethrough → npm micromark-extension-gfm-strikethrough
+ * Shared dependencies for the charmd markdown renderer: chalk for terminal
+ * color, plus the mdast/micromark packages used to parse markdown (including
+ * GFM strikethrough).
  */
 
-import chalk from "chalk"
-import { fromMarkdown } from "mdast-util-from-markdown"
-import { gfmStrikethroughFromMarkdown } from "mdast-util-gfm-strikethrough"
-import { gfmStrikethrough } from "micromark-extension-gfm-strikethrough"
+import chalk from "chalk";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmStrikethroughFromMarkdown } from "mdast-util-gfm-strikethrough";
+import { gfmStrikethrough } from "micromark-extension-gfm-strikethrough";
 
 // ---------------------------------------------------------------------------
 // Re-export the mdast pieces in the shape charmd internals expect
 // ---------------------------------------------------------------------------
 
-export { gfmStrikethroughFromMarkdown as strikethroughExt }
-export { gfmStrikethrough as strike }
+export { gfmStrikethroughFromMarkdown as strikethroughExt };
+export { gfmStrikethrough as strike };
 
 export type mdastFromMarkdownFn = (
   markdown: string,
@@ -26,18 +22,17 @@ export type mdastFromMarkdownFn = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: { extensions?: any[]; mdastExtensions?: any[] },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-) => any
+) => any;
 
 export const fromMarkdownFn: mdastFromMarkdownFn = (
   markdown: string,
   _encoding?: string,
   options?: { extensions?: any[]; mdastExtensions?: any[] },
-) => fromMarkdown(markdown, options as any)
+) => fromMarkdown(markdown, options as any);
 
 // ---------------------------------------------------------------------------
-// colors shim — map @std/fmt/colors API → chalk
-// The original code does:  import { colors } from "./deps.ts"
-// and calls colors.bold(), colors.red(), colors.stripColor(), etc.
+// colors — a small chalk-backed helper. The renderer imports `colors` from
+// here and calls colors.bold(), colors.red(), colors.stripColor(), etc.
 // ---------------------------------------------------------------------------
 
 export const colors = {
@@ -68,4 +63,4 @@ export const colors = {
 
   // Utility
   stripColor: (s: string) => s.replace(/\x1b\[[0-9;]*m/g, ""),
-}
+};

@@ -1,0 +1,6 @@
+{
+  "//": "Type-check gate over the full source tree (same scope as tsconfig.json). Must typecheck with 0 errors.",
+  "extends": "./tsconfig.json",
+  "include": ["src", "codegen.ts"],
+  "exclude": ["dist", "node_modules"]
+}

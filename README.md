@@ -2,7 +2,7 @@
 
 a cli to list, start and create issues in the [linear](https://linear.app/) issue tracker. git and [jj](https://github.com/jj-vcs/jj) aware to keep you in the right views in linear. allows jumping to the web or the linear desktop app similar to `gh`.
 
-> a native **Node + Bun** fork of [schpet/linear-cli](https://github.com/schpet/linear-cli) — no Deno, no cargo-dist. published to npm as [`@zhendalf/linear-cli`](https://www.npmjs.com/package/@zhendalf/linear-cli). see [credits](#credits).
+> a native **Node + Bun** TypeScript CLI, published to npm as [`@zhendalf/linear-cli`](https://www.npmjs.com/package/@zhendalf/linear-cli).
 
 **works great with AI agents** — the CLI includes a [skill](#skills) that lets agents create issues, update status, and manage your Linear workflow alongside your code.
 
@@ -40,8 +40,6 @@ it aims to be a complement to the web and desktop apps that lets you stay on the
 </details>
 
 ## install
-
-> **note:** this is a native Node/Bun fork of [schpet/linear-cli](https://github.com/schpet/linear-cli), rewritten without Deno or cargo-dist. if you previously used the original, you must re-run `linear auth login` — the OS-keyring token store has been replaced by a `~/.config/linear/credentials.json` file (0600 permissions).
 
 ### global install
 
@@ -300,11 +298,10 @@ this will:
 - generate reference documentation for each command
 - update the `SKILL.md` file from `SKILL.template.md`
 
-> **note:** the reference files under `skills/linear-cli/references/` were
-> generated from cliffy's old `--help` format and are stale after the commander
-> port. The generator's parser needs updating for commander's help output before
-> a clean regeneration (`LINEAR_CLI="node dist/main.js" bun run generate-skill-docs`).
-> Until then, `SKILL.md` is the authoritative quick reference.
+> **note:** `SKILL.md` is the authoritative quick reference. The reference files
+> under `skills/linear-cli/references/` are supplementary and may lag behind the
+> current `--help` output; regenerate with
+> `LINEAR_CLI="node dist/main.js" bun run generate-skill-docs`.
 
 ### code formatting
 
@@ -329,12 +326,12 @@ this cli solves this. it knows what you're working on (via git branches or jj co
 
 ## credits
 
-this project is a fork of [schpet/linear-cli](https://github.com/schpet/linear-cli) by Peter Schilling and contributors, which is the original and excellent Deno implementation. this fork rewrites it as a native Node + Bun TypeScript package (cliffy → commander, keyring → `credentials.json`, Deno/cargo-dist → Bun bundler) and is published as `@zhendalf/linear-cli`. all credit for the original design and the bulk of the command behavior goes to the upstream project.
-
-licensed under the [ISC License](LICENSE), preserving the upstream copyright.
+this project builds on the design and command behavior of Peter Schilling's
+linear-cli; see the [LICENSE](LICENSE) for the full copyright and attribution.
+it is published as `@zhendalf/linear-cli`.
 
 ## license
 
-ISC © Peter Schilling and contributors (original) · Eugene Beloded and contributors (fork). see [LICENSE](LICENSE).
+ISC. see [LICENSE](LICENSE).
 
 [^1]: creating an API key requires member access, it is not available for guest accounts.

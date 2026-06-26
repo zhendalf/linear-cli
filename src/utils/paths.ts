@@ -1,9 +1,8 @@
 /**
  * Shared config/data directory resolution.
  *
- * Decision (from PORT_PLAN.md §7, locked):
- *   Keep ~/.config/linear on macOS/Linux so existing configs are found in-place.
- *   Use env-paths as a fallback for Windows (%APPDATA%/linear).
+ * On macOS/Linux the config lives under ~/.config/linear (honoring
+ * XDG_CONFIG_HOME); on Windows it lives under %APPDATA%/linear (via env-paths).
  *
  * XDG rules:
  *   $XDG_CONFIG_HOME/linear   (if set)

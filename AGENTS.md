@@ -5,22 +5,22 @@
 - `src/main.ts` — commander entry point; wires up top-level commands
 - `src/commands/**` — one directory per command group; each module owns its name/alias/description
 - `src/config.ts`, `src/credentials.ts`, `src/const.ts` — config, credentials (JSON store), constants
-- `src/utils/**` — shared helpers (errors, paths, runtime shims, formatting)
+- `src/utils/**` — shared helpers (errors, paths, runtime, formatting)
 - `src/__codegen__/`, `graphql/`, `codegen.ts` — generated GraphQL types and schema
 - `scripts/build.ts` — Bun bundler that produces `dist/main.js`
 - `test/**` — mirrors `src/` (see "tests" below)
-- `docs/` — user docs (`authentication.md`, `usage.md`); `docs/dev/` holds the porting plan and **`PORTING-RECIPE.md`** (the canonical recipe for command structure — read it before adding/editing a command)
-- `skills/linear-cli/` — the end-user Claude Code plugin skill for *using* the CLI (note: `references/` are stale post-port, see README)
+- `docs/` — user docs (`authentication.md`, `usage.md`); `docs/dev/` holds **`COMMANDS.md`** (the canonical command-authoring guide — read it before adding/editing a command)
+- `skills/linear-cli/` — the end-user Claude Code plugin skill for *using* the CLI (`SKILL.md` is the authoritative quick reference; `references/` are supplementary)
 - `.claude/skills/` — dev skills for working *in* this repo (`release`, `add-command`)
 - `lefthook.yaml` — git hooks: pre-commit runs biome + `tsc`, pre-push runs `bun test`
 
 ## basics
 
-- this is a native Node/Bun TypeScript app (NOT Deno). package manager and bundler are **bun**
+- this is a native Node/Bun TypeScript app. package manager and bundler are **bun**
 - after editing any graphql documents, run `bun run codegen` to get the updated types. after it's updated, `const result = await client.request(query, { teamId });` should work and be typed (and not require explicit types)
 - graphql/schema.graphql has the graphql schema document for linear's api
 - for diagnostics, use `bun x tsc --noEmit` for type checking and `bunx biome check .` for lint/format
-- when coloring or styling terminal text, use **chalk** (not deno's @std/fmt/colors)
+- when coloring or styling terminal text, use **chalk**
 - prefer `foo == null` and `foo != null` over `foo === undefined` and `foo !== undefined`
 - import: use dynamic import only when necessary, the static form is preferable
 - avoid the typescript `any` type - prefer strict typing, if you can't find a good way to fix a type issue (particularly with graphql data or documents) explain the problem instead of working around it
@@ -31,7 +31,7 @@
 
 ## adding or editing a command
 
-- **read `docs/dev/PORTING-RECIPE.md` first** — it's the canonical recipe (action signature order, `EnumType`→`.choices()`, repeatable/`collect`→`argParser` accumulators via `src/utils/option-parsers.ts`, numeric coercion, prompts, etc.). The `add-command` dev skill in `.claude/skills/` walks the full flow.
+- **read `docs/dev/COMMANDS.md` first** — it's the canonical command-authoring guide (action signature order, `.choices()` for enums, repeatable `collect`/`collectEnum` accumulators via `src/utils/option-parsers.ts`, numeric coercion, prompts, spinners, etc.). The `add-command` dev skill in `.claude/skills/` walks the full flow.
 - each command MODULE owns its own `name`/`alias`/`description` and exports a configured commander `Command`; register top-level groups in `src/main.ts` via `program.addCommand(...)`, and subcommands in their group file.
 - if you add or change a `gql(...)` document, run `bun run codegen` so the generated types update before you typecheck.
 - adding/renaming a command or its options changes `--help` output, so snapshots will change — regenerate with `bun test --update-snapshots` and eyeball the diff (a help snapshot that changes in an unexpected way is a signal, not noise).
@@ -58,7 +58,7 @@
 
 ## credentials
 
-- API tokens live in `~/.config/linear/credentials.json` (0600), NOT in the OS keyring
+- API tokens live in `~/.config/linear/credentials.json` (0600)
 - `LINEAR_API_KEY` env var overrides the credentials file
 - per-folder `.linear.toml` can set `api_key` and `workspace` (read via smol-toml)
 

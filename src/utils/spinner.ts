@@ -1,15 +1,7 @@
 /**
- * Thin wrapper around `ora` that replaces `@std/cli/unstable-spinner`.
+ * Thin wrapper around `ora` that gives the CLI a small, consistent spinner API.
  *
- * Cliffy usage pattern observed across ~50 dynamic-import sites:
- *
- *   const { Spinner } = await import("@std/cli/unstable-spinner")
- *   const spinner = shouldShowSpinner() ? new Spinner({ message: "..." }) : null
- *   spinner?.start()
- *   spinner?.stop()          // plain stop (no success/fail symbol)
- *   spinner.message = "..."  // one site (team-delete.ts)
- *
- * Replacement pattern in Phase D:
+ * Usage:
  *
  *   import { createSpinner } from "../../utils/spinner.ts"
  *   const spinner = createSpinner("...")
@@ -19,10 +11,9 @@
  *   spinner.fail("msg")      // optional: stop with ✖
  *   spinner.text = "..."     // live text update (maps to ora .text)
  *
- * `createSpinner` is always synchronous; there is no conditional null —
- * callers that previously did `showSpinner ? new Spinner() : null` should
- * instead import `shouldShowSpinner` from utils/hyperlink.ts and either
- * skip calling start() or use the `enabled` option exposed here.
+ * `createSpinner` is always synchronous; there is no conditional null. To
+ * suppress output (e.g. non-TTY), import `shouldShowSpinner` from
+ * utils/hyperlink.ts and either skip calling start() or pass `enabled: false`.
  */
 
 import ora, { type Ora } from "ora"
@@ -141,9 +132,9 @@ class NoopSpinner implements SpinnerHandle {
  * Create a new spinner handle.
  *
  * @param text    Initial spinner label (displayed next to the animation).
- * @param enabled Pass `false` to create a no-op spinner (replaces the
- *                `showSpinner ? new Spinner() : null` pattern — the caller
- *                can always call methods without null-checks).
+ * @param enabled Pass `false` to create a no-op spinner so callers can always
+ *                call spinner methods without null-checks (e.g. in non-TTY
+ *                output).
  */
 export function createSpinner(text?: string, enabled = true): SpinnerHandle {
   return enabled ? new OraSpinner(text, true) : new NoopSpinner(text)

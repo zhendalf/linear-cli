@@ -7,10 +7,10 @@ version: 0.2.0
 # Release Workflow
 
 Systematic workflow for releasing a new version of `@zhendalf/linear-cli`. The
-project is a native **Node/Bun** package (NOT Deno): Bun is the package manager,
-bundler, and test runner; biome handles lint/format. Publishing is driven by a
-git tag — pushing `v<version>` triggers `.github/workflows/release.yml`, which
-runs `bun publish`.
+project is a native **Node/Bun** package: Bun is the package manager, bundler,
+and test runner; biome handles lint/format. Publishing is driven by a git tag —
+pushing `v<version>` triggers `.github/workflows/release.yml`, which runs
+`bun publish`.
 
 ## When to Use
 
@@ -62,13 +62,12 @@ node dist/main.js --version   # Node-runtime parity check
 Do NOT proceed if anything fails.
 
 > Note: `bun run generate-skill-docs` is intentionally NOT part of the release
-> flow yet — its parser still expects cliffy's `--help` format and needs a
-> commander rework. Skip it until that's fixed.
+> flow. Run it manually when command help text changes.
 
 ## Step 6: Bump the version
 
 Update the version in **package.json** and the two Claude-plugin manifests so
-they stay in sync (the old `deno.json` / `dist-workspace.toml` no longer exist):
+they stay in sync:
 
 ```bash
 VERSION="<new-version>"   # e.g. 2.1.0
@@ -109,4 +108,4 @@ before tagging.
 
 - `justfile` `tag` recipe — runs the verify suite and prints the manual tag steps.
 - `.github/workflows/release.yml` — the publish pipeline.
-- `CHANGELOG.md` — release history (the fork's `[2.0.0]` plus upstream history).
+- `CHANGELOG.md` — release history.

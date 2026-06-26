@@ -65,7 +65,7 @@ export async function openTeamAssigneeView(options: { app?: boolean } = {}) {
   const filterObj = {
     and: [{ assignee: { or: [{ isMe: { eq: true } }] } }],
   }
-  // Base64-encode without padding (matches Deno encodeBase64 + replace)
+  // Base64-encode the filter JSON without padding (Linear's URL filter format)
   const filter = Buffer.from(JSON.stringify(filterObj)).toString("base64").replace(/=/g, "")
   const url = `${LINEAR_WEB_BASE_URL}/${workspace}/team/${teamId}/active?filter=${filter}`
   const openMod = await import("open")

@@ -1,6 +1,5 @@
 /**
- * Mock Linear API server for testing
- * Uses node:http instead of Deno.serve
+ * Mock Linear API server for testing, built on node:http.
  */
 
 import { type IncomingMessage, type Server, type ServerResponse, createServer } from "node:http"
@@ -136,7 +135,10 @@ export class MockLinearServer {
         res.end(
           JSON.stringify({
             errors: [
-              { message: "Invalid JSON in request body", extensions: { code: "BAD_REQUEST" } },
+              {
+                message: "Invalid JSON in request body",
+                extensions: { code: "BAD_REQUEST" },
+              },
             ],
           }),
         )
@@ -152,7 +154,9 @@ export class MockLinearServer {
 
     return this.mockResponses.find((mock) => {
       if (mock.queryName !== queryName) return false
-      if (mock.queryIncludes != null && !query.includes(mock.queryIncludes)) return false
+      if (mock.queryIncludes != null && !query.includes(mock.queryIncludes)) {
+        return false
+      }
       if (!mock.variables) return true
       return Object.entries(mock.variables).every(([key, value]) =>
         this.deepEqual(variables[key], value),

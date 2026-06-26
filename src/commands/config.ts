@@ -159,7 +159,7 @@ export const configCommand = new Command("config")
         teamKey = matchedTeam.key
         sortChoice = sortFlag ?? "priority"
       } else {
-        // searchSelect replaces Select.prompt({ search: true })
+        // Filterable team picker for long team lists.
         const selectedTeamId = await searchSelect({
           message: "Select a team:",
           choices: teams.map((team) => ({
@@ -174,7 +174,7 @@ export const configCommand = new Command("config")
         }
         teamKey = team.key
 
-        // Replace cliffy grouped prompt([...]) with individual await select(...)
+        // Prompt for the sort order.
         sortChoice = await select({
           message: "Select sort order:",
           choices: [

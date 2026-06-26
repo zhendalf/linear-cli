@@ -125,7 +125,7 @@ export function isClientError(error: unknown): error is ClientError {
  * In debug mode (LINEAR_DEBUG=1): Also shows the full error details
  */
 export function handleError(error: unknown, context?: string): never {
-  // Mirror the Deno behavior: only enable chalk color when stderr is a TTY
+  // Only enable chalk color when stderr is a TTY
   if (!isStderrTTY()) {
     chalk.level = 0
   }
