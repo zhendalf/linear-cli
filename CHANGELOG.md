@@ -2,14 +2,17 @@
 
 ## [Unreleased]
 
+
+## [1.0.1] - 2026-06-26
+
 ### Changed
 
 - issue view now orders comment threads chronologically (oldest first), matching Linear's UI
 
 
-## [2.0.0] - 2026-06-25
+## [1.0.0] - 2026-06-26
 
-The 2.x line distributes the CLI as a standard npm package (`@zhendalf/linear-cli`) that runs on Node.js (>=20) and Bun from a single bundled `dist/main.js`.
+The 1.x line distributes the CLI as a standard npm package (`@zhendalf/linear-cli`) that runs on Node.js (>=20) and Bun from a single bundled `dist/main.js`.
 
 ### Highlights
 

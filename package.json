@@ -1,6 +1,6 @@
 {
-  "name": "@ebeloded/linear-cli",
-  "version": "1.0.0",
+  "name": "@zhendalf/linear-cli",
+  "version": "1.0.1",
   "description": "Handy Linear commands from the command line — git/jj-aware, agent-friendly, runs on Node and Bun.",
   "type": "module",
   "bin": {

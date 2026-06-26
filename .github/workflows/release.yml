@@ -1,15 +1,16 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance via OIDC trusted publishing
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -21,12 +22,41 @@ jobs:
       - name: Generate GraphQL code
         run: bun run codegen
 
+      - name: Lint and format check
+        run: bunx biome check .
+
+      - name: Type check
+        run: bun x tsc --noEmit
+
+      - name: Run tests
+        run: bun test
+
       - name: Build
         run: bun run build
 
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # dist/ is gitignored, so the bundle must be built before publishing.
+      - name: Build
+        run: bun run build
+
+      # Keyless publish via OIDC trusted publishing (no NPM_TOKEN needed) with a
+      # provenance attestation. Triggered when a GitHub Release is published.
+      # Requires a trusted publisher to be configured for @zhendalf/linear-cli on
+      # npmjs.com pointing at this repo + workflow.
       - name: Publish to npm
-        run: bun publish --access public
-        env:
-          # bun publish reads the token from NPM_CONFIG_TOKEN; store it as the
-          # conventional NPM_TOKEN repo secret.
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

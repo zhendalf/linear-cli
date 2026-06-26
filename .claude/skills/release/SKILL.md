@@ -1,21 +1,23 @@
 ---
 name: Release
-description: This skill should be used when the user asks to "make a release", "create a release", "cut a release", "release a new version", "publish a release", or mentions preparing for release. Provides the workflow for reviewing changes, updating the changelog, bumping the version, verifying, and tagging.
-version: 0.2.0
+description: This skill should be used when the user asks to "make a release", "create a release", "cut a release", "release a new version", "publish a release", or mentions preparing for release. Provides the workflow for reviewing changes, updating the changelog, bumping the version, verifying, and publishing a GitHub Release.
+version: 0.3.0
 ---
 
 # Release Workflow
 
 Systematic workflow for releasing a new version of `@zhendalf/linear-cli`. The
 project is a native **Node/Bun** package: Bun is the package manager, bundler,
-and test runner; biome handles lint/format. Publishing is driven by a git tag —
-pushing `v<version>` triggers `.github/workflows/release.yml`, which runs
-`bun publish`.
+and test runner; biome handles lint/format. Publishing is driven by **GitHub
+Releases** — publishing a release for tag `v<version>` triggers
+`.github/workflows/release.yml`, which runs `npm publish --provenance` via npm
+OIDC trusted publishing.
 
 ## When to Use
 
 When preparing to publish a new version. Ensures changes are documented, the
-full check suite passes, versions are consistent, and the tag is created.
+full check suite passes, versions are consistent, and the GitHub Release is
+published.
 
 ## Step 1: Review changes since the last release
 
@@ -45,9 +47,9 @@ Show the `[Unreleased]` section and ask the user to review before proceeding.
 Recommend a bump with reasoning, show current → proposed version, and wait for
 confirmation.
 
-## Step 5: Verify (must be green before tagging)
+## Step 5: Verify (must be green before releasing)
 
-Run the full suite — this mirrors CI and the `just tag` recipe:
+Run the full suite — this mirrors CI and the `just release` recipe:
 
 ```bash
 bun install --frozen-lockfile
@@ -80,32 +82,60 @@ tmp=$(mktemp); jq --arg v "$VERSION" '.version=$v | (.plugins[]? |= (.version=$v
 
 Re-run `bunx biome format --write package.json` if needed so formatting stays clean.
 
-## Step 7: Commit, tag, push
+## Step 7: Commit and push the release commit
 
 ```bash
 git add -A
 git commit -m "chore: release v$VERSION"
-git tag "v$VERSION"
-git push origin main --tags
+git push origin main
 ```
 
-Pushing the tag triggers `.github/workflows/release.yml` → `bun publish --access
-public` (auth via the `NPM_TOKEN` repo secret, mapped to `NPM_CONFIG_TOKEN`).
+The version-bump commit must be on `main` before the release is published, so the
+tag the Release creates points at it.
 
-## Step 8: Verify the publish
+## Step 8: Publish the GitHub Release
 
-- Confirm the tag and the Release workflow run on GitHub.
+Create the release with `gh`. This creates the `v$VERSION` tag (at the pushed
+`main` HEAD) and publishes the Release in one step, which is what triggers
+publishing:
+
+```bash
+# Extract this version's CHANGELOG section as the release notes.
+NOTES=$(awk "/^## \[$VERSION\]/{f=1;next} /^## \[/{f=0} f" CHANGELOG.md)
+gh release create "v$VERSION" \
+  --title "v$VERSION" \
+  --notes "$NOTES" \
+  --target main
+```
+
+Publishing the Release triggers `.github/workflows/release.yml`: a `verify` job
+runs the full check suite, then `publish` runs `npm publish --provenance --access
+public`. Auth is keyless via npm **OIDC trusted publishing** (no `NPM_TOKEN`
+secret) — this must be configured once for `@zhendalf/linear-cli` on npmjs.com
+(Trusted Publisher → this repo + `release.yml`). The publish also emits a
+provenance attestation.
+
+> Do NOT push a `v*` tag by hand — a bare tag push does not create a Release and
+> will not trigger publishing. Always go through `gh release create`.
+
+## Step 9: Verify the publish
+
+- Watch the run: `gh run watch` (or check the Actions tab on GitHub).
 - Confirm the new version on npm (`npm view @zhendalf/linear-cli version`).
 - `npx @zhendalf/linear-cli@<version> --version` resolves.
+- The npm page shows the **Provenance** block linking back to the workflow run.
 
 ## Error handling
 
-Stop and report on any failure. Never tag/publish with failing checks. If the
-version is inconsistent across `package.json` and the plugin manifests, fix it
-before tagging.
+Stop and report on any failure. Never release with failing checks. If the version
+is inconsistent across `package.json` and the plugin manifests, fix it before
+creating the Release. If the workflow fails after the Release is published, fix
+forward with a new patch version — do not delete/re-tag a published version on
+npm.
 
 ## Reference
 
-- `justfile` `tag` recipe — runs the verify suite and prints the manual tag steps.
-- `.github/workflows/release.yml` — the publish pipeline.
+- `justfile` `release` recipe — runs the verify suite and prints the release steps.
+- `.github/workflows/release.yml` — the publish pipeline (triggered by a published
+  GitHub Release).
 - `CHANGELOG.md` — release history.
