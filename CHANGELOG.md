@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Bun-native distribution**: the CLI now ships as TypeScript and runs directly on Bun — there is no longer a bundled `dist/main.js`. The published `bin` is `src/main.ts` (`#!/usr/bin/env bun`), and runtime libraries are now real `dependencies`.
+
+### Removed
+
+- the bundling/build step (`scripts/build.ts`, `bun run build`) and the Node-runtime distribution. **Bun is now required** to install and run the CLI.
+
 
 ## [1.0.1] - 2026-06-26
 

@@ -2,7 +2,7 @@
 
 a cli to list, start and create issues in the [linear](https://linear.app/) issue tracker. git and [jj](https://github.com/jj-vcs/jj) aware to keep you in the right views in linear. allows jumping to the web or the linear desktop app similar to `gh`.
 
-> a native **Node + Bun** TypeScript CLI, published to npm as [`@zhendalf/linear-cli`](https://www.npmjs.com/package/@zhendalf/linear-cli).
+> a **Bun-native** TypeScript CLI, published to npm as [`@zhendalf/linear-cli`](https://www.npmjs.com/package/@zhendalf/linear-cli). it ships as TypeScript and runs directly on Bun — [install Bun](https://bun.sh) first.
 
 **works great with AI agents** — the CLI includes a [skill](#skills) that lets agents create issues, update status, and manage your Linear workflow alongside your code.
 
@@ -41,29 +41,24 @@ it aims to be a complement to the web and desktop apps that lets you stay on the
 
 ## install
 
+> **requires [Bun](https://bun.sh).** The CLI ships as TypeScript and runs on Bun — its `linear` bin executes via `#!/usr/bin/env bun`, so Bun must be installed and on your `PATH`.
+
 ### global install
 
 ```bash
-# bun
 bun add -g @zhendalf/linear-cli
-
-# npm
-npm i -g @zhendalf/linear-cli
 ```
 
 ### run without installing
 
 ```bash
 bunx @zhendalf/linear-cli issue list
-npx @zhendalf/linear-cli issue list
 ```
 
 ### pin as a dev dependency
 
 ```bash
 bun add -d @zhendalf/linear-cli
-# or
-npm install -D @zhendalf/linear-cli
 ```
 
 package on npm: [@zhendalf/linear-cli](https://www.npmjs.com/package/@zhendalf/linear-cli)
@@ -74,8 +69,8 @@ package on npm: [@zhendalf/linear-cli](https://www.npmjs.com/package/@zhendalf/l
 git clone https://github.com/zhendalf/linear-cli
 cd linear-cli
 bun install
+bun run codegen  # generate GraphQL types (src/__codegen__)
 bun run dev      # runs src/main.ts directly via bun
-bun run build    # produces dist/main.js (runs on Node >=20 and Bun)
 ```
 
 ## setup

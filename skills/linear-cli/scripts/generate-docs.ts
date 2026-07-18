@@ -30,8 +30,8 @@ interface CommandInfo {
   subcommands: CommandInfo[]
 }
 
-// The CLI to document. Defaults to a globally-installed `linear`; in CI (where
-// nothing is installed) set LINEAR_CLI to the built bin, e.g. "node dist/main.js".
+// The CLI to document. Defaults to a globally-installed `linear`; when running
+// from a checkout set LINEAR_CLI to run from source, e.g. "bun src/main.ts".
 const LINEAR_CMD = (process.env.LINEAR_CLI ?? "linear").split(/\s+/).filter(Boolean)
 
 async function run(cmd: string[]): Promise<{ success: boolean; stdout: string; stderr: string }> {

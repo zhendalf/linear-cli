@@ -1,15 +1,15 @@
 {
   "name": "@zhendalf/linear-cli",
   "version": "1.0.1",
-  "description": "Handy Linear commands from the command line — git/jj-aware, agent-friendly, runs on Node and Bun.",
+  "description": "Handy Linear commands from the command line — git/jj-aware, agent-friendly, runs on Bun.",
   "type": "module",
   "bin": {
-    "linear": "./dist/main.js"
+    "linear": "./src/main.ts"
   },
   "engines": {
-    "node": ">=20"
+    "bun": ">=1.0.0"
   },
-  "files": ["dist"],
+  "files": ["src", "package.json"],
   "keywords": [
     "linear",
     "linear.app",
@@ -21,7 +21,8 @@
     "jujutsu",
     "productivity",
     "graphql",
-    "developer-tools"
+    "developer-tools",
+    "bun"
   ],
   "license": "ISC",
   "author": "Eugene Beloded",
@@ -38,7 +39,6 @@
   },
   "scripts": {
     "dev": "bun src/main.ts",
-    "build": "bun run codegen && bun run scripts/build.ts",
     "codegen": "graphql-codegen --config codegen.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "tsc -p tsconfig.strict.json",
@@ -46,26 +46,19 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "generate-skill-docs": "bun skills/linear-cli/scripts/generate-docs.ts",
+    "prepublishOnly": "bun run codegen",
     "prepare": "lefthook install || true"
   },
-  "//": "All runtime libraries are bundled into dist/main.js by scripts/build.ts, so they are devDependencies (build-time only). The published package has NO runtime dependencies — installing it pulls only the self-contained bundle.",
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@graphql-codegen/cli": "^5.0.5",
-    "@graphql-codegen/client-preset": "^4.6.1",
-    "@graphql-typed-document-node/core": "^3.2.0",
+  "//": "The CLI ships as TypeScript and runs directly on Bun (the bin is src/main.ts). Runtime libraries are real `dependencies` so `bun add` pulls them; only build/lint/type tooling stays in `devDependencies`. Generated GraphQL types (src/__codegen__) are produced by `bun run codegen` and regenerated on publish via prepublishOnly.",
+  "dependencies": {
     "@inquirer/prompts": "^7.5.2",
     "@inquirer/search": "^3.0.10",
-    "@types/bun": "^1.3.14",
-    "@types/mdast": "^4.0.4",
-    "@types/node": "^22.15.29",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "dotenv": "^16.5.0",
     "env-paths": "^3.0.0",
     "graphql": "^16.10.0",
     "graphql-request": "^7.1.2",
-    "lefthook": "^1.11.13",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm-strikethrough": "^2.0.0",
     "micromark-extension-gfm-strikethrough": "^2.1.0",
@@ -77,10 +70,20 @@
     "sanitize-filename": "^1.6.4",
     "smol-toml": "^1.3.4",
     "string-width": "^7.2.0",
-    "typescript": "^5.8.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0",
     "valibot": "^1.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/client-preset": "^4.6.1",
+    "@graphql-typed-document-node/core": "^3.2.0",
+    "@types/bun": "^1.3.14",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^22.15.29",
+    "lefthook": "^1.11.13",
+    "typescript": "^5.8.3"
   },
   "trustedDependencies": ["@biomejs/biome"]
 }

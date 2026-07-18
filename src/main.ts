@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 /**
  * Entry point — commander shell.
  *

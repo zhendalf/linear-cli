@@ -3,7 +3,6 @@
 
 src/__codegen__/
 npm
-dist/
 node_modules/
 
 # secrets — never commit API keys

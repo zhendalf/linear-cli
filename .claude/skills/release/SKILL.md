@@ -7,11 +7,13 @@ version: 0.3.0
 # Release Workflow
 
 Systematic workflow for releasing a new version of `@zhendalf/linear-cli`. The
-project is a native **Node/Bun** package: Bun is the package manager, bundler,
-and test runner; biome handles lint/format. Publishing is driven by **GitHub
-Releases** — publishing a release for tag `v<version>` triggers
-`.github/workflows/release.yml`, which runs `npm publish --provenance` via npm
-OIDC trusted publishing.
+project is a **Bun-native** package that ships as TypeScript with no build step:
+Bun is the package manager, runtime, and test runner; biome handles lint/format.
+Publishing is driven by **GitHub Releases** — publishing a release for tag
+`v<version>` triggers `.github/workflows/release.yml`, which runs
+`npm publish --provenance` via npm OIDC trusted publishing. (The publish job
+runs `bun run codegen` first so the gitignored `src/__codegen__` types are
+included in the published tarball.)
 
 ## When to Use
 
@@ -57,8 +59,7 @@ bun run codegen
 bunx biome check .
 bun x tsc --noEmit
 bun test
-bun run build
-node dist/main.js --version   # Node-runtime parity check
+bun src/main.ts --version   # smoke-run the CLI on Bun
 ```
 
 Do NOT proceed if anything fails.

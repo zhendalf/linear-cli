@@ -7,9 +7,9 @@ release:
     bun x tsc --noEmit
     bunx biome check .
     bun test
-    bun run build
+    bun src/main.ts --version
 
-    @VERSION=$(node -p "require('./package.json').version") && \
+    @VERSION=$(bun -e "console.log(require('./package.json').version)") && \
       echo "Current version: $$VERSION"
     @echo "Bump version in package.json (+ plugin manifests), then:"
     @echo "  git commit -am 'chore: release v<version>'"

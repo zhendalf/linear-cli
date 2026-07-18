@@ -7,7 +7,6 @@
 - `src/config.ts`, `src/credentials.ts`, `src/const.ts` — config, credentials (JSON store), constants
 - `src/utils/**` — shared helpers (errors, paths, runtime, formatting)
 - `src/__codegen__/`, `graphql/`, `codegen.ts` — generated GraphQL types and schema
-- `scripts/build.ts` — Bun bundler that produces `dist/main.js`
 - `test/**` — mirrors `src/` (see "tests" below)
 - `docs/` — user docs (`authentication.md`, `usage.md`); `docs/dev/` holds **`COMMANDS.md`** (the canonical command-authoring guide — read it before adding/editing a command)
 - `skills/linear-cli/` — the end-user Claude Code plugin skill for *using* the CLI (`SKILL.md` is the authoritative quick reference; `references/` are supplementary)
@@ -16,7 +15,7 @@
 
 ## basics
 
-- this is a native Node/Bun TypeScript app. package manager and bundler are **bun**
+- this is a Bun-native TypeScript app. there is **no build/bundle step** — the CLI ships as TypeScript and runs directly on Bun (the published `bin` is `src/main.ts` with a `#!/usr/bin/env bun` shebang). package manager, runtime, and test runner are all **bun**, and clients are expected to have bun installed.
 - after editing any graphql documents, run `bun run codegen` to get the updated types. after it's updated, `const result = await client.request(query, { teamId });` should work and be typed (and not require explicit types)
 - graphql/schema.graphql has the graphql schema document for linear's api
 - for diagnostics, use `bun x tsc --noEmit` for type checking and `bunx biome check .` for lint/format
@@ -26,35 +25,34 @@
 - avoid the typescript `any` type - prefer strict typing, if you can't find a good way to fix a type issue (particularly with graphql data or documents) explain the problem instead of working around it
 - for `--json` output, preserve GraphQL field names and nesting instead of inventing CLI-specific JSON shapes
 - for paginated `--json` output, preserve connection shape and concatenate `nodes` rather than flattening or renaming fields
-- **the published package has ZERO runtime dependencies** — everything is bundled into `dist/main.js`, so all libraries are `devDependencies`. Do NOT move/add anything to a `dependencies` block; add new libs with `bun add -d`.
+- **runtime libraries are real `dependencies`** — since there is no bundle, anything `src/**` imports at runtime must live in `dependencies` so `bun add @zhendalf/linear-cli` pulls it. Add runtime libs with `bun add <pkg>`. Only build/lint/type tooling and `@types/*` belong in `devDependencies` (add with `bun add -d <pkg>`).
 - use the shared wrappers, not the underlying libs directly: prompts → `src/utils/prompt.ts` (`select`/`input`/`confirm`/`password`/`checkbox`/`searchSelect`), spinners → `src/utils/spinner.ts` (`createSpinner`), `%c`-style console coloring → `applyConsoleFormat` from `src/utils/styling.ts`. Reaching for `@inquirer/*`/`ora`/raw `%c` directly is a review smell.
 
 ## adding or editing a command
 
 - **read `docs/dev/COMMANDS.md` first** — it's the canonical command-authoring guide (action signature order, `.choices()` for enums, repeatable `collect`/`collectEnum` accumulators via `src/utils/option-parsers.ts`, numeric coercion, prompts, spinners, etc.). The `add-command` dev skill in `.claude/skills/` walks the full flow.
 - each command MODULE owns its own `name`/`alias`/`description` and exports a configured commander `Command`; register top-level groups in `src/main.ts` via `program.addCommand(...)`, and subcommands in their group file.
-- if you add or change a `gql(...)` document, run `bun run codegen` so the generated types update before you typecheck.
+- if you add or change a `gql(...)` document, run `bun run codegen` so the generated types update before you typecheck. (`src/__codegen__` is gitignored; it's regenerated on publish via `prepublishOnly`.)
 - adding/renaming a command or its options changes `--help` output, so snapshots will change — regenerate with `bun test --update-snapshots` and eyeball the diff (a help snapshot that changes in an unexpected way is a signal, not noise).
 - new commands/behaviors get tests (see "tests").
 
 ## toolchain
 
 - **run**: `bun run dev` (runs `src/main.ts` directly) or `bun src/main.ts <args>`
-- **build**: `bun run build` → `dist/main.js` (bundled ESM, runs on Node >=20 and Bun)
 - **test**: `bun test` (or `bun test --update-snapshots` to regenerate snapshots)
 - **typecheck**: `bun x tsc --noEmit`
 - **lint/format**: `bunx biome check --write .` (config in `biome.json`)
-- **codegen**: `bun run codegen` (must run before typecheck/build if graphql changed)
+- **codegen**: `bun run codegen` (must run before typecheck/test if graphql changed)
+- there is **no build step** — the CLI runs straight from TypeScript on Bun.
 
 ## verifying changes
 
 - the full green loop before you consider a change done (mirrors CI):
   ```sh
-  bun run codegen && bunx biome check . && bun x tsc --noEmit && bun test && bun run build
+  bun run codegen && bunx biome check . && bun x tsc --noEmit && bun test && bun src/main.ts --help
   ```
-- **live-smoke real behavior** against a throwaway Linear workspace, not just unit tests: `LINEAR_API_KEY=<test-key> bun src/main.ts <command>` (or run the built `node dist/main.js`). Exercise the actual workflow you changed. **Never hard-code or commit an API key** — pass it via the env var only.
-- the CLI runs on Node ≥20 AND Bun; for parity, smoke the built bin under Node (`node dist/main.js …`), not only via `bun`.
-- the bin must build before it runs end-to-end (`src/main.ts` imports every command), so a single broken command fails the whole CLI — keep the build green.
+- **live-smoke real behavior** against a throwaway Linear workspace, not just unit tests: `LINEAR_API_KEY=<test-key> bun src/main.ts <command>`. Exercise the actual workflow you changed. **Never hard-code or commit an API key** — pass it via the env var only.
+- `src/main.ts` imports every command, so a single broken command (a type error or bad import) breaks the whole CLI — keep typecheck and the `--help` smoke green.
 
 ## credentials
 
