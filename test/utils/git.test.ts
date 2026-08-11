@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
 import { execFileSync } from "node:child_process"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { getCurrentBranch, getRepoDir } from "../../src/utils/git.ts"
+import { getCurrentBranch, getRepoDir, isInsideGitRepo } from "../../src/utils/git.ts"
 
 test("getCurrentBranch - handles errors when not in a git repository", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "linear-git-test-"))
@@ -56,6 +56,54 @@ test("getCurrentBranch - returns null for detached HEAD", async () => {
 
     const branch = await getCurrentBranch()
     expect(branch).toBeNull()
+  } finally {
+    process.chdir(originalCwd)
+    await rm(tempDir, { recursive: true, force: true })
+  }
+})
+
+test("isInsideGitRepo - false in a non-repository directory", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-git-test-"))
+  const originalCwd = process.cwd()
+
+  try {
+    process.chdir(tempDir)
+    expect(await isInsideGitRepo()).toBe(false)
+  } finally {
+    process.chdir(originalCwd)
+    await rm(tempDir, { recursive: true, force: true })
+  }
+})
+
+test("isInsideGitRepo - true inside a repository, including nested directories", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-git-test-"))
+  const originalCwd = process.cwd()
+
+  try {
+    process.chdir(tempDir)
+    execFileSync("git", ["init"], { cwd: tempDir, stdio: "pipe" })
+    expect(await isInsideGitRepo()).toBe(true)
+
+    const nested = join(tempDir, "nested", "dir")
+    await mkdir(nested, { recursive: true })
+    process.chdir(nested)
+    expect(await isInsideGitRepo()).toBe(true)
+  } finally {
+    process.chdir(originalCwd)
+    await rm(tempDir, { recursive: true, force: true })
+  }
+})
+
+// git prints "false" with exit status 0 from inside the .git directory itself,
+// so the helper must read stdout rather than trusting the exit code.
+test("isInsideGitRepo - false inside the .git directory", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "linear-git-test-"))
+  const originalCwd = process.cwd()
+
+  try {
+    execFileSync("git", ["init"], { cwd: tempDir, stdio: "pipe" })
+    process.chdir(join(tempDir, ".git"))
+    expect(await isInsideGitRepo()).toBe(false)
   } finally {
     process.chdir(originalCwd)
     await rm(tempDir, { recursive: true, force: true })

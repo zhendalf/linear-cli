@@ -13,6 +13,7 @@ import { join } from "node:path"
 import { parse as parseDotenv } from "dotenv"
 import { parse as parseToml } from "smol-toml"
 import * as v from "valibot"
+import { ValidationError } from "./utils/errors.ts"
 import { isWindows, runCommand } from "./utils/runtime.ts"
 
 let config: Record<string, unknown> = {}
@@ -173,12 +174,16 @@ function coerceBool(value: unknown): boolean | undefined {
 // Custom valibot schema for boolean coercion
 const BooleanLike = v.pipe(v.unknown(), v.transform(coerceBool))
 
+export const ISSUE_SORT_VALUES = ["manual", "priority"] as const
+export type IssueSort = (typeof ISSUE_SORT_VALUES)[number]
+export const DEFAULT_ISSUE_SORT: IssueSort = "priority"
+
 // Options schema
 const OptionsSchema = v.object({
   team_id: v.optional(v.string()),
   api_key: v.optional(v.string()),
   workspace: v.optional(v.string()),
-  issue_sort: v.optional(v.picklist(["manual", "priority"])),
+  issue_sort: v.optional(v.picklist(ISSUE_SORT_VALUES)),
   vcs: v.optional(v.picklist(["git", "jj"])),
   download_images: v.optional(BooleanLike),
   hyperlink_format: v.optional(v.string()),
@@ -200,6 +205,26 @@ export function getOption<T extends OptionName>(optionName: T, cliValue?: string
     return result.output[optionName] as Options[T]
   }
   return undefined as Options[T]
+}
+
+/**
+ * Resolve the issue sort order from the `--sort` flag, the LINEAR_ISSUE_SORT
+ * env var, or the `issue_sort` config option, defaulting to priority when
+ * nothing is set. Unlike getOption, an explicitly configured but invalid value
+ * errors instead of silently falling back to the default.
+ */
+export function resolveIssueSort(cliValue?: string): IssueSort {
+  const raw = getRawOption("issue_sort", cliValue)
+  if (raw == null) return DEFAULT_ISSUE_SORT
+  const parsed = v.safeParse(v.picklist(ISSUE_SORT_VALUES), raw)
+  if (!parsed.success) {
+    throw new ValidationError(`Invalid issue sort: ${JSON.stringify(raw)}`, {
+      suggestion: `Use one of: ${ISSUE_SORT_VALUES.join(
+        ", ",
+      )} (via --sort, the issue_sort config option, or the LINEAR_ISSUE_SORT environment variable)`,
+    })
+  }
+  return parsed.output
 }
 
 // ---------------------------------------------------------------------------

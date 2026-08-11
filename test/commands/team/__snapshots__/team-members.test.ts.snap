@@ -179,7 +179,7 @@ exports[`Team Members Command - No Team Configured 1`] = `
 "stdout:
 ""
 stderr:
-"✗ Failed to fetch team members: Could not determine team key
-  Pass a team key as an argument, or set \`team_id\` in .linear.toml (run \`linear config\`).
+"✗ Failed to fetch team members: No default team configured and no team scope provided
+  Pass a team key as an argument, or run \`linear config\` to set a team.
 ""
 `;

@@ -83,7 +83,9 @@ function parseCommands(helpText: string): string[] {
     if (inCommands) {
       // Command lines look like: "  command|alias [options]  Description"
       // or: "  command [options] <arg>  Description"
-      // Capture command name (stopping at the alias separator or whitespace)
+      // Capture command name (stopping at the alias separator or whitespace).
+      // Wrapped description continuation lines are indented far past column 2,
+      // so they never match.
       const match = line.match(/^\s{2}([a-z][-a-z]*)(?:[|,]|\s)/)
       if (match) {
         commands.push(match[1])
@@ -100,37 +102,27 @@ function parseCommands(helpText: string): string[] {
 }
 
 /**
- * Pull the one-line description out of a help page.
+ * Pull the one-line description out of commander help, which prints it as the
+ * first paragraph after the `Usage:` line:
  *
- * Commander prints it as the first paragraph after the `Usage:` line:
+ *   Usage: linear issue [options] [command]
  *
- *   Usage: linear team|t [options] [command]
- *
- *   Manage Linear teams
+ *   Manage Linear issues
  *
  *   Options:
  *
- * A cliffy-era binary instead prints an explicit `Description:` block, so try
- * that first and fall back to the commander layout.
+ * Returns "" when the next thing after the usage line is already a section
+ * heading (`Options:`, `Arguments:`, `Commands:`), i.e. there is no description.
  */
 function parseDescription(helpText: string): string {
-  const cliffyMatch = helpText.match(/Description:\s*\n\s*(.+)/)
-  if (cliffyMatch) {
-    return cliffyMatch[1].trim()
-  }
-
   const lines = helpText.split("\n")
   const usageIndex = lines.findIndex((line) => line.startsWith("Usage:"))
-  if (usageIndex === -1) {
-    return ""
-  }
+  if (usageIndex === -1) return ""
 
   for (const line of lines.slice(usageIndex + 1)) {
     const trimmed = line.trim()
     if (trimmed === "") continue
-    // A section header (`Options:`, `Commands:`, …) means there was no
-    // description between the usage line and the first section.
-    if (/^[A-Z][\w ]*:$/.test(trimmed)) return ""
+    if (/^[A-Za-z ]+:$/.test(trimmed)) return ""
     return trimmed
   }
 

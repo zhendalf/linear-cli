@@ -1,0 +1,14 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Team Id Command - Help Text 1`] = `
+"stdout:
+"Usage: id [options]
+
+Print the configured team id
+
+Options:
+  -h, --help  display help for command
+"
+stderr:
+"""
+`;

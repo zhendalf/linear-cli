@@ -98,7 +98,7 @@ exports[`Team States Command - No Team Configured 1`] = `
 "stdout:
 ""
 stderr:
-"✗ Failed to fetch workflow states: Could not determine team key
-  Pass a team key as an argument, or set \`team_id\` in .linear.toml (run \`linear config\`).
+"✗ Failed to fetch workflow states: No default team configured and no team scope provided
+  Pass a team key as an argument, or run \`linear config\` to set a team.
 ""
 `;

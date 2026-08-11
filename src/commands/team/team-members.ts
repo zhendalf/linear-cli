@@ -17,9 +17,8 @@ export const membersCommand = new Command("members")
     try {
       const resolvedTeamKey = teamKey || getTeamKey()
       if (!resolvedTeamKey) {
-        throw new ValidationError("Could not determine team key", {
-          suggestion:
-            "Pass a team key as an argument, or set `team_id` in .linear.toml (run `linear config`).",
+        throw new ValidationError("No default team configured and no team scope provided", {
+          suggestion: "Pass a team key as an argument, or run `linear config` to set a team.",
         })
       }
 

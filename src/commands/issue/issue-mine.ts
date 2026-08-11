@@ -1,10 +1,11 @@
 import chalk from "chalk"
 import { Command, Option } from "commander"
 import stringWidth from "string-width"
-import { getOption } from "../../config.ts"
+import { resolveIssueSort } from "../../config.ts"
 import { openTeamAssigneeView } from "../../utils/actions.ts"
 import { getPriorityDisplay, getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
 import { handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
+import { isInsideGitRepo } from "../../utils/git.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
   fetchIssuesForState,
@@ -127,19 +128,16 @@ export const mineCommand = new Command("mine")
       }
       const stateArray: string[] = state ?? ["unstarted"]
 
-      // Default to "priority" when no sort is supplied anywhere (flag, config,
-      // or LINEAR_ISSUE_SORT) so `issue mine` works out of the box.
-      const sort =
-        sortFlag || (getOption("issue_sort") as "manual" | "priority" | undefined) || "priority"
-      const validSortValues = ["manual", "priority"]
-      if (!validSortValues.includes(sort)) {
-        throw new ValidationError(`Sort must be one of: ${validSortValues.join(", ")}`)
-      }
+      // --sort flag > LINEAR_ISSUE_SORT > issue_sort config > priority default.
+      // An explicitly configured but invalid value errors rather than silently
+      // sorting by priority.
+      const sort = resolveIssueSort(sortFlag)
       const teamKey = team || getTeamKey()
       if (!teamKey) {
-        throw new ValidationError("No team configured and no team scope provided", {
-          suggestion:
-            "Use --team <key> to specify a team, or run from a directory named after the team key. To query across all teams, use 'linear issue query --all-teams'.",
+        throw new ValidationError("No default team configured and no team scope provided", {
+          suggestion: (await isInsideGitRepo())
+            ? "Use --team <key> to specify a team, or run `linear config` to link this repository to a team."
+            : "Use --team <key> to specify a team.",
         })
       }
 

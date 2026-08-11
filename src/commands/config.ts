@@ -2,7 +2,7 @@ import { stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { Command, Option } from "commander"
 import { gql } from "../__codegen__/gql.ts"
-import { getCliWorkspace, getOption, setCliWorkspace } from "../config.ts"
+import { getCliWorkspace, getOption, ISSUE_SORT_VALUES, setCliWorkspace } from "../config.ts"
 import { getDefaultWorkspace, getWorkspaces } from "../credentials.ts"
 import { AuthError, handleError, NotFoundError, ValidationError } from "../utils/errors.ts"
 import { getGraphQLClient } from "../utils/graphql.ts"
@@ -25,8 +25,6 @@ const configQuery = gql(`
     }
   }
 `)
-
-const SORT_VALUES = ["manual", "priority"] as const
 
 /**
  * Determine the file path for .linear.toml: prefer git root .config dir,
@@ -65,10 +63,16 @@ issue_sort = "${sort}"
 }
 
 export const configCommand = new Command("config")
+  // `configure` is the name people (and older docs) instinctively reach for;
+  // accept it so the suggestion strings that say `linear config` are not the
+  // only spelling that works.
+  .alias("configure")
   .description("Generate .linear.toml configuration (interactive or via flags)")
   .option("--team <team>", "Team key to write (non-interactive, e.g. ENG)")
   .addOption(
-    new Option("--sort <sort>", "Issue sort order (non-interactive)").choices([...SORT_VALUES]),
+    new Option("--sort <sort>", "Issue sort order (non-interactive)").choices([
+      ...ISSUE_SORT_VALUES,
+    ]),
   )
   .option("--workspace <workspace>", "Workspace slug to write (defaults to the resolved workspace)")
   .option("-y, --yes", "Write without prompting (also implied by --team/--sort or non-TTY stdin)")

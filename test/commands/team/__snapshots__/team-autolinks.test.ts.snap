@@ -1,0 +1,14 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Team Autolinks Command - Help Text 1`] = `
+"stdout:
+"Usage: autolinks [options]
+
+Configure GitHub repository autolinks for Linear issues with this team prefix
+
+Options:
+  -h, --help  display help for command
+"
+stderr:
+"""
+`;
