@@ -1,6 +1,14 @@
+import { expect, test } from "bun:test"
+import { teamCommand } from "../../../src/commands/team/team.ts"
 import { membersCommand } from "../../../src/commands/team/team-members.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
+
+// See team-id.test.ts: importing the group pins the parent (and so the help
+// usage line) regardless of which test file bun loads first.
+test("team members - is registered on the team command", () => {
+  expect(teamCommand.commands).toContain(membersCommand)
+})
 
 // `lastSeen` is deliberately null everywhere: it renders through
 // `toLocaleString()`, which is host-timezone dependent and would make these

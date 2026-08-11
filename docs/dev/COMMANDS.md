@@ -350,6 +350,34 @@ export const idCommand = new Command("id")
 
 ---
 
+## 19. Help-text snapshots — import the group command
+
+Bun shares one module registry across every test file in a run, and a command's
+help usage line depends on whether its group has claimed it as a parent:
+`idCommand` on its own prints `Usage: id`, but once *any* test file imports
+`src/commands/team/team.ts` the `addCommand(...)` call attaches the parent and
+it prints `Usage: team id`. Which one you get then depends on test-file load
+order, which is not the same on macOS and on CI — so the snapshot passes locally
+and fails in CI (or vice versa).
+
+Whenever a test drives a subcommand directly and snapshots `--help`, import the
+group module in that same file so the parent is always attached, and pin it with
+a registration assertion so the import can't be pruned as unused:
+
+```ts
+import { teamCommand } from "../../../src/commands/team/team.ts"
+import { idCommand } from "../../../src/commands/team/team-id.ts"
+
+test("team id - is registered on the team command", () => {
+  expect(teamCommand.commands).toContain(idCommand)
+})
+```
+
+The snapshot then records the usage line users actually see, and it records the
+same one everywhere.
+
+---
+
 ## Quick-reference checklist
 
 | Concern | House style |
@@ -373,5 +401,6 @@ export const idCommand = new Command("id")
 | Text input | `input(...)` from utils/prompt.ts |
 | Confirm | `confirm(...)` from utils/prompt.ts |
 | Secret input | `password(...)` from utils/prompt.ts |
+| Help-text snapshot | import the group command in the test file |
 | Spinner | `createSpinner(text, enabled)` + `.start()` |
 | Live spinner text | `spinner.text =` |

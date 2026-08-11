@@ -2,7 +2,7 @@
 
 exports[`Team Id Command - Help Text 1`] = `
 "stdout:
-"Usage: id [options]
+"Usage: team id [options]
 
 Print the configured team id
 

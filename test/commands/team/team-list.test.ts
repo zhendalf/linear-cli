@@ -1,6 +1,14 @@
+import { expect, test } from "bun:test"
+import { teamCommand } from "../../../src/commands/team/team.ts"
 import { listCommand } from "../../../src/commands/team/team-list.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
+
+// See team-id.test.ts: importing the group pins the parent (and so the help
+// usage line) regardless of which test file bun loads first.
+test("team list - is registered on the team command", () => {
+  expect(teamCommand.commands).toContain(listCommand)
+})
 
 // Test help output
 await snapshotTest({
