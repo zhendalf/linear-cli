@@ -189,18 +189,36 @@ LINEAR_API_KEY=$LINEAR_TEST_API_KEY bun src/main.ts <command>
 `src/main.ts` imports every command, so one broken command breaks the whole CLI — keep typecheck and
 the `--help` smoke green.
 
+> **A green local suite does not guarantee a green CI.** Bun shares one module registry across test
+> files, so whether a command group was already imported decides whether its subcommands have a
+> parent — which changes the `Usage:` line in help snapshots. File load order differs between macOS
+> and CI's Linux, so snapshot tests can pass locally and fail on CI (this has already happened
+> once — see `52f1e6e`). After delivering, **check CI** (`gh run list --branch <branch>`) rather
+> than trusting the local run, and suspect load order first when a help snapshot disagrees across
+> platforms.
+
 ## Step 5: Deliver
 
-Per concern: branch off current `main`, commit with a conventional-commit message, push, and open a
-PR with `gh pr create`.
+One branch and one PR per concern. **How you deliver depends on the environment** — pick the first
+route that works and state in the report which one you used:
 
-**If `gh` is unavailable** (it is absent in some environments — check in Step 0), degrade in this
-order and state plainly in the report which level you reached:
+**Route A — local git (developer machines).** Branch off current `main`, commit with a
+conventional-commit message, `git push`, then `gh pr create`.
 
-1. Push the branch and give the compare URL — `https://github.com/zhendalf/linear-cli/compare/<branch>?expand=1`
-   — plus the PR title and body you would have used, so a human can open it in one click.
-2. If push also fails, leave the commits on local branches, list the branch names, and quote the
-   push error.
+**Route B — GitHub MCP tools (scheduled cloud runs).** In the cloud environment `git push` is
+hard-blocked at the network proxy (`HTTP 403`), and `gh` is not installed — but the connected
+`github` MCP server (`mcp__github__*`) reaches the REST API on a different path and works. Use:
+
+1. `create_branch` from `main`
+2. commit your changes to that branch (`push_files` for a batch if available, otherwise
+   `create_or_update_file` per file)
+3. `create_pull_request`
+
+⚠ That tool set has **no branch-deletion capability**, so only create a branch you actually intend
+to open a PR from — an abandoned branch has to be cleaned up by hand afterwards.
+
+**Route C — neither.** Leave the commits on local branches, list the branch names, and quote the
+exact error that blocked delivery.
 
 Never bypass the `pre-push` hook with `--no-verify`; it runs the test suite, and a hook failure is a
 real failure, not an obstacle to route around.
