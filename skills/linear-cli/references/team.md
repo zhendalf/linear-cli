@@ -1,141 +1,116 @@
 # team
 
-> Manage Linear teams
+> 
 
 ## Usage
 
 ```
-Usage:   linear team
+Usage: linear team|t [options] [command]
 
-Description:
-
-  Manage Linear teams
+Manage Linear teams
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>           Target workspace (uses credentials)
+  -h, --help                   display help for command
 
 Commands:
-
-  create                - Create a linear team                                                         
-  delete     <teamKey>  - Delete a Linear team                                                         
-  list                  - List teams                                                                   
-  id                    - Print the configured team id                                                 
-  autolinks             - Configure GitHub repository autolinks for Linear issues with this team prefix
-  members    [teamKey]  - List team members
+  create [options]             Create a linear team
+  delete [options] <teamKey>   Delete a Linear team
+  list [options]               List teams
+  id [options]                 Print the configured team id
+  autolinks [options]          Configure GitHub repository autolinks for Linear
+                               issues with this team prefix
+  members [options] [teamKey]  List team members
 ```
 
 ## Subcommands
 
 ### create
 
-> Create a linear team
-
 ```
-Usage:   linear team create
+Usage: linear team create [options]
 
-Description:
-
-  Create a linear team
+Create a linear team
 
 Options:
-
-  -h, --help                        - Show this help.                                          
-  --workspace        <slug>         - Target workspace (uses credentials)                      
-  -n, --name         <name>         - Name of the team                                         
-  -d, --description  <description>  - Description of the team                                  
-  -k, --key          <key>          - Team key (if not provided, will be generated from name)  
-  --private                         - Make the team private                                    
-  --no-interactive                  - Disable interactive prompts
+  -n, --name <name>                Name of the team
+  -d, --description <description>  Description of the team
+  -k, --key <key>                  Team key (if not provided, will be generated
+                                   from name)
+  --private                        Make the team private
+  --no-interactive                 Disable interactive prompts
+  --workspace <slug>               Target workspace (uses credentials)
+  -h, --help                       display help for command
 ```
 
 ### delete
 
-> Delete a Linear team
-
 ```
-Usage:   linear team delete <teamKey>
+Usage: linear team delete [options] <teamKey>
 
-Description:
+Delete a Linear team
 
-  Delete a Linear team
+Arguments:
+  teamKey                     Team key to delete
 
 Options:
-
-  -h, --help                   - Show this help.                                  
-  --workspace    <slug>        - Target workspace (uses credentials)              
-  --move-issues  <targetTeam>  - Move all issues to another team before deletion  
-  -y, --force                  - Skip confirmation prompt
+  --move-issues <targetTeam>  Move all issues to another team before deletion
+  -y, --yes                   Skip confirmation prompt
+  --workspace <slug>          Target workspace (uses credentials)
+  -h, --help                  display help for command
 ```
 
 ### list
 
-> List teams
-
 ```
-Usage:   linear team list
+Usage: linear team list [options]
 
-Description:
-
-  List teams
+List teams
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
-  -w, --web            - Open in web browser                  
-  -a, --app            - Open in Linear.app
+  -w, --web           Open in web browser
+  -a, --app           Open in Linear.app
+  -j, --json          Output as JSON
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### id
 
-> Print the configured team id
-
 ```
-Usage:   linear team id
+Usage: linear team id [options]
 
-Description:
-
-  Print the configured team id
+Print the configured team id
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### autolinks
 
-> Configure GitHub repository autolinks for Linear issues with this team prefix
-
 ```
-Usage:   linear team autolinks
+Usage: linear team autolinks [options]
 
-Description:
-
-  Configure GitHub repository autolinks for Linear issues with this team prefix
+Configure GitHub repository autolinks for Linear issues with this team prefix
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### members
 
-> List team members
-
 ```
-Usage:   linear team members [teamKey]
+Usage: linear team members [options] [teamKey]
 
-Description:
+List team members
 
-  List team members
+Arguments:
+  teamKey             Team key
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
-  -a, --all            - Include inactive members
+  -a, --all           Include inactive members
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

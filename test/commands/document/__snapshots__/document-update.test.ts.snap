@@ -14,7 +14,10 @@ Options:
   -c, --content <content>    New markdown content (inline)
   -f, --content-file <path>  Read new content from file
   --icon <icon>              New icon (emoji)
+  --project <project>        Attach to project (UUID, slug ID, or name)
   -e, --edit                 Open current content in $EDITOR for editing
+  --force                    Update content even when document comments may lose
+                             inline anchors
   -h, --help                 display help for command
 "
 stderr:
@@ -53,6 +56,86 @@ exports[`Document Update Command - No Fields Provided 1`] = `
 ""
 stderr:
 "✗ Failed to update document: No update fields provided
-  Use --title, --content, --content-file, --icon, or --edit.
+  Use --title, --content, --content-file, --icon, --project, or --edit.
+""
+`;
+
+exports[`Document Update Command - Allows Content Update With Top Level Comments 1`] = `
+"stdout:
+"✓ Updated document: Delegation System Spec
+https://linear.app/test/document/delegation-system-spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Blocks Content Update With Inline Comments 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update document: Refusing to update document content because this document has inline comments.
+  Updating Markdown content can detach or hide Linear document comments. First review comment comment-2 quoting "Current Content", then rerun with --force if you accept that risk.
+""
+`;
+
+exports[`Document Update Command - Force Content Update With Comments 1`] = `
+"stdout:
+"✓ Updated document: Delegation System Spec
+https://linear.app/test/document/delegation-system-spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Resolved Inline Comment Does Not Block 1`] = `
+"stdout:
+"✓ Updated document: Delegation System Spec
+https://linear.app/test/document/delegation-system-spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Set Project By UUID 1`] = `
+"stdout:
+"✓ Updated document: Spec
+https://linear.app/test/document/spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Set Project By Slug 1`] = `
+"stdout:
+"✓ Updated document: Spec
+https://linear.app/test/document/spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Set Project By Name 1`] = `
+"stdout:
+"✓ Updated document: Spec
+https://linear.app/test/document/spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Title And Project 1`] = `
+"stdout:
+"✓ Updated document: Spec
+https://linear.app/test/document/spec-d4b93e3b2695
+"
+stderr:
+"""
+`;
+
+exports[`Document Update Command - Project Not Found 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update document: Project not found: Nope
 ""
 `;

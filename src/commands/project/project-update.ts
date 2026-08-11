@@ -1,10 +1,18 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import type { ProjectUpdateInput } from "../../__codegen__/graphql.ts"
 import { CliError, handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
-import { getTeamIdByKey, lookupUserId, resolveProjectId } from "../../utils/linear.ts"
+import {
+  getProjectLabelIdByName,
+  getTeamIdByKey,
+  lookupUserId,
+  resolveProjectId,
+} from "../../utils/linear.ts"
+import { collect } from "../../utils/option-parsers.ts"
 import { createSpinner } from "../../utils/spinner.ts"
+import { PROJECT_DESCRIPTION_MAX_LENGTH, resolveProjectDescription } from "./project-description.ts"
 
 const UpdateProject = gql(`
   mutation UpdateProject($id: String!, $input: ProjectUpdateInput!) {
@@ -48,7 +56,14 @@ export const updateCommand = new Command("update")
   .description("Update a Linear project")
   .argument("<projectId>", "Project ID or slug")
   .option("-n, --name <name>", "Project name")
-  .option("-d, --description <description>", "Project description")
+  .option(
+    "-d, --description <description>",
+    `Project description (max ${PROJECT_DESCRIPTION_MAX_LENGTH} characters, enforced by Linear's API)`,
+  )
+  .option(
+    "-f, --description-file <path>",
+    `Read project description from file (still subject to the ${PROJECT_DESCRIPTION_MAX_LENGTH}-character API limit)`,
+  )
   .option(
     "-s, --status <status>",
     "Status (planned, started, paused, completed, canceled, backlog)",
@@ -61,8 +76,23 @@ export const updateCommand = new Command("update")
     "Team key (can be repeated for multiple teams)",
     (val: string, prev: string[] = []) => [...prev, val],
   )
+  .option(
+    "--label <label>",
+    "Replace the project's labels. May be repeated to set multiple labels.",
+    collect,
+  )
   .action(async (projectId: string, options) => {
-    const { name, description, status, lead, startDate, targetDate, team: teams } = options
+    const {
+      name,
+      description,
+      descriptionFile,
+      status,
+      lead,
+      startDate,
+      targetDate,
+      team: teams,
+      label: labels,
+    } = options
 
     const spinner = createSpinner("", shouldShowSpinner())
 
@@ -70,17 +100,31 @@ export const updateCommand = new Command("update")
       if (
         !name &&
         description == null &&
+        descriptionFile == null &&
         !status &&
         !lead &&
         !startDate &&
         !targetDate &&
-        (!teams || teams.length === 0)
+        (!teams || teams.length === 0) &&
+        (!labels || labels.length === 0)
       ) {
         throw new ValidationError("At least one update option must be provided", {
           suggestion:
-            "Use --name, --description, --status, --lead, --start-date, --target-date, or --team",
+            "Use --name, --description, --description-file, --status, --lead, --start-date, --target-date, --team, or --label",
         })
       }
+
+      if (labels) {
+        for (const label of labels) {
+          if (label.trim() === "") {
+            throw new ValidationError("Project label cannot be empty", {
+              suggestion: 'Provide a label name, e.g. --label "My Label".',
+            })
+          }
+        }
+      }
+
+      const resolvedDescription = await resolveProjectDescription(description, descriptionFile)
 
       if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
         throw new ValidationError("Start date must be in YYYY-MM-DD format")
@@ -94,10 +138,10 @@ export const updateCommand = new Command("update")
       const client = getGraphQLClient()
       const resolvedId = await resolveProjectId(projectId)
 
-      const input: Record<string, unknown> = {}
+      const input: ProjectUpdateInput = {}
 
       if (name) input.name = name
-      if (description != null) input.description = description
+      if (resolvedDescription != null) input.description = resolvedDescription
       if (startDate) input.startDate = startDate
       if (targetDate) input.targetDate = targetDate
 
@@ -142,6 +186,25 @@ export const updateCommand = new Command("update")
           teamIds.push(teamId)
         }
         input.teamIds = teamIds
+      }
+
+      if (labels && labels.length > 0) {
+        // Replace the project's labels with exactly the resolved set,
+        // matching `project update --team` and `issue update --label`.
+        const labelIds: string[] = []
+        const seen = new Set<string>()
+        for (const label of labels) {
+          const labelId = await getProjectLabelIdByName(label)
+          if (!labelId) {
+            spinner.stop()
+            throw new NotFoundError("Project label", label)
+          }
+          if (!seen.has(labelId)) {
+            seen.add(labelId)
+            labelIds.push(labelId)
+          }
+        }
+        input.labelIds = labelIds
       }
 
       const result = await client.request(UpdateProject, {

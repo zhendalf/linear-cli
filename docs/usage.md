@@ -238,6 +238,20 @@ linear team autolinks
 
 ### projects
 
+#### create a project
+
+```bash
+# Create with a short description (max 255 characters) and long-form overview markdown
+linear project create --name "API v2" --team ENG --description "Short summary" --content "## Overview"
+
+# Read the short description or the project overview body from files
+linear project create --name "API v2" --team ENG --description-file summary.md
+linear project create --name "API v2" --team ENG --content-file overview.md
+
+# Create with priority, labels, members, icon, and color
+linear project create --name "Mobile launch" --team APP --priority high --label Launch --member jane@example.com --icon rocket --color "#5E6AD2"
+```
+
 #### list projects
 
 ```bash

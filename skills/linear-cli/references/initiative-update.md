@@ -1,65 +1,52 @@
 # initiative-update
 
-> Manage initiative status updates (timeline posts)
+> 
 
 ## Usage
 
 ```
-Usage:   linear initiative-update
+Usage: linear initiative-update|iu [options] [command]
 
-Description:
-
-  Manage initiative status updates (timeline posts)
+Manage initiative status updates (timeline posts)
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>                 Target workspace (uses credentials)
+  -h, --help                         display help for command
 
 Commands:
-
-  create, c    <initiativeId>  - Create a new status update for an initiative
-  list, l, ls  <initiativeId>  - List status updates for an initiative
+  create|c [options] <initiativeId>  Create a new status update for an
+                                     initiative
+  list|l [options] <initiativeId>    List status updates for an initiative
 ```
 
 ## Subcommands
 
 ### create
 
-> Create a new status update for an initiative
-
 ```
-Usage:   linear initiative-update create <initiativeId>
+Usage: linear initiative-update create|c [options] <initiativeId>
 
-Description:
-
-  Create a new status update for an initiative
+Create a new status update for an initiative
 
 Options:
-
-  -h, --help                   - Show this help.                            
-  --workspace        <slug>    - Target workspace (uses credentials)        
-  --body             <body>    - Update content (markdown)                  
-  --body-file        <path>    - Read content from file                     
-  --health           <health>  - Health status (onTrack, atRisk, offTrack)  
-  -i, --interactive            - Interactive mode with prompts
+  --body <body>       Update content (markdown)
+  --body-file <path>  Read content from file
+  --health <health>   Health status (onTrack, atRisk, offTrack)
+  -i, --interactive   Interactive mode with prompts
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### list
 
-> List status updates for an initiative
-
 ```
-Usage:   linear initiative-update list <initiativeId>
+Usage: linear initiative-update list|l [options] <initiativeId>
 
-Description:
-
-  List status updates for an initiative
+List status updates for an initiative
 
 Options:
-
-  -h, --help            - Show this help.                                   
-  --workspace  <slug>   - Target workspace (uses credentials)               
-  -j, --json            - Output as JSON                                    
-  --limit      <limit>  - Limit results                        (Default: 10)
+  -j, --json          Output as JSON
+  --limit <limit>     Limit results (default: 10)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

@@ -1,124 +1,111 @@
 # milestone
 
-> Manage Linear project milestones
+> 
 
 ## Usage
 
 ```
-Usage:   linear milestone
+Usage: linear milestone|m [options] [command]
 
-Description:
-
-  Manage Linear project milestones
+Manage Linear project milestones
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>              Target workspace (uses credentials)
+  -h, --help                      display help for command
 
 Commands:
-
-  list                    - List milestones for a project       
-  view, v  <milestoneId>  - View milestone details              
-  create                  - Create a new project milestone      
-  update   <id>           - Update an existing project milestone
-  delete   <id>           - Delete a project milestone
+  list [options]                  List milestones for a project
+  view|v [options] <milestoneId>  View milestone details. By default lists the
+                                  first 10 attached issues from the first page
+                                  of 50; use --all to paginate the full set.
+  create [options]                Create a new project milestone
+  update [options] <id>           Update an existing project milestone
+  delete [options] <id>           Delete a project milestone
 ```
 
 ## Subcommands
 
 ### list
 
-> List milestones for a project
-
 ```
-Usage:   linear milestone list --project <projectId>
+Usage: linear milestone list [options]
 
-Description:
-
-  List milestones for a project
+List milestones for a project
 
 Options:
-
-  -h, --help                - Show this help.                                
-  --workspace  <slug>       - Target workspace (uses credentials)            
-  --project    <projectId>  - Project ID                           (required)
+  --project <projectId>  Project ID
+  -j, --json             Output as JSON
+  --workspace <slug>     Target workspace (uses credentials)
+  -h, --help             display help for command
 ```
 
 ### view
 
-> View milestone details
-
 ```
-Usage:   linear milestone view <milestoneId>
+Usage: linear milestone view|v [options] <milestoneId>
 
-Description:
+View milestone details. By default lists the first 10 attached issues from the
+first page of 50; use --all to paginate the full set.
 
-  View milestone details
+Arguments:
+  milestoneId         Milestone ID
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --all               Fetch and list every issue attached to the milestone
+                      (paginates the Linear API)
+  --no-pager          Disable automatic paging for long output
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### create
 
-> Create a new project milestone
-
 ```
-Usage:   linear milestone create --project <projectId> --name <name>
+Usage: linear milestone create [options]
 
-Description:
-
-  Create a new project milestone
+Create a new project milestone
 
 Options:
-
-  -h, --help                    - Show this help.                                
-  --workspace    <slug>         - Target workspace (uses credentials)            
-  --project      <projectId>    - Project ID                           (required)
-  --name         <name>         - Milestone name                       (required)
-  --description  <description>  - Milestone description                          
-  --target-date  <date>         - Target date (YYYY-MM-DD)
+  --project <projectId>        Project ID
+  --name <name>                Milestone name
+  --description <description>  Milestone description
+  --target-date <date>         Target date (YYYY-MM-DD)
+  --workspace <slug>           Target workspace (uses credentials)
+  -h, --help                   display help for command
 ```
 
 ### update
 
-> Update an existing project milestone
-
 ```
-Usage:   linear milestone update <id>
+Usage: linear milestone update [options] <id>
 
-Description:
+Update an existing project milestone
 
-  Update an existing project milestone
+Arguments:
+  id                           Milestone ID
 
 Options:
-
-  -h, --help                    - Show this help.                          
-  --workspace    <slug>         - Target workspace (uses credentials)      
-  --name         <name>         - Milestone name                           
-  --description  <description>  - Milestone description                    
-  --target-date  <date>         - Target date (YYYY-MM-DD)                 
-  --sort-order   <value>        - Sort order relative to other milestones  
-  --project      <projectId>    - Move to a different project
+  --name <name>                Milestone name
+  --description <description>  Milestone description
+  --target-date <date>         Target date (YYYY-MM-DD)
+  --sort-order <value>         Sort order relative to other milestones
+  --project <projectId>        Move to a different project
+  --workspace <slug>           Target workspace (uses credentials)
+  -h, --help                   display help for command
 ```
 
 ### delete
 
-> Delete a project milestone
-
 ```
-Usage:   linear milestone delete <id>
+Usage: linear milestone delete [options] <id>
 
-Description:
+Delete a project milestone
 
-  Delete a project milestone
+Arguments:
+  id                  Milestone ID
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
-  -f, --force          - Skip confirmation prompt
+  -y, --yes           Skip confirmation prompt
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

@@ -1,87 +1,73 @@
 # label
 
-> Manage Linear issue labels
+> 
 
 ## Usage
 
 ```
-Usage:   linear label
+Usage: linear label|l [options] [command]
 
-Description:
-
-  Manage Linear issue labels
+Manage Linear issue labels
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>           Target workspace (uses credentials)
+  -h, --help                   display help for command
 
 Commands:
-
-  list                - List issue labels       
-  create              - Create a new issue label
-  delete  <nameOrId>  - Delete an issue label
+  list [options]               List issue labels
+  create [options]             Create a new issue label
+  delete [options] <nameOrId>  Delete an issue label
 ```
 
 ## Subcommands
 
 ### list
 
-> List issue labels
-
 ```
-Usage:   linear label list
+Usage: linear label list [options]
 
-Description:
-
-  List issue labels
+List issue labels
 
 Options:
-
-  -h, --help              - Show this help.                                              
-  --team       <teamKey>  - Filter by team (e.g., TC). Shows team-specific labels only.  
-  --workspace             - Show only workspace-level labels (not team-specific)         
-  --all                   - Show all labels (both workspace and team)                    
-  -j, --json              - Output as JSON
+  --team <teamKey>  Filter by team (e.g., TC). Shows team-specific labels only.
+  --workspace       Show only workspace-level labels (not team-specific)
+  --all             Show all labels (both workspace and team)
+  -j, --json        Output as JSON
+  -h, --help        display help for command
 ```
 
 ### create
 
-> Create a new issue label
-
 ```
-Usage:   linear label create
+Usage: linear label create [options]
 
-Description:
-
-  Create a new issue label
+Create a new issue label
 
 Options:
-
-  -h, --help                        - Show this help.                                              
-  --workspace        <slug>         - Target workspace (uses credentials)                          
-  -n, --name         <name>         - Label name (required)                                        
-  -c, --color        <color>        - Color hex code (e.g., #EB5757)                               
-  -d, --description  <description>  - Label description                                            
-  -t, --team         <teamKey>      - Team key for team-specific label (omit for workspace label)  
-  -i, --interactive                 - Interactive mode (default if no flags provided)
+  -n, --name <name>                Label name (required)
+  -c, --color <color>              Color hex code (e.g., #EB5757)
+  -d, --description <description>  Label description
+  -t, --team <teamKey>             Team key for team-specific label (omit for
+                                   workspace label)
+  -i, --interactive                Interactive mode (default if no flags
+                                   provided)
+  --workspace <slug>               Target workspace (uses credentials)
+  -h, --help                       display help for command
 ```
 
 ### delete
 
-> Delete an issue label
-
 ```
-Usage:   linear label delete <nameOrId>
+Usage: linear label delete [options] <nameOrId>
 
-Description:
+Delete an issue label
 
-  Delete an issue label
+Arguments:
+  nameOrId              Label name or ID
 
 Options:
-
-  -h, --help              - Show this help.                                 
-  --workspace  <slug>     - Target workspace (uses credentials)             
-  -t, --team   <teamKey>  - Team key to disambiguate labels with same name  
-  -f, --force             - Skip confirmation prompt
+  -t, --team <teamKey>  Team key to disambiguate labels with same name
+  -y, --yes             Skip confirmation prompt
+  --workspace <slug>    Target workspace (uses credentials)
+  -h, --help            display help for command
 ```

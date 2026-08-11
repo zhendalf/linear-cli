@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Security
+
+- **attachments are no longer public by default**: `issue attach` and `issue comment add --attach` previously auto-published raster images to `public.linear.app`, where anyone with the URL could read them without authenticating. Uploads now default to workspace-only (matching the Linear web app), with an explicit `--public` opt-in that warns when it is used. Requesting `--public` for a non-image type is an error rather than a silent downgrade, and mixed batches are validated before any file is uploaded.
+
+### Added
+
+- `issue update --unassign` to clear an assignee, and `--clear-cycle` to clear a cycle
+- `issue update --add-label` / `--remove-label` for incremental label edits (`--label` still replaces the whole set, which its help text now says explicitly)
+- `document update --project` to re-point a document at another project
+- `document view --json` now includes the document's comments as a paginated connection
+- `milestone view --all` to list every attached issue; without it, the view now says when a milestone has more issues than were fetched instead of silently truncating
+- `project create` gains `--content`/`--content-file` (long-form overview), `--priority`, `--label`, `--member`, `--icon`, and `--color`
+- `project create`/`project update` gain `-f, --description-file`, and `--description` now documents Linear's 255-character limit
+- `project update --label` (replace semantics, deduplicated, excludes label groups)
+
+### Fixed
+
+- `document list --issue` never worked — the filter used a nonexistent `identifier` comparator, so every invocation was rejected by the API. It now filters on `issue.id`, which accepts human identifiers like `ENG-123`.
+- `document update` now refuses to overwrite a document that has active inline comments (which a Markdown replacement would orphan), with `--force` to override
+- the skill-docs generator silently deleted the reference docs for every aliased command group: it parsed the command list expecting `command, alias` but commander emits `command|alias`, and it pruned stale files before rendering. It now parses aliases correctly and aborts rather than pruning when discovery comes up empty.
+
 ### Changed
 
 - **Bun-native distribution**: the CLI now ships as TypeScript and runs directly on Bun — there is no longer a bundled `dist/main.js`. The published `bin` is `src/main.ts` (`#!/usr/bin/env bun`), and runtime libraries are now real `dependencies`.

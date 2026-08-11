@@ -9,6 +9,8 @@ Update a linear issue
 Options:
   -a, --assignee <assignee>        Assign the issue to 'self' or someone (by
                                    username or name)
+  --unassign                       Clear the issue's assignee (cannot be
+                                   combined with --assignee)
   --due-date <dueDate>             Due date of the issue
   --parent <parent>                Parent issue (if any) as a team_number code
   -p, --priority <priority>        Priority of the issue (1-4, descending
@@ -17,15 +19,25 @@ Options:
   -d, --description <description>  Description of the issue
   --description-file <path>        Read description from a file (preferred for
                                    markdown content)
-  -l, --label <label>              Issue label associated with the issue. May be
-                                   repeated.
+  -l, --label <label>              Issue label associated with the issue;
+                                   replaces the issue's entire label set. May be
+                                   repeated. Use --add-label/--remove-label to
+                                   change labels incrementally.
+  --add-label <label>              Add a label to the issue, keeping its
+                                   existing labels. May be repeated.
+  --remove-label <label>           Remove a label from the issue, keeping its
+                                   other labels (does not delete the label from
+                                   the team). May be repeated.
   --team <team>                    Team associated with the issue (if not your
                                    default team)
   --project <project>              Name or slug ID of the project with the issue
   -s, --state <state>              Workflow state for the issue (by name or
                                    type)
   --milestone <milestone>          Name of the project milestone
-  --cycle <cycle>                  Cycle name, number, or 'active'
+  --cycle <cycle>                  Cycle name, number, or 'active'. Use
+                                   --clear-cycle to remove the issue from its
+                                   cycle
+  --clear-cycle                    Remove the issue from its cycle
   -t, --title <title>              Title of the issue
   -h, --help                       display help for command
 "
@@ -97,4 +109,184 @@ https://linear.app/test-team/issue/ENG-123/test-issue
 "
 stderr:
 """
+`;
+
+exports[`Issue Update Command - Unassign Clears Assignee 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Unassign With Other Fields 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Renamed
+https://linear.app/test-team/issue/ENG-123/renamed
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Assignee Still Sends User Id 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Assignee And Unassign Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot specify both --assignee and --unassign
+  Use --assignee <user> to set an assignee, or --unassign on its own to clear it.
+""
+`;
+
+exports[`Issue Update Command - Clear Cycle Sends Null 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Cycle And Clear Cycle Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot specify both --cycle and --clear-cycle
+  Use --cycle <cycle> to set a cycle, or --clear-cycle on its own to remove it.
+""
+`;
+
+exports[`Issue Update Command - Add Label Sends addedLabelIds 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Add Label Dedupes Case Variants 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Remove Label Sends removedLabelIds 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Add And Remove Label In One Update 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Label Replace Sends Exact labelIds 1`] = `
+"stdout:
+"Updating issue ENG-123
+
+✓ Updated issue ENG-123: Some issue
+https://linear.app/test-team/issue/ENG-123/some-issue
+"
+stderr:
+"""
+`;
+
+exports[`Issue Update Command - Label And Add Label Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot combine --label with --add-label or --remove-label
+  --label replaces the issue's entire label set. Use it alone to set the exact set, or use --add-label/--remove-label alone to change it incrementally.
+""
+`;
+
+exports[`Issue Update Command - Label And Remove Label Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot combine --label with --add-label or --remove-label
+  --label replaces the issue's entire label set. Use it alone to set the exact set, or use --add-label/--remove-label alone to change it incrementally.
+""
+`;
+
+exports[`Issue Update Command - Team Move And Add Label Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot combine --team with --add-label or --remove-label
+  Move the issue with --team first, then change labels in a second update.
+""
+`;
+
+exports[`Issue Update Command - Team Move And Remove Label Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot combine --team with --add-label or --remove-label
+  Move the issue with --team first, then change labels in a second update.
+""
+`;
+
+exports[`Issue Update Command - Add And Remove Same Label Conflict 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Cannot add and remove the same label in one update
+  Remove the duplicate label from either --add-label or --remove-label.
+""
+`;
+
+exports[`Issue Update Command - Unknown Add Label 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Issue label not found: nosuch
+  Run \`linear label list --team ENG\` to see available labels.
+""
+`;
+
+exports[`Issue Update Command - Unknown Remove Label 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to update issue: Issue label not found: nosuch
+  Run \`linear label list --team ENG\` to see available labels.
+""
 `;

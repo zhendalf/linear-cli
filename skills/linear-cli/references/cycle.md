@@ -1,61 +1,52 @@
 # cycle
 
-> Manage Linear team cycles
+> 
 
 ## Usage
 
 ```
-Usage:   linear cycle
+Usage: linear cycle|cy [options] [command]
 
-Description:
-
-  Manage Linear team cycles
+Manage Linear team cycles
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>           Target workspace (uses credentials)
+  -h, --help                   display help for command
 
 Commands:
-
-  list                 - List cycles for a team
-  view, v  <cycleRef>  - View cycle details
+  list [options]               List cycles for a team
+  view|v [options] <cycleRef>  View cycle details
 ```
 
 ## Subcommands
 
 ### list
 
-> List cycles for a team
-
 ```
-Usage:   linear cycle list
+Usage: linear cycle list [options]
 
-Description:
-
-  List cycles for a team
+List cycles for a team
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
-  --team       <team>  - Team key (defaults to current team)
+  --team <team>       Team key (defaults to current team)
+  -j, --json          Output as JSON
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### view
 
-> View cycle details
-
 ```
-Usage:   linear cycle view <cycleRef>
+Usage: linear cycle view|v [options] <cycleRef>
 
-Description:
+View cycle details
 
-  View cycle details
+Arguments:
+  cycleRef            Cycle reference (name or number)
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
-  --team       <team>  - Team key (defaults to current team)
+  --team <team>       Team key (defaults to current team)
+  --no-pager          Disable automatic paging for long output
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

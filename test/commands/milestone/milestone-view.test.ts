@@ -1,3 +1,4 @@
+import { expect, test } from "bun:test"
 import { viewCommand } from "../../../src/commands/milestone/milestone-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
@@ -45,30 +46,22 @@ await snapshotTest({
                     id: "issue-1",
                     identifier: "ENG-123",
                     title: "Implement authentication",
-                    state: {
-                      name: "In Progress",
-                      type: "started",
-                    },
+                    state: { name: "In Progress", type: "started" },
                   },
                   {
                     id: "issue-2",
                     identifier: "ENG-124",
                     title: "Setup database",
-                    state: {
-                      name: "Done",
-                      type: "completed",
-                    },
+                    state: { name: "Done", type: "completed" },
                   },
                   {
                     id: "issue-3",
                     identifier: "ENG-125",
                     title: "Create API endpoints",
-                    state: {
-                      name: "Todo",
-                      type: "unstarted",
-                    },
+                    state: { name: "Todo", type: "unstarted" },
                   },
                 ],
+                pageInfo: { hasNextPage: false, endCursor: null },
               },
             },
           },
@@ -118,6 +111,7 @@ await snapshotTest({
               },
               issues: {
                 nodes: [],
+                pageInfo: { hasNextPage: false, endCursor: null },
               },
             },
           },
@@ -139,9 +133,9 @@ await snapshotTest({
   },
 })
 
-// Test with many issues (>10)
+// Test default behavior with 15 fetched issues (single page, list slice to 10).
 await snapshotTest({
-  name: "Milestone View Command - Many Issues",
+  name: "Milestone View Command - Many Issues (default lists 10)",
   meta: import.meta,
   colors: false,
   args: ["milestone-456"],
@@ -175,6 +169,7 @@ await snapshotTest({
                     type: i < 5 ? "completed" : i < 10 ? "started" : "unstarted",
                   },
                 })),
+                pageInfo: { hasNextPage: false, endCursor: null },
               },
             },
           },
@@ -194,4 +189,296 @@ await snapshotTest({
       delete process.env["LINEAR_API_KEY"]
     }
   },
+})
+
+// Test that hasNextPage = true triggers the explicit truncation footer
+// (this is the core regression: silent capping when the API has more pages).
+// Fixtures use noon-UTC timestamps so formatRelativeTime's toLocaleDateString
+// fallback renders the same date in every timezone.
+await snapshotTest({
+  name: "Milestone View Command - Truncated (more pages available)",
+  meta: import.meta,
+  colors: false,
+  args: ["milestone-trunc"],
+  async fn() {
+    const server = new MockLinearServer([
+      {
+        queryName: "GetMilestoneDetails",
+        variables: { id: "milestone-trunc", first: 50 },
+        response: {
+          data: {
+            projectMilestone: {
+              id: "milestone-trunc",
+              name: "Huge Milestone",
+              description: null,
+              targetDate: null,
+              sortOrder: 1,
+              createdAt: "2020-01-01T12:00:00Z",
+              updatedAt: "2020-01-02T12:00:00Z",
+              project: {
+                id: "project-1",
+                name: "P",
+                slugId: "p",
+                url: "https://linear.app/test/project/p",
+              },
+              issues: {
+                nodes: Array.from({ length: 50 }, (_, i) => ({
+                  id: `id-${i}`,
+                  identifier: `BIG-${i + 1}`,
+                  title: `Issue ${i + 1}`,
+                  state: { name: "Todo", type: "unstarted" },
+                })),
+                pageInfo: { hasNextPage: true, endCursor: "cursor-1" },
+              },
+            },
+          },
+        },
+      },
+    ])
+
+    try {
+      await server.start()
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
+
+      await viewCommand.parseAsync(process.argv.slice(2), { from: "user" })
+    } finally {
+      await server.stop()
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
+    }
+  },
+})
+
+// Test --all paginates through subsequent pages. The more-specific (with `after`)
+// mock is listed first so the mock matcher's subset semantics route page 2 correctly.
+await snapshotTest({
+  name: "Milestone View Command - --all paginates",
+  meta: import.meta,
+  colors: false,
+  args: ["milestone-trunc", "--all"],
+  async fn() {
+    const server = new MockLinearServer([
+      {
+        queryName: "GetMilestoneDetails",
+        variables: { id: "milestone-trunc", first: 50, after: "cursor-1" },
+        response: {
+          data: {
+            projectMilestone: {
+              id: "milestone-trunc",
+              name: "Huge Milestone",
+              description: null,
+              targetDate: null,
+              sortOrder: 1,
+              createdAt: "2020-01-01T12:00:00Z",
+              updatedAt: "2020-01-02T12:00:00Z",
+              project: {
+                id: "project-1",
+                name: "P",
+                slugId: "p",
+                url: "https://linear.app/test/project/p",
+              },
+              issues: {
+                nodes: Array.from({ length: 2 }, (_, i) => ({
+                  id: `id-${50 + i}`,
+                  identifier: `BIG-${51 + i}`,
+                  title: `Issue ${51 + i}`,
+                  state: { name: "Done", type: "completed" },
+                })),
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      },
+      {
+        queryName: "GetMilestoneDetails",
+        variables: { id: "milestone-trunc", first: 50 },
+        response: {
+          data: {
+            projectMilestone: {
+              id: "milestone-trunc",
+              name: "Huge Milestone",
+              description: null,
+              targetDate: null,
+              sortOrder: 1,
+              createdAt: "2020-01-01T12:00:00Z",
+              updatedAt: "2020-01-02T12:00:00Z",
+              project: {
+                id: "project-1",
+                name: "P",
+                slugId: "p",
+                url: "https://linear.app/test/project/p",
+              },
+              issues: {
+                nodes: Array.from({ length: 50 }, (_, i) => ({
+                  id: `id-${i}`,
+                  identifier: `BIG-${i + 1}`,
+                  title: `Issue ${i + 1}`,
+                  state: { name: "Todo", type: "unstarted" },
+                })),
+                pageInfo: { hasNextPage: true, endCursor: "cursor-1" },
+              },
+            },
+          },
+        },
+      },
+    ])
+
+    try {
+      await server.start()
+      process.env["LINEAR_GRAPHQL_ENDPOINT"] = server.getEndpoint()
+      process.env["LINEAR_API_KEY"] = "Bearer test-token"
+
+      await viewCommand.parseAsync(process.argv.slice(2), { from: "user" })
+    } finally {
+      await server.stop()
+      delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+      delete process.env["LINEAR_API_KEY"]
+    }
+  },
+})
+
+// --all must fail loudly, not silently truncate, when Linear advertises another
+// page but returns no cursor to fetch it. (Regression guard for the exact bug
+// this command fixes: silently dropping issues.)
+test("Milestone View Command - --all errors on inconsistent pagination", async () => {
+  const server = new MockLinearServer([
+    {
+      queryName: "GetMilestoneDetails",
+      variables: { id: "milestone-bad", first: 50 },
+      response: {
+        data: {
+          projectMilestone: {
+            id: "milestone-bad",
+            name: "Broken Pagination",
+            description: null,
+            targetDate: null,
+            sortOrder: 1,
+            createdAt: "2020-01-01T12:00:00Z",
+            updatedAt: "2020-01-02T12:00:00Z",
+            project: {
+              id: "project-1",
+              name: "P",
+              slugId: "p",
+              url: "https://linear.app/test/project/p",
+            },
+            issues: {
+              nodes: Array.from({ length: 50 }, (_, i) => ({
+                id: `id-${i}`,
+                identifier: `BAD-${i + 1}`,
+                title: `Issue ${i + 1}`,
+                state: { name: "Done", type: "completed" },
+              })),
+              // hasNextPage true but no cursor: continuing is impossible.
+              pageInfo: { hasNextPage: true, endCursor: null },
+            },
+          },
+        },
+      },
+    },
+  ])
+
+  const errorLogs: string[] = []
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    errorLogs.push(args.map(String).join(" "))
+  }
+  const origProcessExit = process.exit
+  let exited = false
+  process.exit = ((_code?: number) => {
+    throw new Error("EXIT")
+  }) as typeof process.exit
+
+  try {
+    await server.start()
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
+    await viewCommand.parseAsync(["milestone-bad", "--all"], { from: "user" })
+  } catch (e) {
+    if (!(e instanceof Error) || e.message !== "EXIT") throw e
+    exited = true
+  } finally {
+    console.error = origConsoleError
+    process.exit = origProcessExit
+    await server.stop()
+    delete process.env["LINEAR_API_KEY"]
+  }
+
+  expect(exited).toBe(true)
+  expect(errorLogs.some((l) => l.includes("more issues but returned no pagination cursor"))).toBe(
+    true,
+  )
+})
+
+// --all must also fail loudly if the milestone vanishes mid-pagination instead
+// of quietly returning the pages fetched so far.
+test("Milestone View Command - --all errors when milestone vanishes mid-pagination", async () => {
+  const server = new MockLinearServer([
+    {
+      queryName: "GetMilestoneDetails",
+      variables: { id: "milestone-gone", first: 50, after: "cursor-1" },
+      // Milestone deleted between page 1 and page 2.
+      response: { data: { projectMilestone: null } },
+    },
+    {
+      queryName: "GetMilestoneDetails",
+      variables: { id: "milestone-gone", first: 50 },
+      response: {
+        data: {
+          projectMilestone: {
+            id: "milestone-gone",
+            name: "Vanishing Milestone",
+            description: null,
+            targetDate: null,
+            sortOrder: 1,
+            createdAt: "2020-01-01T12:00:00Z",
+            updatedAt: "2020-01-02T12:00:00Z",
+            project: {
+              id: "project-1",
+              name: "P",
+              slugId: "p",
+              url: "https://linear.app/test/project/p",
+            },
+            issues: {
+              nodes: Array.from({ length: 50 }, (_, i) => ({
+                id: `id-${i}`,
+                identifier: `GONE-${i + 1}`,
+                title: `Issue ${i + 1}`,
+                state: { name: "Done", type: "completed" },
+              })),
+              pageInfo: { hasNextPage: true, endCursor: "cursor-1" },
+            },
+          },
+        },
+      },
+    },
+  ])
+
+  const errorLogs: string[] = []
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    errorLogs.push(args.map(String).join(" "))
+  }
+  const origProcessExit = process.exit
+  let exited = false
+  process.exit = ((_code?: number) => {
+    throw new Error("EXIT")
+  }) as typeof process.exit
+
+  try {
+    await server.start()
+    process.env["LINEAR_API_KEY"] = "Bearer test-token"
+    await viewCommand.parseAsync(["milestone-gone", "--all"], { from: "user" })
+  } catch (e) {
+    if (!(e instanceof Error) || e.message !== "EXIT") throw e
+    exited = true
+  } finally {
+    console.error = origConsoleError
+    process.exit = origProcessExit
+    await server.stop()
+    delete process.env["LINEAR_API_KEY"]
+  }
+
+  expect(exited).toBe(true)
+  expect(errorLogs.some((l) => l.includes("Milestone not found: milestone-gone"))).toBe(true)
 })
