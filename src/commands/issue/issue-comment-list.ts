@@ -2,7 +2,7 @@ import chalk from "chalk"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
 

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"

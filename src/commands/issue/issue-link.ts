@@ -2,11 +2,11 @@ import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import {
   CliError,
-  NotFoundError,
-  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
+  NotFoundError,
+  ValidationError,
 } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"

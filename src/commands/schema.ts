@@ -1,9 +1,9 @@
 import { writeFile } from "node:fs/promises"
 import { Command } from "commander"
 import {
-  type IntrospectionQuery,
   buildClientSchema,
   getIntrospectionQuery,
+  type IntrospectionQuery,
   lexicographicSortSchema,
   printSchema,
 } from "graphql"

@@ -1,5 +1,5 @@
 import { Command, Option } from "commander"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { formatIssueDescription } from "../../utils/jj.ts"
 import { fetchIssueDetails, getIssueIdentifier } from "../../utils/linear.ts"

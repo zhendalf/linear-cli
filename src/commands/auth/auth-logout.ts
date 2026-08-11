@@ -5,7 +5,7 @@ import {
   hasWorkspace,
   removeCredential,
 } from "../../credentials.ts"
-import { AuthError, NotFoundError, handleError } from "../../utils/errors.ts"
+import { AuthError, handleError, NotFoundError } from "../../utils/errors.ts"
 import { confirm, select } from "../../utils/prompt.ts"
 
 export const logoutCommand = new Command("logout")

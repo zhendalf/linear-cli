@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getTeamKeyFromIssueIdentifier } from "../../utils/issue-identifier.ts"
@@ -141,7 +141,7 @@ export const updateCommand = new Command("update")
         }
       }
 
-      let projectId: string | undefined = undefined
+      let projectId: string | undefined
       if (project !== undefined) {
         projectId = await getProjectIdByName(project)
         if (projectId === undefined) {

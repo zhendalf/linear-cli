@@ -1,5 +1,5 @@
 import { Command } from "commander"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { getTeamKey, getTeamMembers } from "../../utils/linear.ts"
 
 export const membersCommand = new Command("members")

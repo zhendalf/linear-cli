@@ -52,7 +52,7 @@ export const listCommand = new Command("list")
     try {
       // Build filter based on options
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let filter: any = undefined
+      let filter: any
 
       if (project) {
         filter = {

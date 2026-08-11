@@ -6,7 +6,6 @@
  * workspace slug to its API key.
  */
 
-import { existsSync } from "node:fs"
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { credentialsFilePath } from "./utils/paths.ts"

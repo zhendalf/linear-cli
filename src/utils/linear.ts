@@ -10,7 +10,6 @@ import type {
   IssueSortInput,
   PaginationOrderBy,
   SearchIssuesQuery,
-  GetAllTeamsQueryVariables as _GetAllTeamsQueryVariables,
 } from "../__codegen__/graphql.ts"
 import { getOption } from "../config.ts"
 import { NotFoundError, ValidationError } from "./errors.ts"
@@ -649,7 +648,7 @@ export async function fetchIssuesForState(
 
   const allIssues = []
   let hasNextPage = true
-  let after: string | null | undefined = undefined
+  let after: string | null | undefined
 
   while (hasNextPage) {
     const result: GetIssuesForStateQuery = await client.request(query, {
@@ -891,7 +890,7 @@ export async function fetchIssuesForQuery(
 
   const allNodes: QueryIssuesPayload["nodes"] = []
   let hasNextPage = true
-  let after: string | null | undefined = undefined
+  let after: string | null | undefined
   let lastPageInfo: QueryIssuesPayload["pageInfo"] = {
     hasNextPage: false,
     endCursor: null,
@@ -1110,7 +1109,7 @@ export async function searchIssuesByTerm(
   const allNodes: SearchIssuesPayload["nodes"] = []
   let totalCount = 0
   let hasNextPage = true
-  let after: string | null | undefined = undefined
+  let after: string | null | undefined
   let lastPageInfo: SearchIssuesPayload["pageInfo"] = {
     hasNextPage: false,
     endCursor: null,
@@ -1359,6 +1358,26 @@ export async function getIssueLabelIdByNameForTeam(
   return data.issueLabels?.nodes[0]?.id
 }
 
+/**
+ * Look up a project label ID by name (case-insensitive). Label groups are
+ * excluded — only assignable (non-group) project labels match.
+ */
+export async function getProjectLabelIdByName(name: string): Promise<string | undefined> {
+  const client = getGraphQLClient()
+  const query = gql(/* GraphQL */ `
+    query GetProjectLabelIdByName($name: String!) {
+      projectLabels(filter: { name: { eqIgnoreCase: $name }, isGroup: { eq: false } }) {
+        nodes {
+          id
+          name
+        }
+      }
+    }
+  `)
+  const data = await client.request(query, { name })
+  return data.projectLabels?.nodes[0]?.id
+}
+
 export async function getIssueLabelOptionsByNameForTeam(
   name: string,
   teamKey: string,
@@ -1411,7 +1430,7 @@ export async function getAllTeams(): Promise<Array<{ id: string; key: string; na
 
   const allTeams = []
   let hasNextPage = true
-  let after: string | null | undefined = undefined
+  let after: string | null | undefined
 
   while (hasNextPage) {
     const result: GetAllTeamsQuery = await client.request(query, {
@@ -1485,7 +1504,7 @@ export async function getTeamMembers(teamKey: string) {
 
   const allMembers = []
   let hasNextPage = true
-  let after: string | null | undefined = undefined
+  let after: string | null | undefined
 
   while (hasNextPage) {
     const result: GetTeamMembersQuery = await client.request(query, {

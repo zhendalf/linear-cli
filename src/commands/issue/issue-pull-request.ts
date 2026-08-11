@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process"
 import { Command } from "commander"
-import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { fetchIssueDetails, getIssueIdentifier } from "../../utils/linear.ts"
 

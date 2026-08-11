@@ -5,6 +5,7 @@
 ### Changed
 
 - **Bun-native distribution**: the CLI now ships as TypeScript and runs directly on Bun — there is no longer a bundled `dist/main.js`. The published `bin` is `src/main.ts` (`#!/usr/bin/env bun`), and runtime libraries are now real `dependencies`.
+- all dependencies updated to current majors: commander 15, @inquirer/prompts 8, chalk 6, ora 9, dotenv 17, open 11, env-paths 4, string-width 8; dev tooling moves to Biome 2, graphql-codegen 7, lefthook 2, TypeScript 7. `graphql` intentionally stays on 16.x (graphql-request peer-depends on `14 - 16`). Linear's custom scalars are now explicitly mapped in `codegen.ts` (`strictScalars`), since codegen ≥ 6 types unmapped scalars as `unknown`.
 
 ### Removed
 

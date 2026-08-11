@@ -10,6 +10,21 @@ const config: CodegenConfig = {
       config: {
         enumsAsTypes: true,
         useTypeImports: true,
+        // graphql-codegen >= 6 types unconfigured custom scalars as `unknown`;
+        // map Linear's scalars to their real wire types (ISO strings etc.).
+        // strictScalars makes codegen fail loudly if the schema adds a scalar
+        // that isn't mapped here.
+        strictScalars: true,
+        scalars: {
+          DateTime: "string",
+          DateTimeOrDuration: "string",
+          Duration: "string",
+          JSON: "unknown",
+          JSONObject: "Record<string, unknown>",
+          TimelessDate: "string",
+          TimelessDateOrDuration: "string",
+          UUID: "string",
+        },
       },
       presetConfig: {
         gqlTagName: "gql",

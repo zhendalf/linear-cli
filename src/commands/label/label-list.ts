@@ -74,7 +74,7 @@ export const listCommand = new Command("list")
       // Fetch all labels with pagination
       const allLabels: Label[] = []
       let hasNextPage = true
-      let after: string | null | undefined = undefined
+      let after: string | null | undefined
       let pageInfo: NonNullable<GetIssueLabelsQuery["issueLabels"]>["pageInfo"] = {
         hasNextPage: false,
         endCursor: null,

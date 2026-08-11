@@ -3,7 +3,6 @@ import { execFileSync } from "node:child_process"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { CliError } from "../../src/utils/errors.ts"
 import { getCurrentBranch, getRepoDir } from "../../src/utils/git.ts"
 
 test("getCurrentBranch - handles errors when not in a git repository", async () => {

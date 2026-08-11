@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import { startWorkOnIssue as startIssue } from "../../utils/actions.ts"
 import { getPriorityDisplay } from "../../utils/display.ts"
-import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { fetchIssuesForState, getIssueIdentifier, getTeamKey } from "../../utils/linear.ts"
 import { searchSelect } from "../../utils/prompt.ts"
 
