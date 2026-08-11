@@ -4,11 +4,10 @@ import { gql } from "../../__codegen__/gql.ts"
 import { startWorkOnIssue } from "../../utils/actions.ts"
 import { getPriorityDisplay } from "../../utils/display.ts"
 import { getEditor, openEditor } from "../../utils/editor.ts"
-import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
-  type WorkflowState,
   fetchParentIssueData,
   getAllTeams,
   getCycleIdByNameOrNumber,
@@ -27,6 +26,7 @@ import {
   resolveWorkflowState,
   searchTeamsByKeySubstring,
   selectOption,
+  type WorkflowState,
   workflowStateNotFoundError,
 } from "../../utils/linear.ts"
 import { checkbox, input, searchSelect, select } from "../../utils/prompt.ts"
@@ -139,7 +139,7 @@ const ADDITIONAL_FIELDS: AdditionalField[] = [
         message: "Estimate (leave blank for none)",
         default: "",
       })
-      const parsed = parseInt(estimate)
+      const parsed = parseInt(estimate, 10)
       return isNaN(parsed) ? undefined : parsed
     },
   },
@@ -654,7 +654,7 @@ export const createCommand = new Command("create")
         stateId = workflowState.id
       }
 
-      let assigneeId = undefined
+      let assigneeId
 
       if (assignee) {
         assigneeId = await lookupUserId(assignee)
@@ -680,7 +680,7 @@ export const createCommand = new Command("create")
           labelIds.push(labelId)
         }
       }
-      let projectId: string | undefined = undefined
+      let projectId: string | undefined
       if (project !== undefined) {
         projectId = await getProjectIdByName(project)
         if (projectId === undefined && interactive) {

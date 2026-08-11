@@ -5,7 +5,7 @@ import type { GetProjectsQuery, ProjectStatusType } from "../../__codegen__/grap
 import { getOption } from "../../config.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
 import { getTimeAgo, padDisplay } from "../../utils/display.ts"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getTeamKey } from "../../utils/linear.ts"
@@ -127,7 +127,7 @@ export const listCommand = new Command("list")
       // Fetch all projects with pagination
       const allProjects: GetProjectsQuery["projects"]["nodes"] = []
       let hasNextPage = true
-      let after: string | null | undefined = undefined
+      let after: string | null | undefined
       let pageInfo: NonNullable<GetProjectsQuery["projects"]>["pageInfo"] = {
         hasNextPage: false,
         endCursor: null,

@@ -4,7 +4,7 @@ import { gql } from "../../__codegen__/gql.ts"
 import { getOption } from "../../config.ts"
 import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
-import { NotFoundError, handleError, isClientError, isNotFoundError } from "../../utils/errors.ts"
+import { handleError, isClientError, isNotFoundError, NotFoundError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { downloadMarkdownImages, replaceImageUrls } from "../../utils/markdown-images.ts"
@@ -38,6 +38,92 @@ const GetDocument = gql(`
   }
 `)
 
+const GetDocumentWithComments = gql(`
+  query GetDocumentWithComments($id: String!, $commentsAfter: String) {
+    document(id: $id) {
+      id
+      title
+      slugId
+      content
+      url
+      createdAt
+      updatedAt
+      creator {
+        name
+        email
+      }
+      project {
+        name
+        slugId
+      }
+      issue {
+        identifier
+        title
+      }
+      comments(first: 50, after: $commentsAfter, orderBy: createdAt) {
+        nodes {
+          id
+          body
+          quotedText
+          documentContentId
+          createdAt
+          updatedAt
+          archivedAt
+          resolvedAt
+          url
+          user {
+            name
+            email
+          }
+          parent {
+            id
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`)
+
+/**
+ * Fetch the document with ALL of its comments: loops the paginated comments
+ * connection and concatenates every page's nodes, preserving the connection
+ * shape (`comments.nodes` + final `pageInfo`) for --json output.
+ */
+async function getDocumentWithAllComments(client: ReturnType<typeof getGraphQLClient>, id: string) {
+  const firstResult = await client.request(GetDocumentWithComments, {
+    id,
+    commentsAfter: null,
+  })
+
+  if (!firstResult.document) {
+    return undefined
+  }
+
+  const document = firstResult.document
+  let commentsAfter = document.comments.pageInfo.endCursor
+
+  while (document.comments.pageInfo.hasNextPage) {
+    const nextResult = await client.request(GetDocumentWithComments, {
+      id,
+      commentsAfter,
+    })
+
+    if (!nextResult.document) {
+      return undefined
+    }
+
+    document.comments.nodes.push(...nextResult.document.comments.nodes)
+    document.comments.pageInfo = nextResult.document.comments.pageInfo
+    commentsAfter = nextResult.document.comments.pageInfo.endCursor
+  }
+
+  return document
+}
+
 export const viewCommand = new Command("view")
   .alias("v")
   .description("View a document's content")
@@ -55,7 +141,11 @@ export const viewCommand = new Command("view")
 
     try {
       const client = getGraphQLClient()
-      const result = await client.request(GetDocument, { id })
+      // --json includes the full (paginated) comments list; the rendered view
+      // stays lean and keeps the original single-request query.
+      const result = json
+        ? { document: await getDocumentWithAllComments(client, id) }
+        : await client.request(GetDocument, { id })
       spinner.stop()
 
       const document = result.document

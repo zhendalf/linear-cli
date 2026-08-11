@@ -2,22 +2,38 @@
 
 ## [Unreleased]
 
+### Security
+
+- **attachments are no longer public by default**: `issue attach` and `issue comment add --attach` previously auto-published raster images to `public.linear.app`, where anyone with the URL could read them without authenticating. Uploads now default to workspace-only (matching the Linear web app), with an explicit `--public` opt-in that warns when it is used. Requesting `--public` for a non-image type is an error rather than a silent downgrade, and mixed batches are validated before any file is uploaded.
+
 ### Added
 
-- `linear team states [teamKey]` lists a team's workflow states (table or `--json`, preserving the GraphQL `nodes` shape).
-- `linear user list` (group alias `u`) lists everyone in the workspace, with `--all` and `--json`.
-- `linear team members --json` emits the connection shape (`nodes` + `pageInfo`) with GraphQL field names preserved.
-- member listings now show `(admin)`, `(owner)`, and `(you)` markers alongside the existing `(inactive)`/`(guest)`/`(not assignable)`, via a shared renderer used by `team members` and `user list`.
+- `linear team states [teamKey]` lists a team's workflow states (table or `--json`, preserving the GraphQL `nodes` shape)
+- `linear user list` (group alias `u`) lists everyone in the workspace, with `--all` and `--json`
+- `linear team members --json` emits the connection shape (`nodes` + `pageInfo`) with GraphQL field names preserved
+- member listings now show `(admin)`, `(owner)`, and `(you)` markers alongside the existing `(inactive)`/`(guest)`/`(not assignable)`, via a shared renderer used by `team members` and `user list`
+- `issue update --unassign` to clear an assignee, and `--clear-cycle` to clear a cycle
+- `issue update --add-label` / `--remove-label` for incremental label edits (`--label` still replaces the whole set, which its help text now says explicitly)
+- `document update --project` to re-point a document at another project
+- `document view --json` now includes the document's comments as a paginated connection
+- `milestone view --all` to list every attached issue; without it, the view now says when a milestone has more issues than were fetched instead of silently truncating
+- `project create` gains `--content`/`--content-file` (long-form overview), `--priority`, `--label`, `--member`, `--icon`, and `--color`
+- `project create`/`project update` gain `-f, --description-file`, and `--description` now documents Linear's 255-character limit
+- `project update --label` (replace semantics, deduplicated, excludes label groups)
 
 ### Fixed
 
-- `linear team members --all` was a no-op: `includeDisabled` never reached the API, so disabled users were never fetched and the client-side `active` filter had nothing extra to reveal.
-- an unrecognized `--state` on `issue create`/`issue update` now lists the team's valid workflow states and points at `linear team states`, instead of a bare "Workflow state not found".
-- `team members` no longer blames the directory name when no team can be resolved — the team key comes from `team_id` in `.linear.toml` (or `LINEAR_TEAM_ID`), never from the directory.
+- `linear team members --all` was a no-op: `includeDisabled` never reached the API, so disabled users were never fetched and the client-side `active` filter had nothing extra to reveal
+- an unrecognized `--state` on `issue create`/`issue update` now lists the team's valid workflow states and points at `linear team states`, instead of a bare "Workflow state not found"
+- `team members` no longer blames the directory name when no team can be resolved — the team key comes from `team_id` in `.linear.toml` (or `LINEAR_TEAM_ID`), never from the directory
+- `document list --issue` never worked — the filter used a nonexistent `identifier` comparator, so every invocation was rejected by the API. It now filters on `issue.id`, which accepts human identifiers like `ENG-123`.
+- `document update` now refuses to overwrite a document that has active inline comments (which a Markdown replacement would orphan), with `--force` to override
+- the skill-docs generator silently deleted the reference docs for every aliased command group: it parsed the command list expecting `command, alias` but commander emits `command|alias`, and it pruned stale files before rendering. It now parses aliases correctly and aborts rather than pruning when discovery comes up empty. It also read each command's description from a cliffy-style `Description:` block that commander never emits, leaving every generated description blank; it now understands both layouts.
 
 ### Changed
 
 - **Bun-native distribution**: the CLI now ships as TypeScript and runs directly on Bun — there is no longer a bundled `dist/main.js`. The published `bin` is `src/main.ts` (`#!/usr/bin/env bun`), and runtime libraries are now real `dependencies`.
+- all dependencies updated to current majors: commander 15, @inquirer/prompts 8, chalk 6, ora 9, dotenv 17, open 11, env-paths 4, string-width 8; dev tooling moves to Biome 2, graphql-codegen 7, lefthook 2, TypeScript 7. `graphql` intentionally stays on 16.x (graphql-request peer-depends on `14 - 16`). Linear's custom scalars are now explicitly mapped in `codegen.ts` (`strictScalars`), since codegen ≥ 6 types unmapped scalars as `unknown`.
 
 ### Removed
 

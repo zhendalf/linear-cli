@@ -1,5 +1,6 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import type { DocumentFilter } from "../../__codegen__/graphql.ts"
 import { getTimeAgo, padDisplay } from "../../utils/display.ts"
 import { handleError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
@@ -50,23 +51,17 @@ export const listCommand = new Command("list")
     spinner.start()
 
     try {
-      // Build filter based on options
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let filter: any = undefined
-
-      if (project) {
-        filter = {
-          ...filter,
-          project: { slugId: { eq: project } },
-        }
-      }
-
-      if (issue) {
-        filter = {
-          ...filter,
-          issue: { identifier: { eq: issue.toUpperCase() } },
-        }
-      }
+      // Build filter based on options. Stays undefined when neither flag is
+      // passed so the query sends no filter at all. Note: IssueFilter has no
+      // `identifier` field — the comparator for the human identifier (TC-123)
+      // is spelled `id`.
+      const filter: DocumentFilter | undefined =
+        project || issue
+          ? {
+              project: project ? { slugId: { eq: project } } : undefined,
+              issue: issue ? { id: { eq: issue.toUpperCase() } } : undefined,
+            }
+          : undefined
 
       const client = getGraphQLClient()
       const result = await client.request(ListDocuments, {

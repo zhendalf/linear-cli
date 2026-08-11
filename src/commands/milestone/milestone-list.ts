@@ -1,4 +1,4 @@
-import { Command, Option } from "commander"
+import { Command } from "commander"
 import stringWidth from "string-width"
 import { gql } from "../../__codegen__/gql.ts"
 import { padDisplay } from "../../utils/display.ts"

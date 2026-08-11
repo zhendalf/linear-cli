@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test"
 import { mineCommand as listCommand } from "../../../src/commands/issue/issue-mine.ts"
-import { ValidationError } from "../../../src/utils/errors.ts"
 import { parseDateFilter } from "../../../src/utils/linear.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"

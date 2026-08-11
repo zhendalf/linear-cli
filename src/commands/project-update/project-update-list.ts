@@ -1,7 +1,7 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
-import { NotFoundError, handleError } from "../../utils/errors.ts"
+import { handleError, NotFoundError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { resolveProjectId } from "../../utils/linear.ts"

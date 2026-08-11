@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { statesCommand } from "../../../src/commands/team/team-states.ts"
 import { teamCommand } from "../../../src/commands/team/team.ts"
+import { statesCommand } from "../../../src/commands/team/team-states.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 

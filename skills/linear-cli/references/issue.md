@@ -30,7 +30,7 @@ Commands:
   archive [options] [issueId]            Archive an issue
   unarchive [options] [issueId]          Unarchive an issue
   comment [options]                      Manage issue comments
-  attach [options] <issueId> <filepath>  Attach a file to an issue
+  attach [options] <issueId> <filepath>  Create a sidebar link attachment on an issue (images do not render inline)
   link [options] <urlOrIssueId> [url]    Link a URL to an issue
   relation [options]                     Manage issue relations (dependencies)
   agent-session [options]                Manage agent sessions for an issue
@@ -324,6 +324,8 @@ Update a linear issue
 Options:
   -a, --assignee <assignee>        Assign the issue to 'self' or someone (by
                                    username or name)
+  --unassign                       Clear the issue's assignee (cannot be
+                                   combined with --assignee)
   --due-date <dueDate>             Due date of the issue
   --parent <parent>                Parent issue (if any) as a team_number code
   -p, --priority <priority>        Priority of the issue (1-4, descending
@@ -332,15 +334,25 @@ Options:
   -d, --description <description>  Description of the issue
   --description-file <path>        Read description from a file (preferred for
                                    markdown content)
-  -l, --label <label>              Issue label associated with the issue. May be
-                                   repeated.
+  -l, --label <label>              Issue label associated with the issue;
+                                   replaces the issue's entire label set. May be
+                                   repeated. Use --add-label/--remove-label to
+                                   change labels incrementally.
+  --add-label <label>              Add a label to the issue, keeping its
+                                   existing labels. May be repeated.
+  --remove-label <label>           Remove a label from the issue, keeping its
+                                   other labels (does not delete the label from
+                                   the team). May be repeated.
   --team <team>                    Team associated with the issue (if not your
                                    default team)
   --project <project>              Name or slug ID of the project with the issue
   -s, --state <state>              Workflow state for the issue (by name or
                                    type)
   --milestone <milestone>          Name of the project milestone
-  --cycle <cycle>                  Cycle name, number, or 'active'
+  --cycle <cycle>                  Cycle name, number, or 'active'. Use
+                                   --clear-cycle to remove the issue from its
+                                   cycle
+  --clear-cycle                    Remove the issue from its cycle
   -t, --title <title>              Title of the issue
   --workspace <slug>               Target workspace (uses credentials)
   -h, --help                       display help for command
@@ -388,7 +400,8 @@ Options:
   -h, --help                    display help for command
 
 Commands:
-  add [options] [issueId]       Add a comment to an issue or reply to a comment
+  add [options] [issueId]       Add a comment or reply; images uploaded with
+                                --attach render inline
   delete [options] <commentId>  Delete a comment
   update [options] <commentId>  Update an existing comment
   list [options] [issueId]      List comments for an issue
@@ -401,15 +414,17 @@ Commands:
 ```
 Usage: linear issue comment add [options] [issueId]
 
-Add a comment to an issue or reply to a comment
+Add a comment or reply; images uploaded with --attach render inline
 
 Options:
   -b, --body <text>        Comment body text
   --body-file <path>       Read comment body from a file (preferred for markdown
                            content)
   -p, --parent <id>        Parent comment ID for replies
-  -a, --attach <filepath>  Attach a file to the comment (can be used multiple
-                           times)
+  -a, --attach <filepath>  Upload a file and add its Markdown link to the
+                           comment (images render inline; repeatable)
+  --public                 Upload attached images to a public, unauthenticated
+                           URL (default: private, workspace-members only)
   --workspace <slug>       Target workspace (uses credentials)
   -h, --help               display help for command
 ```
@@ -456,16 +471,19 @@ Options:
 
 ### attach
 
-> Attach a file to an issue
+> Create a sidebar link attachment on an issue (images do not render inline)
 
 ```
 Usage: linear issue attach [options] <issueId> <filepath>
 
-Attach a file to an issue
+Create a sidebar link attachment on an issue (images do not render inline)
 
 Options:
   -t, --title <title>   Custom title for the attachment
-  -c, --comment <body>  Add a comment body linked to the attachment
+  -c, --comment <body>  Create a linked comment with this body; the file remains
+                        a sidebar attachment
+  --public              Upload images to a public, unauthenticated URL (default:
+                        private, workspace-members only)
   --workspace <slug>    Target workspace (uses credentials)
   -h, --help            display help for command
 ```

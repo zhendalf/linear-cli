@@ -7,7 +7,7 @@ import {
   isBulkMode,
   printBulkSummary,
 } from "../../utils/bulk.ts"
-import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { confirm } from "../../utils/prompt.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"

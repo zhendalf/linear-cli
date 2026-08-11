@@ -3,7 +3,6 @@ import { execFileSync } from "node:child_process"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { CliError } from "../../src/utils/errors.ts"
 import { getCurrentIssueFromVcs, startVcsWork } from "../../src/utils/vcs.ts"
 
 test("getCurrentIssueFromVcs - handles git errors gracefully", async () => {

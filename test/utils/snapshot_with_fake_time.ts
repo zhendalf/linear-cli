@@ -153,12 +153,12 @@ export async function captureOutput(
   pinProp(process.stdout, "columns", undefined)
   pinProp(process.stdout, "rows", undefined)
 
-  process.stdout.write = (chunk: string | Uint8Array, ...args: unknown[]) => {
+  process.stdout.write = (chunk: string | Uint8Array, ..._args: unknown[]) => {
     stdoutBuf += typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString()
     return true
   }
 
-  process.stderr.write = (chunk: string | Uint8Array, ...args: unknown[]) => {
+  process.stderr.write = (chunk: string | Uint8Array, ..._args: unknown[]) => {
     stderrBuf += typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString()
     return true
   }

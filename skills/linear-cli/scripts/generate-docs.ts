@@ -6,7 +6,7 @@
  */
 
 import { spawn } from "node:child_process"
-import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -81,11 +81,10 @@ function parseCommands(helpText: string): string[] {
       continue
     }
     if (inCommands) {
-      // Commander prints: "  command|alias [options] <arg>  Description",
-      // wrapping long descriptions onto deeper-indented continuation lines.
-      // Capture the command name, stopping at the alias separator or a space.
-      // (The `,` alternative keeps output from a cliffy-era binary parseable.)
-      const match = line.match(/^ {2}([a-z][-a-z]*)(?:\||,|\s)/)
+      // Command lines look like: "  command|alias [options]  Description"
+      // or: "  command [options] <arg>  Description"
+      // Capture command name (stopping at the alias separator or whitespace)
+      const match = line.match(/^\s{2}([a-z][-a-z]*)(?:[|,]|\s)/)
       if (match) {
         commands.push(match[1])
         foundAnyCommand = true
@@ -164,26 +163,6 @@ async function discoverCommand(cmdPath: string[]): Promise<CommandInfo> {
   return { name, description, help, subcommands }
 }
 
-function formatCommandMarkdown(cmd: CommandInfo, depth = 0): string {
-  const lines: string[] = []
-  const cmdName = cmd.name.replace(/^linear /, "")
-  const heading = depth === 0 ? "#" : "##"
-
-  lines.push(`${heading} linear ${cmdName}`)
-  lines.push("")
-  lines.push("```")
-  lines.push(cmd.help)
-  lines.push("```")
-  lines.push("")
-
-  // Add subcommands as separate sections
-  for (const sub of cmd.subcommands) {
-    lines.push(formatCommandMarkdown(sub, depth + 1))
-  }
-
-  return lines.join("\n")
-}
-
 function generateCommandDoc(cmd: CommandInfo): string {
   const lines: string[] = []
   const cmdName = cmd.name.replace(/^linear /, "")
@@ -253,6 +232,15 @@ async function main() {
   const topLevelHelp = await getCommandHelp([])
   const topLevelCommands = parseCommands(topLevelHelp).filter((cmd) => !SKIP_COMMANDS.includes(cmd))
   console.log(`Found ${topLevelCommands.length} top-level commands`)
+
+  // Abort before pruning: discovery that silently comes up empty (e.g. a help-format
+  // change the parser no longer matches) would otherwise delete every reference doc.
+  if (topLevelCommands.length === 0) {
+    console.error(
+      "Error: no top-level commands discovered from `linear --help`. Refusing to regenerate, since pruning would delete the existing reference docs. Check parseCommands against the current help output.",
+    )
+    process.exit(1)
+  }
 
   const commands: CommandInfo[] = []
 

@@ -15,23 +15,22 @@ import "./credentials.ts"
 
 import { Command } from "commander"
 import pkg from "../package.json" with { type: "json" }
-import { setCliWorkspace } from "./config.ts"
-
 import { apiCommand } from "./commands/api.ts"
 import { authCommand } from "./commands/auth/auth.ts"
 import { configCommand } from "./commands/config.ts"
 import { cycleCommand } from "./commands/cycle/cycle.ts"
 import { documentCommand } from "./commands/document/document.ts"
-import { initiativeUpdateCommand } from "./commands/initiative-update/initiative-update.ts"
 import { initiativeCommand } from "./commands/initiative/initiative.ts"
+import { initiativeUpdateCommand } from "./commands/initiative-update/initiative-update.ts"
 import { issueCommand } from "./commands/issue/issue.ts"
 import { labelCommand } from "./commands/label/label.ts"
 import { milestoneCommand } from "./commands/milestone/milestone.ts"
-import { projectUpdateCommand } from "./commands/project-update/project-update.ts"
 import { projectCommand } from "./commands/project/project.ts"
+import { projectUpdateCommand } from "./commands/project-update/project-update.ts"
 import { schemaCommand } from "./commands/schema.ts"
 import { teamCommand } from "./commands/team/team.ts"
 import { userCommand } from "./commands/user/user.ts"
+import { setCliWorkspace } from "./config.ts"
 
 const program = new Command("linear")
   // Treat the subcommand name as a positional operand: the root stops parsing

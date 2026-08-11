@@ -2,7 +2,7 @@ import chalk from "chalk"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import { addCredential, getWorkspaces, hasWorkspace } from "../../credentials.ts"
-import { AuthError, CliError, ValidationError, handleError } from "../../utils/errors.ts"
+import { AuthError, CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { createGraphQLClient } from "../../utils/graphql.ts"
 import { password } from "../../utils/prompt.ts"
 

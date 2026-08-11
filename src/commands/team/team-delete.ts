@@ -1,6 +1,6 @@
 import { Command, Option } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getAllTeams, getTeamIdByKey } from "../../utils/linear.ts"
@@ -179,7 +179,7 @@ async function moveIssuesToTeam(
 
     const allIssues: IssueNode[] = []
     let hasNextPage = true
-    let after: string | undefined = undefined
+    let after: string | undefined
 
     while (hasNextPage) {
       const result: TeamIssuesResult = await client.request(GetTeamIssuesForMove, {

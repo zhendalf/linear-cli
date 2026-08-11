@@ -57,14 +57,13 @@ test("printMembers - omits the parenthesised full name when it matches displayNa
   expect(output).not.toContain("Carol Carol (Carol Carol)")
 })
 
-test("printMembers - skips a lastSeen that is not a usable date", async () => {
-  // Linear's DateTime scalar is `any` in codegen, so guard the value rather
-  // than printing "Invalid Date".
+test("printMembers - skips a lastSeen that is absent or unparseable", async () => {
+  // Guard the value rather than printing "Invalid Date".
   expect(await render(member({ lastSeen: null }))).not.toContain("Last seen:")
   expect(await render(member({ lastSeen: "not a date" }))).not.toContain("Last seen:")
 })
 
 test("printMembers - formats a usable lastSeen", async () => {
-  const output = await render(member({ lastSeen: new Date("2026-03-04T05:06:07Z") }))
+  const output = await render(member({ lastSeen: "2026-03-04T05:06:07Z" }))
   expect(output).toContain("Last seen:")
 })

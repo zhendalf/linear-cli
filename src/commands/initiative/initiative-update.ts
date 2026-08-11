@@ -1,6 +1,6 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { CliError, NotFoundError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, NotFoundError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { lookupUserId } from "../../utils/linear.ts"

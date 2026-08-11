@@ -5,7 +5,7 @@ import type { GetTeamsQuery } from "../../__codegen__/graphql.ts"
 import { getOption } from "../../config.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
 import { getTimeAgo, padDisplay } from "../../utils/display.ts"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getConsoleSize, isStdoutTTY } from "../../utils/runtime.ts"
@@ -72,7 +72,7 @@ export const listCommand = new Command("list")
       // Fetch all teams with pagination
       const allTeams: GetTeamsQuery["teams"]["nodes"] = []
       let hasNextPage = true
-      let after: string | null | undefined = undefined
+      let after: string | null | undefined
       let pageInfo: NonNullable<GetTeamsQuery["teams"]>["pageInfo"] = {
         hasNextPage: false,
         endCursor: null,

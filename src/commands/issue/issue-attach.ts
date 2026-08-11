@@ -4,25 +4,38 @@ import { gql } from "../../__codegen__/gql.ts"
 import type { AttachmentCreateInput } from "../../__codegen__/graphql.ts"
 import {
   CliError,
-  NotFoundError,
-  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
+  NotFoundError,
+  ValidationError,
 } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getIssueId, getIssueIdentifier } from "../../utils/linear.ts"
 import { uploadFile, validateFilePath } from "../../utils/upload.ts"
 
+/** Quote a value for safe copy-paste into a shell command. */
+function quoteForShell(value: string): string {
+  if (/^[A-Za-z0-9_./:@%+=-]+$/.test(value)) return value
+  return `'${value.replaceAll("'", "'\\''")}'`
+}
+
 export const attachCommand = new Command("attach")
-  .description("Attach a file to an issue")
+  .description("Create a sidebar link attachment on an issue (images do not render inline)")
   .argument("<issueId>")
   .argument("<filepath>")
   .option("-t, --title <title>", "Custom title for the attachment")
-  .option("-c, --comment <body>", "Add a comment body linked to the attachment")
+  .option(
+    "-c, --comment <body>",
+    "Create a linked comment with this body; the file remains a sidebar attachment",
+  )
+  .option(
+    "--public",
+    "Upload images to a public, unauthenticated URL (default: private, workspace-members only)",
+  )
   .action(async (issueId: string, filepath: string, options) => {
-    const { title, comment } = options
+    const { title, comment, public: makePublic } = options
 
     try {
       const resolvedIdentifier = await getIssueIdentifier(issueId)
@@ -52,8 +65,12 @@ export const attachCommand = new Command("attach")
       // Upload the file
       const uploadResult = await uploadFile(filepath, {
         showProgress: shouldShowSpinner(),
+        makePublic,
       })
       console.log(`✓ Uploaded ${uploadResult.filename}`)
+      if (uploadResult.public) {
+        console.warn(`⚠ Uploaded to a public URL readable by anyone: ${uploadResult.assetUrl}`)
+      }
 
       // Create the attachment
       const mutation = gql(`
@@ -86,8 +103,20 @@ export const attachCommand = new Command("attach")
       }
 
       const attachment = data.attachmentCreate.attachment
-      console.log(`✓ Attachment created: ${attachment.title}`)
+      console.log(`✓ Sidebar link attachment created: ${attachment.title}`)
       console.log(attachment.url)
+      if (uploadResult.contentType.startsWith("image/")) {
+        const suggested = [
+          "linear issue comment add",
+          resolvedIdentifier,
+          "--attach",
+          quoteForShell(filepath),
+          ...(makePublic ? ["--public"] : []),
+        ].join(" ")
+        console.log(
+          `Hint: Sidebar link attachments do not render images inline. For inline display, run: ${suggested}`,
+        )
+      }
     } catch (error) {
       handleError(error, "Failed to attach file")
     }

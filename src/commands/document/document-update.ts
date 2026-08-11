@@ -4,11 +4,91 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
+import type { DocumentInlineCommentGuardQuery } from "../../__codegen__/graphql.ts"
 import { readIdsFromStdin } from "../../utils/bulk.ts"
 import { getEditor } from "../../utils/editor.ts"
-import { CliError, NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
+import { getProjectIdByName, resolveProjectId } from "../../utils/linear.ts"
 import { isStdinTTY } from "../../utils/runtime.ts"
+
+const DocumentInlineCommentGuard = gql(`
+  query DocumentInlineCommentGuard($id: String!, $after: String) {
+    document(id: $id) {
+      id
+      comments(first: 50, after: $after, orderBy: createdAt) {
+        nodes {
+          id
+          quotedText
+          resolvedAt
+          archivedAt
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`)
+
+// An inline comment (quotedText != null) still anchored to live text — i.e. not
+// resolved and not archived — is the only kind a content replacement can
+// meaningfully orphan. Resolved/archived threads are closed, so detaching their
+// anchor loses nothing and must not block the update.
+async function getFirstActiveInlineComment(
+  client: ReturnType<typeof getGraphQLClient>,
+  documentId: string,
+) {
+  let after: string | null | undefined = null
+
+  while (true) {
+    // Annotate with the codegen type: reusing `after` across iterations would
+    // otherwise make the request's result type circular (self-referential).
+    const documentData: DocumentInlineCommentGuardQuery = await client.request(
+      DocumentInlineCommentGuard,
+      { id: documentId, after },
+    )
+
+    if (!documentData.document) {
+      throw new NotFoundError("Document", documentId)
+    }
+
+    const inlineComment = documentData.document.comments.nodes.find(
+      (comment) =>
+        comment.quotedText != null && comment.resolvedAt == null && comment.archivedAt == null,
+    )
+    if (inlineComment) {
+      return inlineComment
+    }
+
+    const pageInfo = documentData.document.comments.pageInfo
+    if (!pageInfo.hasNextPage) {
+      return undefined
+    }
+
+    after = pageInfo.endCursor
+  }
+}
+
+/**
+ * Resolve a --project value (UUID, slug ID, or name) to a project UUID.
+ * Shares the resolution helpers in utils/linear.ts: resolveProjectId handles
+ * UUIDs and slug IDs; a name is resolved via the exact-name lookup fallback.
+ */
+async function resolveProjectForUpdate(project: string): Promise<string> {
+  try {
+    return await resolveProjectId(project)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      const byName = await getProjectIdByName(project)
+      if (byName != null) {
+        return byName
+      }
+    }
+    throw error
+  }
+}
 
 /**
  * Open editor with initial content and return the edited content
@@ -101,9 +181,11 @@ export const updateCommand = new Command("update")
   .option("-c, --content <content>", "New markdown content (inline)")
   .option("-f, --content-file <path>", "Read new content from file")
   .option("--icon <icon>", "New icon (emoji)")
+  .option("--project <project>", "Attach to project (UUID, slug ID, or name)")
   .option("-e, --edit", "Open current content in $EDITOR for editing")
+  .option("--force", "Update content even when document comments may lose inline anchors")
   .action(async (documentId: string, options) => {
-    const { title, content, contentFile, icon, edit } = options
+    const { title, content, contentFile, icon, project, edit, force } = options
     try {
       const client = getGraphQLClient()
 
@@ -118,6 +200,17 @@ export const updateCommand = new Command("update")
       // Add icon if provided
       if (icon) {
         inputData.icon = icon
+      }
+
+      // Set the document's project. A document has a single related project
+      // (DocumentUpdateInput.projectId), so this replaces any existing one.
+      // (The API silently ignores projectId: null, so detaching a document
+      // from its only anchor isn't supported — only re-pointing it.) Resolved
+      // here alongside the other metadata flags so it participates in the
+      // stdin auto-read guard below (a project-only update shouldn't slurp
+      // stdin as content).
+      if (project != null) {
+        inputData.projectId = await resolveProjectForUpdate(project)
       }
 
       // Resolve content from various sources
@@ -194,8 +287,26 @@ export const updateCommand = new Command("update")
       // Validate that at least one field is being updated
       if (Object.keys(inputData).length === 0) {
         throw new ValidationError("No update fields provided", {
-          suggestion: "Use --title, --content, --content-file, --icon, or --edit.",
+          suggestion: "Use --title, --content, --content-file, --icon, --project, or --edit.",
         })
+      }
+
+      // Replacing Markdown content detaches inline comment anchors (the API
+      // offers no way to preserve them), so refuse content writes while the
+      // document has active inline comments unless --force opts back in.
+      if (inputData.content != null && !force) {
+        const comment = await getFirstActiveInlineComment(client, documentId)
+
+        if (comment) {
+          throw new ValidationError(
+            "Refusing to update document content because this document has inline comments.",
+            {
+              suggestion:
+                `Updating Markdown content can detach or hide Linear document comments. ` +
+                `First review comment ${comment.id} quoting "${comment.quotedText}", then rerun with --force if you accept that risk.`,
+            },
+          )
+        }
       }
 
       // Execute the update

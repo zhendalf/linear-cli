@@ -7,10 +7,9 @@ import { getCredentialApiKey } from "../credentials.ts"
 import { extractGraphQLMessage, isDebugMode } from "./errors.ts"
 import { isStderrTTY } from "./runtime.ts"
 
-export { ClientError }
-
 // Re-export error utilities for backward compatibility
 export { isClientError } from "./errors.ts"
+export { ClientError }
 
 /**
  * Logs a GraphQL ClientError formatted for display to the user.

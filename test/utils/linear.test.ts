@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
 import { NotFoundError } from "../../src/utils/errors.ts"
 import {
-  type WorkflowState,
   getIssueIdentifier,
   resolveWorkflowState,
   searchIssuesByTerm,
+  type WorkflowState,
   workflowStateNotFoundError,
 } from "../../src/utils/linear.ts"
 import { setupMockLinearServer } from "./test-helpers.ts"

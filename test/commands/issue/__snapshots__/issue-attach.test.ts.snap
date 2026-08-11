@@ -1,0 +1,72 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Issue Attach Command - Image Prints Inline Hint 1`] = `
+"stdout:
+"✓ Uploaded screenshot.png
+✓ Sidebar link attachment created: screenshot.png
+https://uploads.linear.app/fake/screenshot.png
+Hint: Sidebar link attachments do not render images inline. For inline display, run: linear issue comment add TEST-123 --attach /tmp/linear-cli-test-attach/screenshot.png
+"
+stderr:
+"""
+`;
+
+exports[`Issue Attach Command - Hint Shell-Quotes Unusual Paths 1`] = `
+"stdout:
+"✓ Uploaded it's a shot.png
+✓ Sidebar link attachment created: shot.png
+https://uploads.linear.app/fake/shot.png
+Hint: Sidebar link attachments do not render images inline. For inline display, run: linear issue comment add TEST-123 --attach '/tmp/linear-cli-test-attach/it'\\''s a shot.png'
+"
+stderr:
+"""
+`;
+
+exports[`Issue Attach Command - Public Image Hint Preserves Public Flag 1`] = `
+"stdout:
+"✓ Uploaded screenshot.png
+✓ Sidebar link attachment created: screenshot.png
+https://uploads.linear.app/fake/screenshot.png
+Hint: Sidebar link attachments do not render images inline. For inline display, run: linear issue comment add TEST-123 --attach /tmp/linear-cli-test-attach/screenshot.png --public
+"
+stderr:
+"⚠ Uploaded to a public URL readable by anyone: https://uploads.linear.app/fake/screenshot.png
+""
+`;
+
+exports[`Issue Attach Command - Public Non-Image Rejected Before Upload 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to attach file: Cannot upload application/octet-stream to a public URL
+  Linear only allows public uploads for raster images (png, jpeg, gif, webp, bmp, tiff). Remove --public to upload privately.
+""
+`;
+
+exports[`Issue Attach Command - Non-Image Has No Hint 1`] = `
+"stdout:
+"✓ Uploaded server.log
+✓ Sidebar link attachment created: server.log
+https://uploads.linear.app/fake/server.log
+"
+stderr:
+"""
+`;
+
+exports[`Issue Attach Command - Help 1`] = `
+"stdout:
+"Usage: attach [options] <issueId> <filepath>
+
+Create a sidebar link attachment on an issue (images do not render inline)
+
+Options:
+  -t, --title <title>   Custom title for the attachment
+  -c, --comment <body>  Create a linked comment with this body; the file remains
+                        a sidebar attachment
+  --public              Upload images to a public, unauthenticated URL (default:
+                        private, workspace-members only)
+  -h, --help            display help for command
+"
+stderr:
+"""
+`;

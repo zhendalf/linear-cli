@@ -2,7 +2,7 @@
  * Mock Linear API server for testing, built on node:http.
  */
 
-import { type IncomingMessage, type Server, type ServerResponse, createServer } from "node:http"
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
 
 interface MockResponse {
   queryName: string

@@ -2,12 +2,12 @@ import { expect, test } from "bun:test"
 import { ClientError, type GraphQLResponse } from "graphql-request"
 import {
   CliError,
-  NotFoundError,
-  ValidationError,
   extractGraphQLMessage,
   isClientError,
   isDebugMode,
   isNotFoundError,
+  NotFoundError,
+  ValidationError,
 } from "../../src/utils/errors.ts"
 
 test("isDebugMode - returns false when LINEAR_DEBUG is not set", () => {

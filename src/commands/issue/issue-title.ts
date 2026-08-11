@@ -1,5 +1,5 @@
 import { Command } from "commander"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { fetchIssueDetails, getIssueIdentifier } from "../../utils/linear.ts"
 
 export const titleCommand = new Command("title")

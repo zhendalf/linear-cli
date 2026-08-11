@@ -4,7 +4,7 @@ import stringWidth from "string-width"
 import { getOption } from "../../config.ts"
 import { openTeamAssigneeView } from "../../utils/actions.ts"
 import { getPriorityDisplay, getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
-import { NotFoundError, ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import {
   fetchIssuesForState,
@@ -17,7 +17,7 @@ import {
   isIssueBlocked,
   selectOption,
 } from "../../utils/linear.ts"
-import { ISSUE_STATE_TYPES, collectEnum } from "../../utils/option-parsers.ts"
+import { collectEnum, ISSUE_STATE_TYPES } from "../../utils/option-parsers.ts"
 import { pipeToUserPager, shouldUsePager } from "../../utils/pager.ts"
 import { getConsoleSize, isStdinTTY, isStdoutTTY } from "../../utils/runtime.ts"
 import { createSpinner } from "../../utils/spinner.ts"
@@ -368,7 +368,7 @@ export const mineCommand = new Command("mine")
       if (shouldUsePager(outputLines, usePager)) {
         await pipeToUserPager(outputLines.join("\n"))
       } else {
-        outputLines.forEach((line) => console.log(line))
+        for (const line of outputLines) console.log(line)
       }
     } catch (error) {
       handleError(error, "Failed to list issues")

@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import { getOption } from "../../config.ts"
 import { LINEAR_WEB_BASE_URL } from "../../const.ts"
-import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { getTeamKey } from "../../utils/linear.ts"
 import { runCommand } from "../../utils/runtime.ts"
 

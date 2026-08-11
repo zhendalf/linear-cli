@@ -15,7 +15,9 @@ Options:
 
 Commands:
   list [options]                  List milestones for a project
-  view|v [options] <milestoneId>  View milestone details
+  view|v [options] <milestoneId>  View milestone details. By default lists the
+                                  first 10 attached issues from the first page
+                                  of 50; use --all to paginate the full set.
   create [options]                Create a new project milestone
   update [options] <id>           Update an existing project milestone
   delete [options] <id>           Delete a project milestone
@@ -41,17 +43,20 @@ Options:
 
 ### view
 
-> View milestone details
+> View milestone details. By default lists the first 10 attached issues from the
 
 ```
 Usage: linear milestone view|v [options] <milestoneId>
 
-View milestone details
+View milestone details. By default lists the first 10 attached issues from the
+first page of 50; use --all to paginate the full set.
 
 Arguments:
   milestoneId         Milestone ID
 
 Options:
+  --all               Fetch and list every issue attached to the milestone
+                      (paginates the Linear API)
   --no-pager          Disable automatic paging for long output
   --workspace <slug>  Target workspace (uses credentials)
   -h, --help          display help for command

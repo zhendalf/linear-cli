@@ -1,26 +1,37 @@
 import { readFile } from "node:fs/promises"
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
-import { CliError, ValidationError, handleError } from "../../utils/errors.ts"
+import { CliError, handleError, ValidationError } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getIssueIdentifier } from "../../utils/linear.ts"
+import { collect } from "../../utils/option-parsers.ts"
 import { input } from "../../utils/prompt.ts"
-import { formatAsMarkdownLink, uploadFile, validateFilePath } from "../../utils/upload.ts"
+import {
+  formatAsMarkdownLink,
+  getMimeType,
+  resolveMakePublic,
+  uploadFile,
+  validateFilePath,
+} from "../../utils/upload.ts"
 
 export const commentAddCommand = new Command("add")
-  .description("Add a comment to an issue or reply to a comment")
+  .description("Add a comment or reply; images uploaded with --attach render inline")
   .argument("[issueId]")
   .option("-b, --body <text>", "Comment body text")
   .option("--body-file <path>", "Read comment body from a file (preferred for markdown content)")
   .option("-p, --parent <id>", "Parent comment ID for replies")
   .option(
     "-a, --attach <filepath>",
-    "Attach a file to the comment (can be used multiple times)",
-    (val: string, prev: string[] = []) => [...prev, val],
+    "Upload a file and add its Markdown link to the comment (images render inline; repeatable)",
+    collect,
+  )
+  .option(
+    "--public",
+    "Upload attached images to a public, unauthenticated URL (default: private, workspace-members only)",
   )
   .action(async (issueId: string | undefined, options) => {
-    const { body, bodyFile, parent, attach } = options
+    const { body, bodyFile, parent, attach, public: makePublic } = options
 
     try {
       // Validate that body and bodyFile are not both provided
@@ -49,6 +60,11 @@ export const commentAddCommand = new Command("add")
 
       // Validate and upload attachments first
       const attachments: string[] = attach || []
+      if (makePublic && attachments.length === 0) {
+        throw new ValidationError("--public requires at least one --attach", {
+          suggestion: "Add --attach <file> to upload, or remove --public.",
+        })
+      }
       const uploadedFiles: {
         filename: string
         assetUrl: string
@@ -56,15 +72,19 @@ export const commentAddCommand = new Command("add")
       }[] = []
 
       if (attachments.length > 0) {
-        // Validate all files exist before uploading
+        // Validate all files exist and, if --public, that every file may be
+        // uploaded publicly — before uploading any, so a mixed batch cannot
+        // publish some files before failing on an unsupported one.
         for (const filepath of attachments) {
           await validateFilePath(filepath)
+          resolveMakePublic(getMimeType(filepath), makePublic)
         }
 
         // Upload files
         for (const filepath of attachments) {
           const result = await uploadFile(filepath, {
             showProgress: shouldShowSpinner(),
+            makePublic,
           })
           uploadedFiles.push({
             filename: result.filename,
@@ -72,6 +92,9 @@ export const commentAddCommand = new Command("add")
             isImage: result.contentType.startsWith("image/"),
           })
           console.log(`✓ Uploaded ${result.filename}`)
+          if (result.public) {
+            console.warn(`⚠ Uploaded to a public URL readable by anyone: ${result.assetUrl}`)
+          }
         }
       }
 
@@ -94,7 +117,6 @@ export const commentAddCommand = new Command("add")
             filename: file.filename,
             assetUrl: file.assetUrl,
             contentType: file.isImage ? "image/png" : "application/octet-stream",
-            size: 0,
           })
         })
 

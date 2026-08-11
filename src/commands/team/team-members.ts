@@ -1,5 +1,5 @@
 import { Command } from "commander"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getTeamKey, getTeamMembers } from "../../utils/linear.ts"
 import { printMembers } from "../../utils/member-display.ts"

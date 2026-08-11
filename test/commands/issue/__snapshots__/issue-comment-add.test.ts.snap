@@ -17,3 +17,42 @@ https://linear.app/issue/TEST-123#comment-uuid-reply-789
 stderr:
 """
 `;
+
+exports[`Issue Comment Add Command - Rejects Public Without Attach 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to add comment: --public requires at least one --attach
+  Add --attach <file> to upload, or remove --public.
+""
+`;
+
+exports[`Issue Comment Add Command - Rejects Public Batch Before Uploading Earlier Valid Images 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to add comment: Cannot upload text/plain to a public URL
+  Linear only allows public uploads for raster images (png, jpeg, gif, webp, bmp, tiff). Remove --public to upload privately.
+""
+`;
+
+exports[`Issue Comment Add Command - Help 1`] = `
+"stdout:
+"Usage: add [options] [issueId]
+
+Add a comment or reply; images uploaded with --attach render inline
+
+Options:
+  -b, --body <text>        Comment body text
+  --body-file <path>       Read comment body from a file (preferred for markdown
+                           content)
+  -p, --parent <id>        Parent comment ID for replies
+  -a, --attach <filepath>  Upload a file and add its Markdown link to the
+                           comment (images render inline; repeatable)
+  --public                 Upload attached images to a public, unauthenticated
+                           URL (default: private, workspace-members only)
+  -h, --help               display help for command
+"
+stderr:
+"""
+`;

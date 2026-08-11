@@ -14,10 +14,8 @@ export interface MemberDisplayFields {
   initials: string
   description?: string | null
   timezone?: string | null
-  // Linear's `DateTime` custom scalar. codegen has no scalar mapping, so the
-  // generated node types expose it as `any` — take it as `unknown` here and
-  // narrow at the point of formatting rather than trusting an untyped value.
-  lastSeen?: unknown
+  // Linear's `DateTime` scalar, mapped to `string` in codegen.ts.
+  lastSeen?: string | null
   statusEmoji?: string | null
   statusLabel?: string | null
   guest: boolean
@@ -41,9 +39,9 @@ function markersFor(member: MemberDisplayFields): string {
   return markers.map((marker) => ` (${marker})`).join("")
 }
 
-/** Narrow the `DateTime` scalar to something `new Date()` accepts, or skip it. */
-function formatLastSeen(lastSeen: unknown): string | undefined {
-  if (typeof lastSeen !== "string" && typeof lastSeen !== "number" && !(lastSeen instanceof Date)) {
+/** Format a timestamp for display, skipping anything `Date` can't parse. */
+function formatLastSeen(lastSeen: string | null | undefined): string | undefined {
+  if (lastSeen == null) {
     return undefined
   }
   const date = new Date(lastSeen)

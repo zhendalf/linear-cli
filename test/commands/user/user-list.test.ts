@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { listCommand } from "../../../src/commands/user/user-list.ts"
 import { userCommand } from "../../../src/commands/user/user.ts"
+import { listCommand } from "../../../src/commands/user/user-list.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 

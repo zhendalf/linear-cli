@@ -1,11 +1,11 @@
 import { Command } from "commander"
 import { gql } from "../../__codegen__/gql.ts"
 import {
-  NotFoundError,
-  ValidationError,
   handleError,
   isClientError,
   isNotFoundError,
+  NotFoundError,
+  ValidationError,
 } from "../../utils/errors.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"

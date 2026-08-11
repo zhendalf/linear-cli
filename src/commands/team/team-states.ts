@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import stringWidth from "string-width"
 import { padDisplay } from "../../utils/display.ts"
-import { ValidationError, handleError } from "../../utils/errors.ts"
+import { handleError, ValidationError } from "../../utils/errors.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getTeamKey, getWorkflowStates } from "../../utils/linear.ts"
 import { createSpinner } from "../../utils/spinner.ts"
