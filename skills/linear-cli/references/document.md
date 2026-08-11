@@ -5,24 +5,20 @@
 ## Usage
 
 ```
-Usage:   linear document
+Usage: linear document|docs [options] [command]
 
-Description:
-
-  Manage Linear documents
+Manage Linear documents
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>               Target workspace (uses credentials)
+  -h, --help                       display help for command
 
 Commands:
-
-  list, l                  - List documents                    
-  view, v    <id>          - View a document's content         
-  create, c                - Create a new document             
-  update, u  <documentId>  - Update an existing document       
-  delete, d  [documentId]  - Delete a document (moves to trash)
+  list|l [options]                 List documents
+  view|v [options] <id>            View a document's content
+  create|c [options]               Create a new document
+  update|u [options] <documentId>  Update an existing document
+  delete|d [options] [documentId]  Delete a document (moves to trash)
 ```
 
 ## Subcommands
@@ -32,20 +28,17 @@ Commands:
 > List documents
 
 ```
-Usage:   linear document list
+Usage: linear document list|l [options]
 
-Description:
-
-  List documents
+List documents
 
 Options:
-
-  -h, --help              - Show this help.                                        
-  --workspace  <slug>     - Target workspace (uses credentials)                    
-  --project    <project>  - Filter by project (slug or name)                       
-  --issue      <issue>    - Filter by issue (identifier like TC-123)               
-  --json                  - Output as JSON                                         
-  --limit      <limit>    - Limit results                             (Default: 50)
+  --project <project>  Filter by project (slug or name)
+  --issue <issue>      Filter by issue (identifier like TC-123)
+  --json               Output as JSON
+  --limit <limit>      Limit results (default: 50)
+  --workspace <slug>   Target workspace (uses credentials)
+  -h, --help           display help for command
 ```
 
 ### view
@@ -53,19 +46,21 @@ Options:
 > View a document's content
 
 ```
-Usage:   linear document view <id>
+Usage: linear document view|v [options] <id>
 
-Description:
+View a document's content
 
-  View a document's content
+Arguments:
+  id                  Document ID or slug
 
 Options:
-
-  -h, --help           - Show this help.                        
-  --workspace  <slug>  - Target workspace (uses credentials)    
-  --raw                - Output raw markdown without rendering  
-  -w, --web            - Open document in browser               
-  --json               - Output full document as JSON
+  --raw               Output raw markdown without rendering
+  -w, --web           Open document in browser
+  --json              Output full document as JSON
+  --no-download       Keep remote URLs instead of downloading files
+  --no-pager          Disable automatic paging for long output
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### create
@@ -73,23 +68,20 @@ Options:
 > Create a new document
 
 ```
-Usage:   linear document create
+Usage: linear document create|c [options]
 
-Description:
-
-  Create a new document
+Create a new document
 
 Options:
-
-  -h, --help                     - Show this help.                           
-  --workspace         <slug>     - Target workspace (uses credentials)       
-  -t, --title         <title>    - Document title (required)                 
-  -c, --content       <content>  - Markdown content (inline)                 
-  -f, --content-file  <path>     - Read content from file                    
-  --project           <project>  - Attach to project (slug or ID)            
-  --issue             <issue>    - Attach to issue (identifier like TC-123)  
-  --icon              <icon>     - Document icon (emoji)                     
-  -i, --interactive              - Interactive mode with prompts
+  -t, --title <title>        Document title (required)
+  -c, --content <content>    Markdown content (inline)
+  -f, --content-file <path>  Read content from file
+  --project <project>        Attach to project (slug or ID)
+  --issue <issue>            Attach to issue (identifier like TC-123)
+  --icon <icon>              Document icon (emoji)
+  -i, --interactive          Interactive mode with prompts
+  --workspace <slug>         Target workspace (uses credentials)
+  -h, --help                 display help for command
 ```
 
 ### update
@@ -97,21 +89,21 @@ Options:
 > Update an existing document
 
 ```
-Usage:   linear document update <documentId>
+Usage: linear document update|u [options] <documentId>
 
-Description:
+Update an existing document
 
-  Update an existing document
+Arguments:
+  documentId                 Document ID or slug
 
 Options:
-
-  -h, --help                     - Show this help.                              
-  --workspace         <slug>     - Target workspace (uses credentials)          
-  -t, --title         <title>    - New title for the document                   
-  -c, --content       <content>  - New markdown content (inline)                
-  -f, --content-file  <path>     - Read new content from file                   
-  --icon              <icon>     - New icon (emoji)                             
-  -e, --edit                     - Open current content in $EDITOR for editing
+  -t, --title <title>        New title for the document
+  -c, --content <content>    New markdown content (inline)
+  -f, --content-file <path>  Read new content from file
+  --icon <icon>              New icon (emoji)
+  -e, --edit                 Open current content in $EDITOR for editing
+  --workspace <slug>         Target workspace (uses credentials)
+  -h, --help                 display help for command
 ```
 
 ### delete
@@ -119,18 +111,18 @@ Options:
 > Delete a document (moves to trash)
 
 ```
-Usage:   linear document delete [documentId]
+Usage: linear document delete|d [options] [documentId]
 
-Description:
+Delete a document (moves to trash)
 
-  Delete a document (moves to trash)
+Arguments:
+  documentId          Document ID or slug
 
 Options:
-
-  -h, --help              - Show this help.                                     
-  --workspace   <slug>    - Target workspace (uses credentials)                 
-  -y, --yes               - Skip confirmation prompt                            
-  --bulk        <ids...>  - Delete multiple documents by slug or ID             
-  --bulk-file   <file>    - Read document slugs/IDs from a file (one per line)  
-  --bulk-stdin            - Read document slugs/IDs from stdin
+  -y, --yes           Skip confirmation prompt
+  --bulk <ids...>     Delete multiple documents by slug or ID
+  --bulk-file <file>  Read document slugs/IDs from a file (one per line)
+  --bulk-stdin        Read document slugs/IDs from stdin
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

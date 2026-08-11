@@ -31,6 +31,7 @@ import { projectUpdateCommand } from "./commands/project-update/project-update.t
 import { projectCommand } from "./commands/project/project.ts"
 import { schemaCommand } from "./commands/schema.ts"
 import { teamCommand } from "./commands/team/team.ts"
+import { userCommand } from "./commands/user/user.ts"
 
 const program = new Command("linear")
   // Treat the subcommand name as a positional operand: the root stops parsing
@@ -98,6 +99,7 @@ Environment Variables:
 //
 //   issue          → "i"
 //   team           → "t"
+//   user           → "u"
 //   project        → "p"
 //   project-update → "pu"
 //   cycle          → "cy"
@@ -110,6 +112,7 @@ Environment Variables:
 program.addCommand(authCommand)
 program.addCommand(issueCommand)
 program.addCommand(teamCommand)
+program.addCommand(userCommand)
 program.addCommand(projectCommand)
 program.addCommand(projectUpdateCommand)
 program.addCommand(cycleCommand)

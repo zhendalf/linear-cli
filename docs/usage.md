@@ -222,6 +222,24 @@ list members of a specific team:
 linear team members TEAM
 ```
 
+include deactivated members, or emit the raw connection:
+
+```bash
+linear team members TEAM --all
+linear team members TEAM --json
+```
+
+#### team workflow states
+
+list the workflow states a team's issues can be in (the valid values for
+`issue create --state` / `issue update --state`):
+
+```bash
+linear team states
+linear team states TEAM
+linear team states TEAM --json
+```
+
 #### create a team
 
 ```bash
@@ -234,6 +252,18 @@ set up github repository autolinks for linear issues:
 
 ```bash
 linear team autolinks
+```
+
+### users
+
+#### list workspace members
+
+`team members` is scoped to one team; `user list` covers the whole workspace:
+
+```bash
+linear user list
+linear user list --all   # include deactivated members
+linear user list --json
 ```
 
 ### projects

@@ -22,11 +22,12 @@ import {
   getProjectOptionsByName,
   getTeamIdByKey,
   getTeamKey,
-  getWorkflowStateByNameOrType,
   getWorkflowStates,
   lookupUserId,
+  resolveWorkflowState,
   searchTeamsByKeySubstring,
   selectOption,
+  workflowStateNotFoundError,
 } from "../../utils/linear.ts"
 import { checkbox, input, searchSelect, select } from "../../utils/prompt.ts"
 import { isStdoutTTY } from "../../utils/runtime.ts"
@@ -641,10 +642,14 @@ export const createCommand = new Command("create")
         throw new ValidationError("Cannot use --start and a non-self --assignee")
       }
       let stateId: string | undefined
-      if (state) {
-        const workflowState = await getWorkflowStateByNameOrType(team, state)
+      if (state != null) {
+        // Fetch once and reuse the list for the not-found suggestion — no
+        // second round-trip just to list the valid states.
+        const states = await getWorkflowStates(team)
+        const workflowState = resolveWorkflowState(states, state)
         if (!workflowState) {
-          throw new NotFoundError("Workflow state", `'${state}' for team ${team}`)
+          spinner.stop()
+          throw workflowStateNotFoundError(team, state, states)
         }
         stateId = workflowState.id
       }

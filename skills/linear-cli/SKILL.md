@@ -91,6 +91,8 @@ linear issue pull-request
 linear issue delete
 linear issue create
 linear issue update
+linear issue archive
+linear issue unarchive
 linear issue comment
 linear issue comment add
 linear issue comment delete
@@ -113,6 +115,10 @@ linear team list
 linear team id
 linear team autolinks
 linear team members
+linear team states
+
+linear user
+linear user list
 
 linear project
 linear project list
@@ -172,13 +178,10 @@ linear api
 
 ## Reference Documentation
 
-> Note: the per-command files under `references/` are supplementary. Treat this
-> `SKILL.md` and `--help` output as authoritative; the reference files may lag
-> behind the current help output.
-
 - [auth](references/auth.md) - Manage Linear authentication
 - [issue](references/issue.md) - Manage Linear issues
 - [team](references/team.md) - Manage Linear teams
+- [user](references/user.md) - Manage Linear users
 - [project](references/project.md) - Manage Linear projects
 - [project-update](references/project-update.md) - Manage project status updates
 - [cycle](references/cycle.md) - Manage Linear team cycles
@@ -187,7 +190,7 @@ linear api
 - [initiative-update](references/initiative-update.md) - Manage initiative status updates (timeline posts)
 - [label](references/label.md) - Manage Linear issue labels
 - [document](references/document.md) - Manage Linear documents
-- [config](references/config.md) - Interactively generate .linear.toml configuration
+- [config](references/config.md) - Generate .linear.toml configuration (interactive or via flags)
 - [schema](references/schema.md) - Print the GraphQL schema to stdout
 - [api](references/api.md) - Make a raw GraphQL API request
 

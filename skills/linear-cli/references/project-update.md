@@ -5,21 +5,17 @@
 ## Usage
 
 ```
-Usage:   linear project-update
+Usage: linear project-update|pu [options] [command]
 
-Description:
-
-  Manage project status updates
+Manage project status updates
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>              Target workspace (uses credentials)
+  -h, --help                      display help for command
 
 Commands:
-
-  create, c  <projectId>  - Create a new status update for a project
-  list, l    <projectId>  - List status updates for a project
+  create|c [options] <projectId>  Create a new status update for a project
+  list|l [options] <projectId>    List status updates for a project
 ```
 
 ## Subcommands
@@ -29,20 +25,20 @@ Commands:
 > Create a new status update for a project
 
 ```
-Usage:   linear project-update create <projectId>
+Usage: linear project-update create|c [options] <projectId>
 
-Description:
+Create a new status update for a project
 
-  Create a new status update for a project
+Arguments:
+  projectId           Project ID or slug
 
 Options:
-
-  -h, --help                   - Show this help.                                    
-  --workspace        <slug>    - Target workspace (uses credentials)                
-  --body             <body>    - Update content (inline)                            
-  --body-file        <path>    - Read content from file                             
-  --health           <health>  - Project health status (onTrack, atRisk, offTrack)  
-  -i, --interactive            - Interactive mode with prompts
+  --body <body>       Update content (inline)
+  --body-file <path>  Read content from file
+  --health <health>   Project health status (onTrack, atRisk, offTrack)
+  -i, --interactive   Interactive mode with prompts
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### list
@@ -50,16 +46,16 @@ Options:
 > List status updates for a project
 
 ```
-Usage:   linear project-update list <projectId>
+Usage: linear project-update list|l [options] <projectId>
 
-Description:
+List status updates for a project
 
-  List status updates for a project
+Arguments:
+  projectId           Project ID or slug
 
 Options:
-
-  -h, --help            - Show this help.                                   
-  --workspace  <slug>   - Target workspace (uses credentials)               
-  --json                - Output as JSON                                    
-  --limit      <limit>  - Limit results                        (Default: 10)
+  --json              Output as JSON
+  --limit <limit>     Limit results (default: 10)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

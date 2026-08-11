@@ -145,8 +145,16 @@ linear issue commits               # show all commits for an issue (jj only)
 linear team list       # list teams
 linear team id         # print out the team id (e.g. for scripts)
 linear team members    # list team members
+linear team states     # list the team's workflow states
 linear team create     # create a new team
 linear team autolinks  # configure GitHub repository autolinks for Linear issues
+```
+
+### user commands
+
+```bash
+linear user list        # list everyone in the workspace
+linear user list --all  # include deactivated members
 ```
 
 ### project commands

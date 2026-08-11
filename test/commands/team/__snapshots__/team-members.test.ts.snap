@@ -1,0 +1,185 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Team Members Command - Help Text 1`] = `
+"stdout:
+"Usage: members [options] [teamKey]
+
+List team members
+
+Arguments:
+  teamKey     Team key
+
+Options:
+  -a, --all   Include inactive members
+  -j, --json  Output as JSON
+  -h, --help  display help for command
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - Active Members 1`] = `
+"stdout:
+"Team Members (2):
+
+ada (Ada Lovelace) [AL] (admin) (owner) (you)
+  Email: ada@example.com
+  Role: Engineering
+  Timezone: Europe/London
+
+bob (Bob Guest) [BG] (guest) (not assignable)
+  Email: bob@example.com
+  Status: 🌴 On vacation
+
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - All Includes Disabled Users 1`] = `
+"stdout:
+"Team Members (3):
+
+ada (Ada Lovelace) [AL] (admin) (owner) (you)
+  Email: ada@example.com
+  Role: Engineering
+  Timezone: Europe/London
+
+bob (Bob Guest) [BG] (guest) (not assignable)
+  Email: bob@example.com
+  Status: 🌴 On vacation
+
+Carol Carol [CC] (inactive)
+  Email: carol@example.com
+
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - JSON 1`] = `
+"stdout:
+"{
+  "nodes": [
+    {
+      "id": "user-ada",
+      "name": "Ada Lovelace",
+      "displayName": "ada",
+      "email": "ada@example.com",
+      "active": true,
+      "initials": "AL",
+      "description": "Engineering",
+      "timezone": "Europe/London",
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": false,
+      "isAssignable": true,
+      "admin": true,
+      "owner": true,
+      "isMe": true
+    },
+    {
+      "id": "user-bob",
+      "name": "Bob Guest",
+      "displayName": "bob",
+      "email": "bob@example.com",
+      "active": true,
+      "initials": "BG",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": "🌴",
+      "statusLabel": "On vacation",
+      "guest": true,
+      "isAssignable": false,
+      "admin": false,
+      "owner": false,
+      "isMe": false
+    }
+  ],
+  "pageInfo": {
+    "hasNextPage": false,
+    "endCursor": null
+  }
+}
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - JSON Pagination 1`] = `
+"stdout:
+"{
+  "nodes": [
+    {
+      "id": "user-amy",
+      "name": "Amy Ant",
+      "displayName": "amy",
+      "email": "ada@example.com",
+      "active": true,
+      "initials": "AL",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": false,
+      "isAssignable": true,
+      "admin": false,
+      "owner": false,
+      "isMe": false
+    },
+    {
+      "id": "user-zoe",
+      "name": "Zoe Zebra",
+      "displayName": "zoe",
+      "email": "ada@example.com",
+      "active": true,
+      "initials": "AL",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": false,
+      "isAssignable": true,
+      "admin": false,
+      "owner": false,
+      "isMe": false
+    }
+  ],
+  "pageInfo": {
+    "hasNextPage": false,
+    "endCursor": null
+  }
+}
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - No Members 1`] = `
+"stdout:
+"No members found for this team.
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - No Active Members 1`] = `
+"stdout:
+"No active members found for this team. Use --all to include inactive members.
+"
+stderr:
+"""
+`;
+
+exports[`Team Members Command - No Team Configured 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to fetch team members: Could not determine team key
+  Pass a team key as an argument, or set \`team_id\` in .linear.toml (run \`linear config\`).
+""
+`;

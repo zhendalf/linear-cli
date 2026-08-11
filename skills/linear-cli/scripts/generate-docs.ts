@@ -81,10 +81,11 @@ function parseCommands(helpText: string): string[] {
       continue
     }
     if (inCommands) {
-      // Command lines look like: "  command, alias  - Description"
-      // or: "  command  <arg>  - Description"
-      // Capture command name (stopping at comma or whitespace)
-      const match = line.match(/^\s{2}([a-z][-a-z]*)(?:,|\s)/)
+      // Commander prints: "  command|alias [options] <arg>  Description",
+      // wrapping long descriptions onto deeper-indented continuation lines.
+      // Capture the command name, stopping at the alias separator or a space.
+      // (The `,` alternative keeps output from a cliffy-era binary parseable.)
+      const match = line.match(/^ {2}([a-z][-a-z]*)(?:\||,|\s)/)
       if (match) {
         commands.push(match[1])
         foundAnyCommand = true
@@ -99,6 +100,44 @@ function parseCommands(helpText: string): string[] {
   return commands
 }
 
+/**
+ * Pull the one-line description out of a help page.
+ *
+ * Commander prints it as the first paragraph after the `Usage:` line:
+ *
+ *   Usage: linear team|t [options] [command]
+ *
+ *   Manage Linear teams
+ *
+ *   Options:
+ *
+ * A cliffy-era binary instead prints an explicit `Description:` block, so try
+ * that first and fall back to the commander layout.
+ */
+function parseDescription(helpText: string): string {
+  const cliffyMatch = helpText.match(/Description:\s*\n\s*(.+)/)
+  if (cliffyMatch) {
+    return cliffyMatch[1].trim()
+  }
+
+  const lines = helpText.split("\n")
+  const usageIndex = lines.findIndex((line) => line.startsWith("Usage:"))
+  if (usageIndex === -1) {
+    return ""
+  }
+
+  for (const line of lines.slice(usageIndex + 1)) {
+    const trimmed = line.trim()
+    if (trimmed === "") continue
+    // A section header (`Options:`, `Commands:`, …) means there was no
+    // description between the usage line and the first section.
+    if (/^[A-Z][\w ]*:$/.test(trimmed)) return ""
+    return trimmed
+  }
+
+  return ""
+}
+
 async function getCommandHelp(cmdPath: string[]): Promise<string> {
   const result = await run([...LINEAR_CMD, ...cmdPath, "--help"])
   if (!result.success) {
@@ -111,9 +150,7 @@ async function discoverCommand(cmdPath: string[]): Promise<CommandInfo> {
   const help = await getCommandHelp(cmdPath)
   const name = cmdPath.join(" ")
 
-  // Extract description from help text
-  const descMatch = help.match(/Description:\s*\n\s*(.+)/)
-  const description = descMatch ? descMatch[1].trim() : ""
+  const description = parseDescription(help)
 
   // Find subcommands
   const subcommandNames = parseCommands(help)

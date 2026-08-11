@@ -14,8 +14,10 @@ import {
   getMilestoneIdByName,
   getProjectIdByName,
   getTeamIdByKey,
-  getWorkflowStateByNameOrType,
+  getWorkflowStates,
   lookupUserId,
+  resolveWorkflowState,
+  workflowStateNotFoundError,
 } from "../../utils/linear.ts"
 import { createSpinner } from "../../utils/spinner.ts"
 
@@ -114,10 +116,14 @@ export const updateCommand = new Command("update")
       }
 
       let stateId: string | undefined
-      if (state) {
-        const workflowState = await getWorkflowStateByNameOrType(teamKey, state)
+      if (state != null) {
+        // Fetch once and reuse the list for the not-found suggestion — no
+        // second round-trip just to list the valid states.
+        const states = await getWorkflowStates(teamKey)
+        const workflowState = resolveWorkflowState(states, state)
         if (!workflowState) {
-          throw new NotFoundError("Workflow state", `'${state}' for team ${teamKey}`)
+          spinner.stop()
+          throw workflowStateNotFoundError(teamKey, state, states)
         }
         stateId = workflowState.id
       }

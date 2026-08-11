@@ -5,16 +5,13 @@
 ## Usage
 
 ```
-Usage:   linear schema
+Usage: linear schema [options]
 
-Description:
-
-  Print the GraphQL schema to stdout
+Print the GraphQL schema to stdout
 
 Options:
-
-  -h, --help            - Show this help.                                     
-  --workspace   <slug>  - Target workspace (uses credentials)                 
-  --json                - Output as JSON introspection result instead of SDL  
-  -o, --output  <file>  - Write schema to file instead of stdout
+  --json               Output as JSON introspection result instead of SDL
+  -o, --output <file>  Write schema to file instead of stdout
+  --workspace <slug>   Target workspace (uses credentials)
+  -h, --help           display help for command
 ```

@@ -5,6 +5,7 @@
 - [auth](./auth.md) - Manage Linear authentication
 - [issue](./issue.md) - Manage Linear issues
 - [team](./team.md) - Manage Linear teams
+- [user](./user.md) - Manage Linear users
 - [project](./project.md) - Manage Linear projects
 - [project-update](./project-update.md) - Manage project status updates
 - [cycle](./cycle.md) - Manage Linear team cycles
@@ -13,7 +14,7 @@
 - [initiative-update](./initiative-update.md) - Manage initiative status updates (timeline posts)
 - [label](./label.md) - Manage Linear issue labels
 - [document](./document.md) - Manage Linear documents
-- [config](./config.md) - Interactively generate .linear.toml configuration
+- [config](./config.md) - Generate .linear.toml configuration (interactive or via flags)
 - [schema](./schema.md) - Print the GraphQL schema to stdout
 - [api](./api.md) - Make a raw GraphQL API request
 

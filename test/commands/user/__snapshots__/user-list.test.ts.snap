@@ -1,0 +1,167 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`User List Command - Help Text 1`] = `
+"stdout:
+"Usage: user list [options]
+
+List members of the workspace
+
+Options:
+  -a, --all   Include inactive members
+  -j, --json  Output as JSON
+  -h, --help  display help for command
+"
+stderr:
+"""
+`;
+
+exports[`User List Command - Active Members 1`] = `
+"stdout:
+"Workspace Members (2):
+
+ada (Ada Lovelace) [AL] (admin) (owner) (you)
+  Email: ada@example.com
+
+bob (Bob Guest) [BG] (guest)
+  Email: bob@example.com
+
+"
+stderr:
+"""
+`;
+
+exports[`User List Command - All Includes Disabled Users 1`] = `
+"stdout:
+"Workspace Members (3):
+
+ada (Ada Lovelace) [AL] (admin) (owner) (you)
+  Email: ada@example.com
+
+bob (Bob Guest) [BG] (guest)
+  Email: bob@example.com
+
+Carol Carol [CC] (inactive)
+  Email: carol@example.com
+
+"
+stderr:
+"""
+`;
+
+exports[`User List Command - JSON 1`] = `
+"stdout:
+"{
+  "nodes": [
+    {
+      "id": "user-ada",
+      "name": "Ada Lovelace",
+      "displayName": "ada",
+      "email": "ada@example.com",
+      "active": true,
+      "initials": "AL",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": false,
+      "isAssignable": true,
+      "admin": true,
+      "owner": true,
+      "isMe": true
+    },
+    {
+      "id": "user-bob",
+      "name": "Bob Guest",
+      "displayName": "bob",
+      "email": "bob@example.com",
+      "active": true,
+      "initials": "BG",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": true,
+      "isAssignable": true,
+      "admin": false,
+      "owner": false,
+      "isMe": false
+    }
+  ],
+  "pageInfo": {
+    "hasNextPage": false,
+    "endCursor": null
+  }
+}
+"
+stderr:
+"""
+`;
+
+exports[`User List Command - JSON Pagination 1`] = `
+"stdout:
+"{
+  "nodes": [
+    {
+      "id": "user-amy",
+      "name": "Amy Ant",
+      "displayName": "amy",
+      "email": "ada@example.com",
+      "active": true,
+      "initials": "AL",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": false,
+      "isAssignable": true,
+      "admin": false,
+      "owner": false,
+      "isMe": false
+    },
+    {
+      "id": "user-zoe",
+      "name": "Zoe Zebra",
+      "displayName": "zoe",
+      "email": "ada@example.com",
+      "active": true,
+      "initials": "AL",
+      "description": null,
+      "timezone": null,
+      "lastSeen": null,
+      "statusEmoji": null,
+      "statusLabel": null,
+      "guest": false,
+      "isAssignable": true,
+      "admin": false,
+      "owner": false,
+      "isMe": false
+    }
+  ],
+  "pageInfo": {
+    "hasNextPage": false,
+    "endCursor": null
+  }
+}
+"
+stderr:
+"""
+`;
+
+exports[`User List Command - No Members 1`] = `
+"stdout:
+"No members found in this workspace.
+"
+stderr:
+"""
+`;
+
+exports[`User List Command - No Active Members 1`] = `
+"stdout:
+"No active members found in this workspace. Use --all to include inactive members.
+"
+stderr:
+"""
+`;

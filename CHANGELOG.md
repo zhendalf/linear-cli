@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- `linear team states [teamKey]` lists a team's workflow states (table or `--json`, preserving the GraphQL `nodes` shape).
+- `linear user list` (group alias `u`) lists everyone in the workspace, with `--all` and `--json`.
+- `linear team members --json` emits the connection shape (`nodes` + `pageInfo`) with GraphQL field names preserved.
+- member listings now show `(admin)`, `(owner)`, and `(you)` markers alongside the existing `(inactive)`/`(guest)`/`(not assignable)`, via a shared renderer used by `team members` and `user list`.
+
+### Fixed
+
+- `linear team members --all` was a no-op: `includeDisabled` never reached the API, so disabled users were never fetched and the client-side `active` filter had nothing extra to reveal.
+- an unrecognized `--state` on `issue create`/`issue update` now lists the team's valid workflow states and points at `linear team states`, instead of a bare "Workflow state not found".
+- `team members` no longer blames the directory name when no team can be resolved — the team key comes from `team_id` in `.linear.toml` (or `LINEAR_TEAM_ID`), never from the directory.
+
 ### Changed
 
 - **Bun-native distribution**: the CLI now ships as TypeScript and runs directly on Bun — there is no longer a bundled `dist/main.js`. The published `bin` is `src/main.ts` (`#!/usr/bin/env bun`), and runtime libraries are now real `dependencies`.

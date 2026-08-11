@@ -1,0 +1,104 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Team States Command - Help Text 1`] = `
+"stdout:
+"Usage: team states [options] [teamKey]
+
+List workflow states for a team
+
+Arguments:
+  teamKey     Team key (defaults to the configured team)
+
+Options:
+  -j, --json  Output as JSON
+  -h, --help  display help for command
+"
+stderr:
+"""
+`;
+
+exports[`Team States Command - Table 1`] = `
+"stdout:
+"NAME        TYPE     
+Backlog     backlog  
+Todo        unstarted
+In Progress started  
+Done        completed
+"
+stderr:
+"""
+`;
+
+exports[`Team States Command - JSON 1`] = `
+"stdout:
+"{
+  "nodes": [
+    {
+      "id": "s-backlog",
+      "name": "Backlog",
+      "type": "backlog",
+      "position": 0
+    },
+    {
+      "id": "s-todo",
+      "name": "Todo",
+      "type": "unstarted",
+      "position": 1
+    },
+    {
+      "id": "s-progress",
+      "name": "In Progress",
+      "type": "started",
+      "position": 2
+    },
+    {
+      "id": "s-done",
+      "name": "Done",
+      "type": "completed",
+      "position": 3
+    }
+  ]
+}
+"
+stderr:
+"""
+`;
+
+exports[`Team States Command - Configured Team Fallback 1`] = `
+"stdout:
+"NAME        TYPE     
+Backlog     backlog  
+Todo        unstarted
+In Progress started  
+Done        completed
+"
+stderr:
+"""
+`;
+
+exports[`Team States Command - Empty 1`] = `
+"stdout:
+"No workflow states found for this team.
+"
+stderr:
+"""
+`;
+
+exports[`Team States Command - Empty JSON 1`] = `
+"stdout:
+"{
+  "nodes": []
+}
+"
+stderr:
+"""
+`;
+
+exports[`Team States Command - No Team Configured 1`] = `
+"stdout:
+""
+stderr:
+"✗ Failed to fetch workflow states: Could not determine team key
+  Pass a team key as an argument, or set \`team_id\` in .linear.toml (run \`linear config\`).
+""
+`;

@@ -5,26 +5,22 @@
 ## Usage
 
 ```
-Usage:   linear auth
+Usage: linear auth [options] [command]
 
-Description:
-
-  Manage Linear authentication
+Manage Linear authentication
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
+  --workspace <slug>             Target workspace (uses credentials)
+  -h, --help                     display help for command
 
 Commands:
-
-  login                 - Add a workspace credential                     
-  logout   [workspace]  - Remove a workspace credential                  
-  list                  - List configured workspaces                     
-  default  [workspace]  - Set the default workspace                      
-  token                 - Print the configured API token                 
-  whoami                - Print information about the authenticated user 
-  status                - Show how auth resolves in the current directory 
+  login [options]                Add a workspace credential
+  logout [options] [workspace]   Remove a workspace credential
+  list [options]                 List configured workspaces
+  default [options] [workspace]  Set the default workspace
+  token [options]                Print the configured API token
+  whoami [options]               Print information about the authenticated user
+  status [options]               Print information about the authenticated user
 ```
 
 ## Subcommands
@@ -34,17 +30,14 @@ Commands:
 > Add a workspace credential
 
 ```
-Usage:   linear auth login
+Usage: linear auth login [options]
 
-Description:
-
-  Add a workspace credential
+Add a workspace credential
 
 Options:
-
-  -h, --help           - Show this help.                                              
-  --workspace  <slug>  - Target workspace (uses credentials)                          
-  -k, --key    <key>   - API key (prompted if not provided)                           
+  -k, --key <key>     API key (prompted if not provided)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### logout
@@ -52,17 +45,17 @@ Options:
 > Remove a workspace credential
 
 ```
-Usage:   linear auth logout [workspace]
+Usage: linear auth logout [options] [workspace]
 
-Description:
+Remove a workspace credential
 
-  Remove a workspace credential
+Arguments:
+  workspace           Workspace slug to remove
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)  
-  -f, --force          - Skip confirmation prompt
+  -y, --yes           Skip confirmation prompt
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### list
@@ -70,16 +63,13 @@ Options:
 > List configured workspaces
 
 ```
-Usage:   linear auth list
+Usage: linear auth list [options]
 
-Description:
-
-  List configured workspaces
+List configured workspaces
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### default
@@ -87,16 +77,16 @@ Options:
 > Set the default workspace
 
 ```
-Usage:   linear auth default [workspace]
+Usage: linear auth default [options] [workspace]
 
-Description:
+Set the default workspace
 
-  Set the default workspace
+Arguments:
+  workspace           Workspace slug to set as default
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### token
@@ -104,16 +94,13 @@ Options:
 > Print the configured API token
 
 ```
-Usage:   linear auth token
+Usage: linear auth token [options]
 
-Description:
-
-  Print the configured API token
+Print the configured API token
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### whoami
@@ -121,31 +108,25 @@ Options:
 > Print information about the authenticated user
 
 ```
-Usage:   linear auth whoami
+Usage: linear auth whoami [options]
 
-Description:
-
-  Print information about the authenticated user
+Print information about the authenticated user
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```
 
 ### status
 
-> Show how auth resolves in the current directory
+> Print information about the authenticated user
 
 ```
-Usage:   linear auth status
+Usage: linear auth status [options]
 
-Description:
-
-  Show how auth resolves in the current directory
+Print information about the authenticated user
 
 Options:
-
-  -h, --help           - Show this help.                      
-  --workspace  <slug>  - Target workspace (uses credentials)
+  --workspace <slug>  Target workspace (uses credentials)
+  -h, --help          display help for command
 ```

@@ -6,6 +6,7 @@ import { deleteCommand } from "./team-delete.ts"
 import { idCommand } from "./team-id.ts"
 import { listCommand } from "./team-list.ts"
 import { membersCommand } from "./team-members.ts"
+import { statesCommand } from "./team-states.ts"
 
 export const teamCommand = new Command("team")
   .alias("t")
@@ -19,3 +20,4 @@ export const teamCommand = new Command("team")
   .addCommand(idCommand)
   .addCommand(autolinksCommand)
   .addCommand(membersCommand)
+  .addCommand(statesCommand)

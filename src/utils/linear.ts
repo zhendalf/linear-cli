@@ -5,6 +5,7 @@ import type {
   GetIssueDetailsWithCommentsQuery,
   GetIssuesForQueryQuery,
   GetIssuesForStateQuery,
+  GetOrganizationMembersQuery,
   GetTeamMembersQuery,
   IssueFilter,
   IssueSortInput,
@@ -13,7 +14,7 @@ import type {
   GetAllTeamsQueryVariables as _GetAllTeamsQueryVariables,
 } from "../__codegen__/graphql.ts"
 import { getOption } from "../config.ts"
-import { NotFoundError, ValidationError } from "./errors.ts"
+import { CliError, NotFoundError, ValidationError } from "./errors.ts"
 import { getGraphQLClient } from "./graphql.ts"
 import { shouldShowSpinner } from "./hyperlink.ts"
 import { normalizeIssueIdentifier } from "./issue-identifier.ts"
@@ -150,23 +151,47 @@ export async function getStartedState(teamKey: string): Promise<{ id: string; na
   return { id: startedStates[0].id, name: startedStates[0].name }
 }
 
-export async function getWorkflowStateByNameOrType(
-  teamKey: string,
+/**
+ * Resolve a workflow state from an already-fetched list by name
+ * (case-insensitive) or by type. Duplicate types resolve to the first matching
+ * state in the input order — callers pass the position-sorted list from
+ * `getWorkflowStates`, so that is the lowest-position state of that type.
+ *
+ * Pure so callers can fetch once and reuse the list for the not-found
+ * suggestion (see `workflowStateNotFoundError`) without a second round-trip.
+ */
+export function resolveWorkflowState(
+  states: readonly WorkflowState[],
   nameOrType: string,
-): Promise<{ id: string; name: string } | undefined> {
-  const states = await getWorkflowStates(teamKey)
-
+): WorkflowState | undefined {
   const nameMatch = states.find((s) => s.name.toLowerCase() === nameOrType.toLowerCase())
   if (nameMatch) {
-    return { id: nameMatch.id, name: nameMatch.name }
+    return nameMatch
   }
 
-  const typeMatch = states.find((s) => s.type === nameOrType.toLowerCase())
-  if (typeMatch) {
-    return { id: typeMatch.id, name: typeMatch.name }
-  }
+  return states.find((s) => s.type === nameOrType.toLowerCase())
+}
 
-  return undefined
+/**
+ * Build the error thrown when a requested workflow state can't be resolved for
+ * a team. Shared by `issue create` and `issue update` so both surface the same
+ * message and the same list of valid states.
+ */
+export function workflowStateNotFoundError(
+  teamKey: string,
+  requested: string,
+  states: readonly WorkflowState[],
+): NotFoundError {
+  const suggestion =
+    states.length > 0
+      ? `Valid states: ${states
+          .map((s) => `${JSON.stringify(s.name)} (${s.type})`)
+          .join(", ")}. Run \`linear team states ${teamKey}\` to list them.`
+      : `Team ${teamKey} has no workflow states. Run \`linear team states ${teamKey}\`.`
+
+  return new NotFoundError("Workflow state", `'${requested}' for team ${teamKey}`, {
+    suggestion,
+  })
 }
 
 export async function updateIssueState(issueId: string, stateId: string): Promise<void> {
@@ -1453,12 +1478,30 @@ export async function getLabelsForTeam(
   return labels.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 }
 
-export async function getTeamMembers(teamKey: string) {
+type TeamMembersConnection = GetTeamMembersQuery["team"]["members"]
+
+/**
+ * Fetch every member of a team, following the connection to exhaustion.
+ *
+ * `includeDisabled` is an explicit parameter so callers can't silently inherit
+ * Linear's default of `false` — that is what made `team members --all` a no-op:
+ * disabled users were never fetched, so filtering on `active` could not reveal
+ * them.
+ */
+export async function getTeamMembers(
+  teamKey: string,
+  includeDisabled: boolean,
+): Promise<TeamMembersConnection> {
   const client = getGraphQLClient()
   const query = gql(/* GraphQL */ `
-    query GetTeamMembers($teamKey: String!, $first: Int, $after: String) {
+    query GetTeamMembers(
+      $teamKey: String!
+      $includeDisabled: Boolean!
+      $first: Int
+      $after: String
+    ) {
       team(id: $teamKey) {
-        members(first: $first, after: $after) {
+        members(includeDisabled: $includeDisabled, first: $first, after: $after) {
           nodes {
             id
             name
@@ -1473,6 +1516,9 @@ export async function getTeamMembers(teamKey: string) {
             statusLabel
             guest
             isAssignable
+            admin
+            owner
+            isMe
           }
           pageInfo {
             hasNextPage
@@ -1483,27 +1529,116 @@ export async function getTeamMembers(teamKey: string) {
     }
   `)
 
-  const allMembers = []
+  const nodes: TeamMembersConnection["nodes"] = []
+  // Describes the exhausted source connection, so hasNextPage is always false
+  // once pagination completes. Matches `label list` and `project list`.
+  let pageInfo: TeamMembersConnection["pageInfo"] = {
+    hasNextPage: false,
+    endCursor: null,
+  }
   let hasNextPage = true
   let after: string | null | undefined = undefined
 
   while (hasNextPage) {
+    // Annotated to break the circular inference between `after` and the
+    // request's own result type.
     const result: GetTeamMembersQuery = await client.request(query, {
       teamKey,
+      includeDisabled,
       first: 100, // Fetch 100 members per page
       after,
     })
 
-    const members = result.team.members.nodes
-    allMembers.push(...members)
+    const members = result.team.members
+    nodes.push(...members.nodes)
+    pageInfo = members.pageInfo
 
-    hasNextPage = result.team.members.pageInfo.hasNextPage
-    after = result.team.members.pageInfo.endCursor
+    hasNextPage = members.pageInfo.hasNextPage
+    const nextCursor = members.pageInfo.endCursor
+    if (hasNextPage && (nextCursor == null || nextCursor === after)) {
+      throw new CliError("Linear reported more team members but did not advance the page cursor")
+    }
+    after = nextCursor
   }
 
-  return allMembers.sort((a, b) =>
-    a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()),
-  )
+  // Sort after all pages are fetched so ordering is global, not per-page.
+  nodes.sort((a, b) => a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()))
+
+  return { nodes, pageInfo }
+}
+
+type OrganizationMembersConnection = GetOrganizationMembersQuery["viewer"]["organization"]["users"]
+
+/** Fetch every member of the viewer's workspace (organization). */
+export async function getOrganizationMembers(
+  includeDisabled: boolean,
+): Promise<OrganizationMembersConnection> {
+  const client = getGraphQLClient()
+  const query = gql(/* GraphQL */ `
+    query GetOrganizationMembers($includeDisabled: Boolean!, $first: Int, $after: String) {
+      viewer {
+        organization {
+          users(includeDisabled: $includeDisabled, first: $first, after: $after) {
+            nodes {
+              id
+              name
+              displayName
+              email
+              active
+              initials
+              description
+              timezone
+              lastSeen
+              statusEmoji
+              statusLabel
+              guest
+              isAssignable
+              admin
+              owner
+              isMe
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      }
+    }
+  `)
+
+  const nodes: OrganizationMembersConnection["nodes"] = []
+  let pageInfo: OrganizationMembersConnection["pageInfo"] = {
+    hasNextPage: false,
+    endCursor: null,
+  }
+  let hasNextPage = true
+  let after: string | null | undefined = undefined
+
+  while (hasNextPage) {
+    const result: GetOrganizationMembersQuery = await client.request(query, {
+      includeDisabled,
+      first: 100,
+      after,
+    })
+
+    const users = result.viewer.organization.users
+    nodes.push(...users.nodes)
+    pageInfo = users.pageInfo
+
+    hasNextPage = users.pageInfo.hasNextPage
+    const nextCursor = users.pageInfo.endCursor
+    if (hasNextPage && (nextCursor == null || nextCursor === after)) {
+      throw new CliError(
+        "Linear reported more workspace members but did not advance the page cursor",
+      )
+    }
+    after = nextCursor
+  }
+
+  nodes.sort((a, b) => a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()))
+
+  return { nodes, pageInfo }
 }
 
 export async function getIssueProjectId(issueIdentifier: string): Promise<string | undefined> {
