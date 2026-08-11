@@ -13,5 +13,11 @@ pre-commit:
 
 pre-push:
   commands:
+    # Strip the git environment before starting bun. Git exports GIT_DIR,
+    # GIT_INDEX_FILE and friends to its hooks, and GIT_DIR overrides a child's
+    # cwd, so the git fixtures in test/utils/{git,vcs}.test.ts would run their
+    # `git init`/`commit`/`checkout -b` against this repository instead of their
+    # temp directories. It has to happen out here: Bun cannot drop inherited
+    # variables from inside the process. test/setup.ts hard-fails if any survive.
     test:
-      run: bun test
+      run: sh -c 'unset $(env | sed -n "s/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p"); bun test'
