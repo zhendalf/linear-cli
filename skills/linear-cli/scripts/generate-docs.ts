@@ -83,7 +83,9 @@ function parseCommands(helpText: string): string[] {
     if (inCommands) {
       // Command lines look like: "  command|alias [options]  Description"
       // or: "  command [options] <arg>  Description"
-      // Capture command name (stopping at the alias separator or whitespace)
+      // Capture command name (stopping at the alias separator or whitespace).
+      // Wrapped description continuation lines are indented far past column 2,
+      // so they never match.
       const match = line.match(/^\s{2}([a-z][-a-z]*)(?:[|,]|\s)/)
       if (match) {
         commands.push(match[1])
@@ -99,6 +101,34 @@ function parseCommands(helpText: string): string[] {
   return commands
 }
 
+/**
+ * Pull the one-line description out of commander help, which prints it as the
+ * first paragraph after the `Usage:` line:
+ *
+ *   Usage: linear issue [options] [command]
+ *
+ *   Manage Linear issues
+ *
+ *   Options:
+ *
+ * Returns "" when the next thing after the usage line is already a section
+ * heading (`Options:`, `Arguments:`, `Commands:`), i.e. there is no description.
+ */
+function parseDescription(helpText: string): string {
+  const lines = helpText.split("\n")
+  const usageIndex = lines.findIndex((line) => line.startsWith("Usage:"))
+  if (usageIndex === -1) return ""
+
+  for (const line of lines.slice(usageIndex + 1)) {
+    const trimmed = line.trim()
+    if (trimmed === "") continue
+    if (/^[A-Za-z ]+:$/.test(trimmed)) return ""
+    return trimmed
+  }
+
+  return ""
+}
+
 async function getCommandHelp(cmdPath: string[]): Promise<string> {
   const result = await run([...LINEAR_CMD, ...cmdPath, "--help"])
   if (!result.success) {
@@ -111,9 +141,7 @@ async function discoverCommand(cmdPath: string[]): Promise<CommandInfo> {
   const help = await getCommandHelp(cmdPath)
   const name = cmdPath.join(" ")
 
-  // Extract description from help text
-  const descMatch = help.match(/Description:\s*\n\s*(.+)/)
-  const description = descMatch ? descMatch[1].trim() : ""
+  const description = parseDescription(help)
 
   // Find subcommands
   const subcommandNames = parseCommands(help)

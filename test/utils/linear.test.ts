@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+import { ValidationError } from "../../src/utils/errors.ts"
 import { getIssueIdentifier, searchIssuesByTerm } from "../../src/utils/linear.ts"
 import { setupMockLinearServer } from "./test-helpers.ts"
 
@@ -135,6 +136,75 @@ test("searchIssuesByTerm - without limit fetches a single page", async () => {
       },
       totalCount: 2,
     })
+  } finally {
+    await cleanup()
+  }
+})
+
+// An empty team id is falsy, so getTeamKey() resolves to nothing even though
+// the repo's own .linear.toml sets one — this reaches the no-team branch.
+test("getIssueId - integer-only id without a team points at `linear config`", async () => {
+  process.env["LINEAR_TEAM_ID"] = ""
+
+  try {
+    let caught: unknown
+    try {
+      await getIssueIdentifier("123")
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(ValidationError)
+    const error = caught as ValidationError
+    expect(error.message).toContain("no team is set")
+    // Regression guard: the suggestion must name the real `config` command.
+    // `linear configure` used to be advertised here and is an alias now, but
+    // the canonical spelling is what we tell people to run.
+    expect(error.suggestion).toContain("linear config")
+    expect(error.suggestion).not.toContain("linear configure")
+  } finally {
+    delete process.env["LINEAR_TEAM_ID"]
+  }
+})
+
+// Regression: `issue query --search --cycle` resolved a cycle id and then
+// dropped it, because searchIssuesByTerm took no cycle parameter and silently
+// returned unfiltered results. The mock only answers when the cycle filter is
+// present, so a dropped filter fails the request instead of passing quietly.
+test("searchIssuesByTerm - threads cycleId into the search filter", async () => {
+  const { cleanup } = await setupMockLinearServer(
+    [
+      {
+        queryName: "SearchIssues",
+        variables: {
+          term: "issue",
+          filter: {
+            team: { key: { eq: "CLI" } },
+            cycle: { id: { eq: "cycle-1" } },
+          },
+        },
+        response: {
+          data: {
+            searchIssues: {
+              nodes: [],
+              pageInfo: { hasNextPage: false, endCursor: null },
+              totalCount: 0,
+            },
+          },
+        },
+      },
+    ],
+    { NO_COLOR: "true" },
+  )
+
+  try {
+    const result = await searchIssuesByTerm("issue", {
+      teamKey: "CLI",
+      cycleId: "cycle-1",
+    })
+
+    expect(result.nodes).toEqual([])
+    expect(result.totalCount).toBe(0)
   } finally {
     await cleanup()
   }

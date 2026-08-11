@@ -1,11 +1,11 @@
 # config
 
-> 
+> Generate .linear.toml configuration (interactive or via flags)
 
 ## Usage
 
 ```
-Usage: linear config [options]
+Usage: linear config|configure [options]
 
 Generate .linear.toml configuration (interactive or via flags)
 

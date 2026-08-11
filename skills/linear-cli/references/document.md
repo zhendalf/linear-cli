@@ -1,6 +1,6 @@
 # document
 
-> 
+> Manage Linear documents
 
 ## Usage
 
@@ -25,6 +25,8 @@ Commands:
 
 ### list
 
+> List documents
+
 ```
 Usage: linear document list|l [options]
 
@@ -40,6 +42,8 @@ Options:
 ```
 
 ### view
+
+> View a document's content
 
 ```
 Usage: linear document view|v [options] <id>
@@ -61,6 +65,8 @@ Options:
 
 ### create
 
+> Create a new document
+
 ```
 Usage: linear document create|c [options]
 
@@ -79,6 +85,8 @@ Options:
 ```
 
 ### update
+
+> Update an existing document
 
 ```
 Usage: linear document update|u [options] <documentId>
@@ -102,6 +110,8 @@ Options:
 ```
 
 ### delete
+
+> Delete a document (moves to trash)
 
 ```
 Usage: linear document delete|d [options] [documentId]

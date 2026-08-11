@@ -1,6 +1,6 @@
 # team
 
-> 
+> Manage Linear teams
 
 ## Usage
 
@@ -27,6 +27,8 @@ Commands:
 
 ### create
 
+> Create a linear team
+
 ```
 Usage: linear team create [options]
 
@@ -45,6 +47,8 @@ Options:
 
 ### delete
 
+> Delete a Linear team
+
 ```
 Usage: linear team delete [options] <teamKey>
 
@@ -62,6 +66,8 @@ Options:
 
 ### list
 
+> List teams
+
 ```
 Usage: linear team list [options]
 
@@ -77,6 +83,8 @@ Options:
 
 ### id
 
+> Print the configured team id
+
 ```
 Usage: linear team id [options]
 
@@ -89,6 +97,8 @@ Options:
 
 ### autolinks
 
+> Configure GitHub repository autolinks for Linear issues with this team prefix
+
 ```
 Usage: linear team autolinks [options]
 
@@ -100,6 +110,8 @@ Options:
 ```
 
 ### members
+
+> List team members
 
 ```
 Usage: linear team members [options] [teamKey]

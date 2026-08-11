@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+import { createServer } from "node:http"
 import { formatThreadIdLabel, viewCommand } from "../../../src/commands/issue/issue-view.ts"
 import { MockLinearServer } from "../../utils/mock_linear_server.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
@@ -1132,4 +1133,74 @@ await snapshotTest({
       delete process.env["LINEAR_API_KEY"]
     }
   },
+})
+
+// ---------------------------------------------------------------------------
+// Label ids in the issue-details queries
+//
+// `issue view --json` prints the GraphQL payload verbatim, so a mock server
+// that echoes labels back proves nothing — what matters is that the query
+// document ASKS for the label id. These tests capture the outgoing document
+// and assert on it directly.
+// ---------------------------------------------------------------------------
+
+/** Run the view command against a throwaway server and return the sent query. */
+async function captureIssueViewQuery(args: string[]): Promise<string> {
+  let sentQuery = ""
+  const server = createServer((req, res) => {
+    let body = ""
+    req.on("data", (chunk) => {
+      body += chunk
+    })
+    req.on("end", () => {
+      sentQuery = JSON.parse(body).query
+      res.writeHead(200, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ data: { issue: null } }))
+    })
+  })
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()))
+  const address = server.address()
+  const port = address != null && typeof address === "object" ? address.port : 0
+
+  const origConsoleLog = console.log
+  const origConsoleError = console.error
+  const origProcessExit = process.exit
+  process.env["LINEAR_GRAPHQL_ENDPOINT"] = `http://127.0.0.1:${port}/graphql`
+  process.env["LINEAR_API_KEY"] = "Bearer test-token"
+  console.log = () => {}
+  console.error = () => {}
+  process.exit = ((_code?: number) => {
+    throw new Error("EXIT")
+  }) as typeof process.exit
+
+  try {
+    // The issue resolves to null, so the command errors out after the request —
+    // which is all we need, since the request itself is what we assert on.
+    await viewCommand.parseAsync(args, { from: "user" })
+  } catch {
+    // expected: NotFoundError -> handleError -> stubbed process.exit
+  } finally {
+    console.log = origConsoleLog
+    console.error = origConsoleError
+    process.exit = origProcessExit
+    delete process.env["LINEAR_GRAPHQL_ENDPOINT"]
+    delete process.env["LINEAR_API_KEY"]
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  }
+
+  return sentQuery
+}
+
+test("Issue View Command - issue details query selects label ids", async () => {
+  const query = await captureIssueViewQuery(["TEST-123", "--json", "--no-comments"])
+
+  expect(query).toContain("query GetIssueDetails")
+  expect(query).toMatch(/labels\s*\{\s*nodes\s*\{\s*id\b/)
+})
+
+test("Issue View Command - issue details with comments query selects label ids", async () => {
+  const query = await captureIssueViewQuery(["TEST-123", "--json"])
+
+  expect(query).toContain("query GetIssueDetailsWithComments")
+  expect(query).toMatch(/labels\s*\{\s*nodes\s*\{\s*id\b/)
 })

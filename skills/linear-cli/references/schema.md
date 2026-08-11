@@ -1,6 +1,6 @@
 # schema
 
-> 
+> Print the GraphQL schema to stdout
 
 ## Usage
 

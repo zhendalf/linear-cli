@@ -1,6 +1,6 @@
 # project
 
-> 
+> Manage Linear projects
 
 ## Usage
 
@@ -25,6 +25,8 @@ Commands:
 
 ### list
 
+> List projects
+
 ```
 Usage: linear project list [options]
 
@@ -43,6 +45,8 @@ Options:
 
 ### view
 
+> View project details
+
 ```
 Usage: linear project view|v [options] <projectId>
 
@@ -60,6 +64,8 @@ Options:
 ```
 
 ### create
+
+> Create a new Linear project
 
 ```
 Usage: linear project create [options]
@@ -99,6 +105,8 @@ Options:
 
 ### update
 
+> Update a Linear project
+
 ```
 Usage: linear project update [options] <projectId>
 
@@ -126,6 +134,8 @@ Options:
 ```
 
 ### delete
+
+> Delete (trash) a Linear project
 
 ```
 Usage: linear project delete [options] <projectId>

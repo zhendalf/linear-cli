@@ -21,10 +21,16 @@
 
 - `document list --issue` never worked — the filter used a nonexistent `identifier` comparator, so every invocation was rejected by the API. It now filters on `issue.id`, which accepts human identifiers like `ENG-123`.
 - `document update` now refuses to overwrite a document that has active inline comments (which a Markdown replacement would orphan), with `--force` to override
-- the skill-docs generator silently deleted the reference docs for every aliased command group: it parsed the command list expecting `command, alias` but commander emits `command|alias`, and it pruned stale files before rendering. It now parses aliases correctly and aborts rather than pruning when discovery comes up empty.
+- the skill-docs generator silently deleted the reference docs for every aliased command group: it parsed the command list expecting `command, alias` but commander emits `command|alias`, and it pruned stale files before rendering. It now parses aliases correctly and aborts rather than pruning when discovery comes up empty. It also reads each command's description from commander's post-`Usage:` paragraph instead of cliffy's `Description:` section, so descriptions are no longer blank.
+- an invalid `issue_sort` (from `--sort`, `LINEAR_ISSUE_SORT`, or `.linear.toml`) now errors and lists the valid values instead of silently sorting by priority. Sort resolution moved into one shared `resolveIssueSort()` — `--sort` flag > `LINEAR_ISSUE_SORT` > `issue_sort` config > `priority`.
+- `issue query --search --cycle` no longer drops the cycle filter: the resolved cycle id is threaded into the search request.
+- `issue view --json` now includes each label's `id` alongside `name` and `color`.
+- suggestions that told users to run `linear configure` now name the real `linear config` command (`team id`, `team autolinks`, and the "an integer id was provided, but no team is set" error, which is now a `ValidationError` with the standard ✗ + suggestion treatment).
 
 ### Changed
 
+- `linear config` accepts `configure` as an alias.
+- errors for a missing team no longer claim the team can come from the directory name (it only ever comes from `--team`, `LINEAR_TEAM_ID`, or `team_id` config). `issue mine`, `cycle list`, `cycle view`, `team id`, `team autolinks`, and `team members` now say "No default team configured and no team scope provided" and, inside a git work tree, point at `linear config`.
 - **Bun-native distribution**: the CLI now ships as TypeScript and runs directly on Bun — there is no longer a bundled `dist/main.js`. The published `bin` is `src/main.ts` (`#!/usr/bin/env bun`), and runtime libraries are now real `dependencies`.
 - all dependencies updated to current majors: commander 15, @inquirer/prompts 8, chalk 6, ora 9, dotenv 17, open 11, env-paths 4, string-width 8; dev tooling moves to Biome 2, graphql-codegen 7, lefthook 2, TypeScript 7. `graphql` intentionally stays on 16.x (graphql-request peer-depends on `14 - 16`). Linear's custom scalars are now explicitly mapped in `codegen.ts` (`strictScalars`), since codegen ≥ 6 types unmapped scalars as `unknown`.
 

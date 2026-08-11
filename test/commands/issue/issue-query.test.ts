@@ -427,3 +427,70 @@ test("Issue Query Command - rejects --milestone without --project", async () => 
 // getOption("team_id") reads from config files which can't be easily
 // overridden in tests. The validation logic is covered by the code path
 // and the other validation tests confirm handleError integration works.
+
+// Regression: `--search` used to resolve --cycle and then drop it — the search
+// backend took no cycle parameter, so results came back unfiltered without any
+// warning. The SearchIssues mock only answers when the cycle filter is present.
+test("Issue Query Command - search passes --cycle through to the search filter", async () => {
+  const { cleanup } = await setupMockLinearServer(
+    [
+      {
+        queryName: "GetTeamIdByKey",
+        variables: { team: "ENG" },
+        response: { data: { teams: { nodes: [{ id: "team-1" }] } } },
+      },
+      {
+        queryName: "GetTeamCyclesForLookup",
+        variables: { teamId: "team-1" },
+        response: {
+          data: {
+            team: {
+              cycles: { nodes: [{ id: "cycle-3", number: 3, name: "Cycle 3" }] },
+              activeCycle: { id: "cycle-3", number: 3, name: "Cycle 3" },
+            },
+          },
+        },
+      },
+      {
+        queryName: "SearchIssues",
+        variables: {
+          term: "oauth",
+          filter: {
+            team: { key: { eq: "ENG" } },
+            cycle: { id: { eq: "cycle-3" } },
+          },
+        },
+        response: {
+          data: {
+            searchIssues: {
+              nodes: [mockIssueNode],
+              pageInfo: { hasNextPage: false, endCursor: null },
+              totalCount: 1,
+            },
+          },
+        },
+      },
+    ],
+    { NO_COLOR: "true" },
+  )
+
+  const logs: string[] = []
+  const origConsoleLog = console.log
+  console.log = (...args: unknown[]) => {
+    logs.push(args.map(String).join(" "))
+  }
+
+  try {
+    await queryCommand.parseAsync(
+      ["--search", "oauth", "--team", "ENG", "--cycle", "3", "--json"],
+      {
+        from: "user",
+      },
+    )
+  } finally {
+    console.log = origConsoleLog
+    await cleanup()
+  }
+
+  expect(logs.join("\n")).toContain("ENG-101")
+})

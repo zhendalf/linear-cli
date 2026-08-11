@@ -1,7 +1,7 @@
 import chalk from "chalk"
 import { Command, Option } from "commander"
 import stringWidth from "string-width"
-import { getOption } from "../../config.ts"
+import { resolveIssueSort } from "../../config.ts"
 import { getPriorityDisplay, getTimeAgo, padDisplay, truncateText } from "../../utils/display.ts"
 import { handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
@@ -246,10 +246,8 @@ export const queryCommand = new Command("query")
       spinner = createSpinner("", showSpinner)
       spinner.start()
 
-      // Resolve sort for non-search mode
-      const sort = search
-        ? undefined
-        : sortFlag || (getOption("issue_sort") as "manual" | "priority" | undefined) || "priority"
+      // Resolve sort for non-search mode (search uses relevance ordering).
+      const sort = search ? undefined : resolveIssueSort(sortFlag)
 
       if (search) {
         // --- Search mode: use searchIssues() backend ---
@@ -266,6 +264,7 @@ export const queryCommand = new Command("query")
           limit: limit === 0 ? 0 : limit,
           projectId,
           projectLabel,
+          cycleId,
           labelNames,
           createdAfter,
           updatedAfter,

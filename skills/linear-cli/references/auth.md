@@ -1,6 +1,6 @@
 # auth
 
-> 
+> Manage Linear authentication
 
 ## Usage
 
@@ -27,6 +27,8 @@ Commands:
 
 ### login
 
+> Add a workspace credential
+
 ```
 Usage: linear auth login [options]
 
@@ -39,6 +41,8 @@ Options:
 ```
 
 ### logout
+
+> Remove a workspace credential
 
 ```
 Usage: linear auth logout [options] [workspace]
@@ -56,6 +60,8 @@ Options:
 
 ### list
 
+> List configured workspaces
+
 ```
 Usage: linear auth list [options]
 
@@ -67,6 +73,8 @@ Options:
 ```
 
 ### default
+
+> Set the default workspace
 
 ```
 Usage: linear auth default [options] [workspace]
@@ -83,6 +91,8 @@ Options:
 
 ### token
 
+> Print the configured API token
+
 ```
 Usage: linear auth token [options]
 
@@ -95,6 +105,8 @@ Options:
 
 ### whoami
 
+> Print information about the authenticated user
+
 ```
 Usage: linear auth whoami [options]
 
@@ -106,6 +118,8 @@ Options:
 ```
 
 ### status
+
+> Print information about the authenticated user
 
 ```
 Usage: linear auth status [options]

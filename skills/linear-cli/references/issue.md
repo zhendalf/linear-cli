@@ -1,6 +1,6 @@
 # issue
 
-> 
+> Manage Linear issues
 
 ## Usage
 
@@ -40,6 +40,8 @@ Commands:
 
 ### id
 
+> Print the issue based on the current git branch
+
 ```
 Usage: linear issue id [options]
 
@@ -51,6 +53,8 @@ Options:
 ```
 
 ### mine
+
+> List your issues
 
 ```
 Usage: linear issue mine|list [options]
@@ -88,6 +92,8 @@ Options:
 ```
 
 ### query
+
+> Query issues with structured filters
 
 ```
 Usage: linear issue query|q [options]
@@ -135,6 +141,8 @@ Options:
 
 ### title
 
+> Print the issue title
+
 ```
 Usage: linear issue title [options] [issueId]
 
@@ -146,6 +154,8 @@ Options:
 ```
 
 ### start
+
+> Start working on an issue
 
 ```
 Usage: linear issue start [options] [issueId]
@@ -163,6 +173,8 @@ Options:
 ```
 
 ### view
+
+> View issue details (default) or open in browser/app
 
 ```
 Usage: linear issue view|v [options] [issueId]
@@ -183,6 +195,8 @@ Options:
 
 ### url
 
+> Print the issue URL
+
 ```
 Usage: linear issue url [options] [issueId]
 
@@ -194,6 +208,8 @@ Options:
 ```
 
 ### describe
+
+> Print the issue title and Linear-issue trailer
 
 ```
 Usage: linear issue describe [options] [issueId]
@@ -209,6 +225,8 @@ Options:
 
 ### commits
 
+> Show all commits for a Linear issue (jj only)
+
 ```
 Usage: linear issue commits [options] [issueId]
 
@@ -220,6 +238,8 @@ Options:
 ```
 
 ### pull-request
+
+> Create a GitHub pull request with issue details
 
 ```
 Usage: linear issue pull-request|pr [options] [issueId]
@@ -239,6 +259,8 @@ Options:
 
 ### delete
 
+> Delete an issue
+
 ```
 Usage: linear issue delete|d [options] [issueId]
 
@@ -254,6 +276,8 @@ Options:
 ```
 
 ### create
+
+> Create a linear issue
 
 ```
 Usage: linear issue create [options]
@@ -289,6 +313,8 @@ Options:
 ```
 
 ### update
+
+> Update a linear issue
 
 ```
 Usage: linear issue update [options] [issueId]
@@ -334,6 +360,8 @@ Options:
 
 ### archive
 
+> Archive an issue
+
 ```
 Usage: linear issue archive [options] [issueId]
 
@@ -346,6 +374,8 @@ Options:
 
 ### unarchive
 
+> Unarchive an issue
+
 ```
 Usage: linear issue unarchive [options] [issueId]
 
@@ -357,6 +387,8 @@ Options:
 ```
 
 ### comment
+
+> Manage issue comments
 
 ```
 Usage: linear issue comment [options] [command]
@@ -439,6 +471,8 @@ Options:
 
 ### attach
 
+> Create a sidebar link attachment on an issue (images do not render inline)
+
 ```
 Usage: linear issue attach [options] <issueId> <filepath>
 
@@ -455,6 +489,8 @@ Options:
 ```
 
 ### link
+
+> Link a URL to an issue
 
 ```
 Usage: linear issue link [options] <urlOrIssueId> [url]
@@ -473,6 +509,8 @@ Examples:
 ```
 
 ### relation
+
+> Manage issue relations (dependencies)
 
 ```
 Usage: linear issue relation [options] [command]
@@ -534,6 +572,8 @@ Options:
 ```
 
 ### agent-session
+
+> Manage agent sessions for an issue
 
 ```
 Usage: linear issue agent-session [options] [command]

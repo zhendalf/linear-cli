@@ -1,6 +1,6 @@
 # initiative
 
-> 
+> Manage Linear initiatives
 
 ## Usage
 
@@ -29,6 +29,8 @@ Commands:
 
 ### list
 
+> List initiatives
+
 ```
 Usage: linear initiative list|ls [options]
 
@@ -48,6 +50,8 @@ Options:
 
 ### view
 
+> View initiative details
+
 ```
 Usage: linear initiative view|v [options] <initiativeId>
 
@@ -63,6 +67,8 @@ Options:
 ```
 
 ### create
+
+> Create a new Linear initiative
 
 ```
 Usage: linear initiative create [options]
@@ -86,6 +92,8 @@ Options:
 
 ### archive
 
+> Archive a Linear initiative
+
 ```
 Usage: linear initiative archive [options] [initiativeId]
 
@@ -101,6 +109,8 @@ Options:
 ```
 
 ### update
+
+> Update a Linear initiative
 
 ```
 Usage: linear initiative update [options] <initiativeId>
@@ -123,6 +133,8 @@ Options:
 
 ### unarchive
 
+> Unarchive a Linear initiative
+
 ```
 Usage: linear initiative unarchive [options] <initiativeId>
 
@@ -135,6 +147,8 @@ Options:
 ```
 
 ### delete
+
+> Permanently delete a Linear initiative
 
 ```
 Usage: linear initiative delete [options] [initiativeId]
@@ -152,6 +166,8 @@ Options:
 
 ### add-project
 
+> Link a project to an initiative
+
 ```
 Usage: linear initiative add-project [options] <initiative> <project>
 
@@ -164,6 +180,8 @@ Options:
 ```
 
 ### remove-project
+
+> Unlink a project from an initiative
 
 ```
 Usage: linear initiative remove-project [options] <initiative> <project>

@@ -2,7 +2,14 @@ import { expect, test } from "bun:test"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { getOption, init } from "../src/config.ts"
+import {
+  DEFAULT_ISSUE_SORT,
+  getOption,
+  ISSUE_SORT_VALUES,
+  init,
+  resolveIssueSort,
+} from "../src/config.ts"
+import { ValidationError } from "../src/utils/errors.ts"
 
 // Note: These tests use the cliValue parameter (highest precedence)
 // to avoid interference from config files that may exist in the repo
@@ -333,4 +340,142 @@ test("getOption - env var takes precedence over home config", async () => {
     await rm(tempHome, { recursive: true, force: true })
     await rm(workDir, { recursive: true, force: true })
   }
+})
+
+// ---------------------------------------------------------------------------
+// resolveIssueSort
+//
+// Precedence: --sort flag > LINEAR_ISSUE_SORT > issue_sort config > priority.
+// Note the repo's own .linear.toml sets issue_sort = "priority", so anything
+// asserting a *different* resolved value must run from an isolated cwd/HOME —
+// that's what withIsolatedConfig does.
+// ---------------------------------------------------------------------------
+
+/**
+ * Run `fn` with config loaded from a throwaway cwd and HOME, so neither the
+ * repo's .linear.toml nor the developer's global config can leak in. `toml`
+ * (when given) is written as the project .linear.toml; `env` entries are
+ * applied on top (`undefined` unsets). LINEAR_ISSUE_SORT is always cleared
+ * first so an env var in the runner's environment can't decide the result.
+ */
+async function withIsolatedConfig(
+  opts: { toml?: string; env?: Record<string, string | undefined> },
+  fn: () => void | Promise<void>,
+): Promise<void> {
+  const tempHome = await mkdtemp(join(tmpdir(), "linear-sort-home-"))
+  const workDir = await mkdtemp(join(tmpdir(), "linear-sort-work-"))
+  const originalCwd = process.cwd()
+  const saved: Record<string, string | undefined> = {}
+  const setEnv = (key: string, value: string | undefined) => {
+    if (!(key in saved)) saved[key] = process.env[key]
+    if (value === undefined) {
+      delete process.env[key]
+    } else {
+      process.env[key] = value
+    }
+  }
+
+  try {
+    if (opts.toml != null) {
+      await writeFile(join(workDir, ".linear.toml"), opts.toml)
+    }
+    setEnv("HOME", tempHome)
+    setEnv("XDG_CONFIG_HOME", join(tempHome, ".config"))
+    setEnv("LINEAR_ISSUE_SORT", undefined)
+    for (const [key, value] of Object.entries(opts.env ?? {})) {
+      setEnv(key, value)
+    }
+    process.chdir(workDir)
+    await init()
+    await fn()
+  } finally {
+    process.chdir(originalCwd)
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) {
+        delete process.env[key]
+      } else {
+        process.env[key] = value
+      }
+    }
+    await init()
+    await rm(tempHome, { recursive: true, force: true })
+    await rm(workDir, { recursive: true, force: true })
+  }
+}
+
+test("resolveIssueSort - exposes the valid values and the default", () => {
+  expect([...ISSUE_SORT_VALUES]).toEqual(["manual", "priority"])
+  expect(DEFAULT_ISSUE_SORT).toBe("priority")
+})
+
+test("resolveIssueSort - cli flag wins over env var and config", async () => {
+  await withIsolatedConfig(
+    { toml: 'issue_sort = "priority"\n', env: { LINEAR_ISSUE_SORT: "priority" } },
+    () => {
+      expect(resolveIssueSort("manual")).toBe("manual")
+    },
+  )
+})
+
+test("resolveIssueSort - env var wins over config", async () => {
+  await withIsolatedConfig(
+    { toml: 'issue_sort = "priority"\n', env: { LINEAR_ISSUE_SORT: "manual" } },
+    () => {
+      expect(resolveIssueSort()).toBe("manual")
+    },
+  )
+})
+
+test("resolveIssueSort - config wins over the default", async () => {
+  await withIsolatedConfig({ toml: 'issue_sort = "manual"\n' }, () => {
+    expect(resolveIssueSort()).toBe("manual")
+  })
+})
+
+test("resolveIssueSort - defaults to priority when nothing is configured", async () => {
+  await withIsolatedConfig({}, () => {
+    expect(resolveIssueSort()).toBe("priority")
+  })
+})
+
+test("resolveIssueSort - invalid cli value throws instead of defaulting", () => {
+  expect(() => resolveIssueSort("banana")).toThrow(ValidationError)
+  expect(() => resolveIssueSort("banana")).toThrow('Invalid issue sort: "banana"')
+})
+
+test("resolveIssueSort - invalid env value throws instead of defaulting", async () => {
+  await withIsolatedConfig({ env: { LINEAR_ISSUE_SORT: "banana" } }, () => {
+    expect(() => resolveIssueSort()).toThrow('Invalid issue sort: "banana"')
+  })
+})
+
+test("resolveIssueSort - empty env value throws instead of defaulting", async () => {
+  await withIsolatedConfig({ env: { LINEAR_ISSUE_SORT: "" } }, () => {
+    expect(() => resolveIssueSort()).toThrow('Invalid issue sort: ""')
+  })
+})
+
+// The regression this whole helper exists for: getOption() silently returns
+// undefined for an unparseable value, so `issue_sort = "banana"` used to fall
+// through to the `|| "priority"` default and sort by priority without a word.
+test("resolveIssueSort - invalid configured value throws instead of defaulting", async () => {
+  await withIsolatedConfig({ toml: 'issue_sort = "banana"\n' }, () => {
+    expect(getOption("issue_sort")).toBeUndefined()
+    expect(() => resolveIssueSort()).toThrow('Invalid issue sort: "banana"')
+  })
+})
+
+test("resolveIssueSort - error names the valid values and every input channel", async () => {
+  await withIsolatedConfig({ env: { LINEAR_ISSUE_SORT: "banana" } }, () => {
+    let suggestion: string | undefined
+    try {
+      resolveIssueSort()
+    } catch (error) {
+      suggestion = (error as ValidationError).suggestion
+    }
+    expect(suggestion).toContain("manual, priority")
+    expect(suggestion).toContain("--sort")
+    expect(suggestion).toContain("issue_sort")
+    expect(suggestion).toContain("LINEAR_ISSUE_SORT")
+  })
 })

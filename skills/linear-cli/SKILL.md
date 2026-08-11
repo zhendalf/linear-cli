@@ -174,20 +174,20 @@ linear api
 
 ## Reference Documentation
 
-- [auth](references/auth.md) - 
-- [issue](references/issue.md) - 
-- [team](references/team.md) - 
-- [project](references/project.md) - 
-- [project-update](references/project-update.md) - 
-- [cycle](references/cycle.md) - 
-- [milestone](references/milestone.md) - 
-- [initiative](references/initiative.md) - 
-- [initiative-update](references/initiative-update.md) - 
-- [label](references/label.md) - 
-- [document](references/document.md) - 
-- [config](references/config.md) - 
-- [schema](references/schema.md) - 
-- [api](references/api.md) - 
+- [auth](references/auth.md) - Manage Linear authentication
+- [issue](references/issue.md) - Manage Linear issues
+- [team](references/team.md) - Manage Linear teams
+- [project](references/project.md) - Manage Linear projects
+- [project-update](references/project-update.md) - Manage project status updates
+- [cycle](references/cycle.md) - Manage Linear team cycles
+- [milestone](references/milestone.md) - Manage Linear project milestones
+- [initiative](references/initiative.md) - Manage Linear initiatives
+- [initiative-update](references/initiative-update.md) - Manage initiative status updates (timeline posts)
+- [label](references/label.md) - Manage Linear issue labels
+- [document](references/document.md) - Manage Linear documents
+- [config](references/config.md) - Generate .linear.toml configuration (interactive or via flags)
+- [schema](references/schema.md) - Print the GraphQL schema to stdout
+- [api](references/api.md) - Make a raw GraphQL API request
 
 For curated examples of organization features (initiatives, labels, projects, bulk operations), see [organization-features](references/organization-features.md).
 
@@ -206,7 +206,7 @@ Each command has detailed help output describing all available flags and options
 
 Some commands have required flags that aren't obvious. Notable examples:
 
-- `issue list` requires a sort order — provide it via `--sort` (valid values: `manual`, `priority`), the `issue_sort` config option, or the `LINEAR_ISSUE_SORT` env var. Also requires `--team <key>` unless the team can be inferred from the directory — if unknown, run `linear team list` first.
+- `issue list` sorts by priority by default — override via `--sort` (valid values: `manual`, `priority`), the `issue_sort` config option, or the `LINEAR_ISSUE_SORT` env var. An invalid value in any of those errors rather than falling back to the default. Requires `--team <key>` unless a default team is configured (`team_id` in `.linear.toml` or `LINEAR_TEAM_ID`) — if unknown, run `linear team list` first.
 - `--no-pager` is only supported on `issue list` — passing it to other commands like `project list` will error.
 
 ## Using the Linear GraphQL API Directly

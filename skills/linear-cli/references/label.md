@@ -1,6 +1,6 @@
 # label
 
-> 
+> Manage Linear issue labels
 
 ## Usage
 
@@ -23,6 +23,8 @@ Commands:
 
 ### list
 
+> List issue labels
+
 ```
 Usage: linear label list [options]
 
@@ -37,6 +39,8 @@ Options:
 ```
 
 ### create
+
+> Create a new issue label
 
 ```
 Usage: linear label create [options]
@@ -56,6 +60,8 @@ Options:
 ```
 
 ### delete
+
+> Delete an issue label
 
 ```
 Usage: linear label delete [options] <nameOrId>

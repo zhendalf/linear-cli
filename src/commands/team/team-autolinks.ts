@@ -11,8 +11,8 @@ export const autolinksCommand = new Command("autolinks")
     try {
       const teamId = getTeamKey()
       if (!teamId) {
-        throw new ValidationError("Could not determine team id from directory name", {
-          suggestion: "Run `linear configure` to set a team.",
+        throw new ValidationError("No team id configured", {
+          suggestion: "Run `linear config` to set a team.",
         })
       }
 

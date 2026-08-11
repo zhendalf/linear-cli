@@ -1,6 +1,6 @@
 # initiative-update
 
-> 
+> Manage initiative status updates (timeline posts)
 
 ## Usage
 
@@ -23,6 +23,8 @@ Commands:
 
 ### create
 
+> Create a new status update for an initiative
+
 ```
 Usage: linear initiative-update create|c [options] <initiativeId>
 
@@ -38,6 +40,8 @@ Options:
 ```
 
 ### list
+
+> List status updates for an initiative
 
 ```
 Usage: linear initiative-update list|l [options] <initiativeId>

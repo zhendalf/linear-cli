@@ -1,6 +1,6 @@
 # milestone
 
-> 
+> Manage Linear project milestones
 
 ## Usage
 
@@ -27,6 +27,8 @@ Commands:
 
 ### list
 
+> List milestones for a project
+
 ```
 Usage: linear milestone list [options]
 
@@ -40,6 +42,8 @@ Options:
 ```
 
 ### view
+
+> View milestone details. By default lists the first 10 attached issues from the
 
 ```
 Usage: linear milestone view|v [options] <milestoneId>
@@ -60,6 +64,8 @@ Options:
 
 ### create
 
+> Create a new project milestone
+
 ```
 Usage: linear milestone create [options]
 
@@ -75,6 +81,8 @@ Options:
 ```
 
 ### update
+
+> Update an existing project milestone
 
 ```
 Usage: linear milestone update [options] <id>
@@ -95,6 +103,8 @@ Options:
 ```
 
 ### delete
+
+> Delete a project milestone
 
 ```
 Usage: linear milestone delete [options] <id>

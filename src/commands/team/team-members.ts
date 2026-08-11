@@ -10,8 +10,8 @@ export const membersCommand = new Command("members")
     try {
       const resolvedTeamKey = teamKey || getTeamKey()
       if (!resolvedTeamKey) {
-        throw new ValidationError("Could not determine team key from directory name", {
-          suggestion: "Please specify a team key as an argument.",
+        throw new ValidationError("No default team configured and no team scope provided", {
+          suggestion: "Pass a team key as an argument, or run `linear config` to set a team.",
         })
       }
 

@@ -1,6 +1,6 @@
 # cycle
 
-> 
+> Manage Linear team cycles
 
 ## Usage
 
@@ -22,6 +22,8 @@ Commands:
 
 ### list
 
+> List cycles for a team
+
 ```
 Usage: linear cycle list [options]
 
@@ -35,6 +37,8 @@ Options:
 ```
 
 ### view
+
+> View cycle details
 
 ```
 Usage: linear cycle view|v [options] <cycleRef>

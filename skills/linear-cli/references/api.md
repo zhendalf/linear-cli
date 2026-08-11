@@ -1,6 +1,6 @@
 # api
 
-> 
+> Make a raw GraphQL API request
 
 ## Usage
 

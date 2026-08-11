@@ -1,6 +1,6 @@
 # project-update
 
-> 
+> Manage project status updates
 
 ## Usage
 
@@ -22,6 +22,8 @@ Commands:
 
 ### create
 
+> Create a new status update for a project
+
 ```
 Usage: linear project-update create|c [options] <projectId>
 
@@ -40,6 +42,8 @@ Options:
 ```
 
 ### list
+
+> List status updates for a project
 
 ```
 Usage: linear project-update list|l [options] <projectId>

@@ -11,7 +11,7 @@ import type {
   PaginationOrderBy,
   SearchIssuesQuery,
 } from "../__codegen__/graphql.ts"
-import { getOption } from "../config.ts"
+import { getOption, resolveIssueSort } from "../config.ts"
 import { NotFoundError, ValidationError } from "./errors.ts"
 import { getGraphQLClient } from "./graphql.ts"
 import { shouldShowSpinner } from "./hyperlink.ts"
@@ -91,7 +91,9 @@ export async function getIssueIdentifier(providedId?: string): Promise<string | 
       return normalizeIssueIdentifier(`${teamId}-${providedId}`)
     }
 
-    throw new Error("an integer id was provided, but no team is set. run `linear configure`")
+    throw new ValidationError("an integer id was provided, but no team is set", {
+      suggestion: "Run `linear config` to set a team.",
+    })
   }
 
   if (providedId === undefined) {
@@ -210,6 +212,7 @@ const issueDetailsWithCommentsQuery = gql(/* GraphQL */ `
       }
       labels {
         nodes {
+          id
           name
           color
         }
@@ -311,6 +314,7 @@ const issueDetailsQuery = gql(/* GraphQL */ `
       }
       labels {
         nodes {
+          id
           name
           color
         }
@@ -508,13 +512,7 @@ export async function fetchIssuesForState(
   createdAfter?: string,
   updatedAfter?: string,
 ) {
-  const sort = sortParam ?? (getOption("issue_sort") as "manual" | "priority" | undefined)
-  if (!sort) {
-    throw new ValidationError("Sort must be provided", {
-      suggestion:
-        "Use --sort parameter, set in configuration file, or set LINEAR_ISSUE_SORT environment variable",
-    })
-  }
+  const sort = resolveIssueSort(sortParam)
 
   const filter: IssueFilter = {
     team: { key: { eq: teamKey } },
@@ -1030,6 +1028,7 @@ export interface SearchIssuesByTermOptions {
   limit?: number
   projectId?: string
   projectLabel?: string
+  cycleId?: string
   labelNames?: string[]
   createdAfter?: string
   updatedAfter?: string
@@ -1076,6 +1075,10 @@ export async function searchIssuesByTerm(
     filter.project = {
       labels: { name: { eqIgnoreCase: options.projectLabel } },
     }
+  }
+
+  if (options.cycleId) {
+    filter.cycle = { id: { eq: options.cycleId } }
   }
 
   if (options.labelNames != null && options.labelNames.length > 0) {

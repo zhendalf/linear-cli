@@ -3,6 +3,7 @@ import { gql } from "../../__codegen__/gql.ts"
 import { renderMarkdown } from "../../utils/charmd/mod.ts"
 import { formatRelativeTime } from "../../utils/display.ts"
 import { handleError, NotFoundError, ValidationError } from "../../utils/errors.ts"
+import { isInsideGitRepo } from "../../utils/git.ts"
 import { getGraphQLClient } from "../../utils/graphql.ts"
 import { shouldShowSpinner } from "../../utils/hyperlink.ts"
 import { getCycleIdByNameOrNumber, getTeamIdByKey, getTeamKey } from "../../utils/linear.ts"
@@ -57,7 +58,11 @@ export const viewCommand = new Command("view")
     try {
       const teamKey = team || getTeamKey()
       if (!teamKey) {
-        throw new ValidationError("Could not determine team key from directory name or team flag")
+        throw new ValidationError("No default team configured and no team scope provided", {
+          suggestion: (await isInsideGitRepo())
+            ? "Use --team <key> to specify a team, or run `linear config` to link this repository to a team."
+            : "Use --team <key> to specify a team.",
+        })
       }
 
       const teamId = await getTeamIdByKey(teamKey)
