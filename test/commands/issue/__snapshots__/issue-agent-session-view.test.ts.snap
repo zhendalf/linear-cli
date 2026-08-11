@@ -21,7 +21,6 @@ exports[`Issue Agent Session View Command - Active Session With Activities 1`] =
 
 **ID:** session-1
 **Status:** active
-**Type:** commentThread
 **Agent:** Linear Assistant
 **Creator:** Alice
 **Issue:** ENG-412 - Fix auth token refresh
@@ -49,7 +48,6 @@ exports[`Issue Agent Session View Command - Completed Session No Activities 1`] 
 
 **ID:** session-2
 **Status:** complete
-**Type:** commentThread
 **Agent:** Linear Assistant
 **Creator:** Bob
 **Issue:** ENG-398 - Add dark mode toggle
@@ -58,7 +56,10 @@ exports[`Issue Agent Session View Command - Completed Session No Activities 1`] 
 **Started:** 1/1/2020
 **Ended:** 1/1/2020
 
-**External Link:** https://github.com/org/repo/pull/42
+## External Links
+
+- **Pull Request**: https://github.com/org/repo/pull/42
+- **Build**: https://ci.example.com/builds/1234
 
 ## Summary
 
@@ -73,14 +74,18 @@ exports[`Issue Agent Session View Command - JSON Output 1`] = `
 "{
   "id": "session-3",
   "status": "stale",
-  "type": "commentThread",
   "createdAt": "2020-01-02T10:00:00Z",
   "updatedAt": "2020-01-02T10:30:00Z",
   "startedAt": "2020-01-02T10:00:05Z",
   "endedAt": null,
   "dismissedAt": null,
   "summary": "Session JSON output",
-  "externalLink": null,
+  "externalLinks": [
+    {
+      "label": "Pull Request",
+      "url": "https://github.com/org/repo/pull/77"
+    }
+  ],
   "creator": {
     "name": "Casey"
   },

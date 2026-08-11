@@ -19,7 +19,6 @@ const GetIssueAgentSessions = gql(`
           agentSession {
             id
             status
-            type
             createdAt
             startedAt
             endedAt

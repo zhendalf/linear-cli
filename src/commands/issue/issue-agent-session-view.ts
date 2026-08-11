@@ -14,14 +14,16 @@ const GetAgentSessionDetails = gql(`
     agentSession(id: $id) {
       id
       status
-      type
       createdAt
       updatedAt
       startedAt
       endedAt
       dismissedAt
       summary
-      externalLink
+      externalLinks {
+        label
+        url
+      }
       creator {
         name
       }
@@ -110,7 +112,6 @@ export const agentSessionViewCommand = new Command("view")
 
       lines.push(`**ID:** ${session.id}`)
       lines.push(`**Status:** ${session.status}`)
-      lines.push(`**Type:** ${session.type}`)
       lines.push(`**Agent:** ${session.appUser.name}`)
 
       if (session.creator) {
@@ -136,9 +137,13 @@ export const agentSessionViewCommand = new Command("view")
         }
       }
 
-      if (session.externalLink) {
+      if (session.externalLinks.length > 0) {
         lines.push("")
-        lines.push(`**External Link:** ${session.externalLink}`)
+        lines.push("## External Links")
+        lines.push("")
+        for (const link of session.externalLinks) {
+          lines.push(`- **${link.label}**: ${link.url}`)
+        }
       }
 
       if (session.summary) {
