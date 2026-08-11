@@ -2,7 +2,7 @@
 
 exports[`Project Delete Command - Help Text 1`] = `
 "stdout:
-"Usage: delete [options] <projectId>
+"Usage: project delete [options] <projectId>
 
 Delete (trash) a Linear project
 

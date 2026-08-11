@@ -2,7 +2,7 @@
 
 exports[`Issue Relation Add Command - Help Text 1`] = `
 "stdout:
-"Usage: relation add [options] <issueId> <relationType> <relatedIssueId>
+"Usage: issue relation add [options] <issueId> <relationType> <relatedIssueId>
 
 Add a relation between two issues
 

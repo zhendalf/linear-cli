@@ -2,7 +2,7 @@
 
 exports[`Issue Mine Command - Help Text 1`] = `
 "stdout:
-"Usage: mine|list [options]
+"Usage: issue mine|list [options]
 
 List your issues
 

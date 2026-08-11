@@ -2,7 +2,7 @@
 
 exports[`Document Create Command - Help Text 1`] = `
 "stdout:
-"Usage: create|c [options]
+"Usage: document create|c [options]
 
 Create a new document
 

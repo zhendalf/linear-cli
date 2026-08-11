@@ -2,7 +2,7 @@
 
 exports[`Project View Command - Help Text 1`] = `
 "stdout:
-"Usage: view|v [options] <projectId>
+"Usage: project view|v [options] <projectId>
 
 View project details
 

@@ -2,7 +2,7 @@
 
 exports[`Cycle View Command - Help Text 1`] = `
 "stdout:
-"Usage: view|v [options] <cycleRef>
+"Usage: cycle view|v [options] <cycleRef>
 
 View cycle details
 

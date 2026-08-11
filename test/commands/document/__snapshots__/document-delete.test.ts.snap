@@ -2,7 +2,7 @@
 
 exports[`Document Delete Command - Help Text 1`] = `
 "stdout:
-"Usage: delete|d [options] [documentId]
+"Usage: document delete|d [options] [documentId]
 
 Delete a document (moves to trash)
 

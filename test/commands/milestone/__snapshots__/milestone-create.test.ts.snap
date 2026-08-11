@@ -2,7 +2,7 @@
 
 exports[`Milestone Create Command - Help Text 1`] = `
 "stdout:
-"Usage: create [options]
+"Usage: milestone create [options]
 
 Create a new project milestone
 

@@ -38,7 +38,7 @@ stderr:
 
 exports[`Issue Comment Add Command - Help 1`] = `
 "stdout:
-"Usage: add [options] [issueId]
+"Usage: issue comment add [options] [issueId]
 
 Add a comment or reply; images uploaded with --attach render inline
 

@@ -2,7 +2,7 @@
 
 exports[`Issue View Command - Help Text 1`] = `
 "stdout:
-"Usage: view|v [options] [issueId]
+"Usage: issue view|v [options] [issueId]
 
 View issue details (default) or open in browser/app
 

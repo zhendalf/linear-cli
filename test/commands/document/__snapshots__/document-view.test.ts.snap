@@ -2,7 +2,7 @@
 
 exports[`Document View Command - Help Text 1`] = `
 "stdout:
-"Usage: view|v [options] <id>
+"Usage: document view|v [options] <id>
 
 View a document's content
 

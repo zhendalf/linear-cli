@@ -2,7 +2,7 @@
 
 exports[`Issue Query Command - Help Text 1`] = `
 "stdout:
-"Usage: query|q [options]
+"Usage: issue query|q [options]
 
 Query issues with structured filters
 
