@@ -2,7 +2,7 @@
 
 exports[`Milestone List Command - Help Text 1`] = `
 "stdout:
-"Usage: list [options]
+"Usage: milestone list [options]
 
 List milestones for a project
 

@@ -2,7 +2,7 @@
 
 exports[`Issue Link Command - Help Text 1`] = `
 "stdout:
-"Usage: link [options] <urlOrIssueId> [url]
+"Usage: issue link [options] <urlOrIssueId> [url]
 
 Link a URL to an issue
 

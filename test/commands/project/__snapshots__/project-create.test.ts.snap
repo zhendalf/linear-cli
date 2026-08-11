@@ -2,7 +2,7 @@
 
 exports[`Project Create Command - Help Text 1`] = `
 "stdout:
-"Usage: create [options]
+"Usage: project create [options]
 
 Create a new Linear project
 

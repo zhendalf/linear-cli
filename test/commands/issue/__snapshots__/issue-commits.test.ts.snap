@@ -2,7 +2,7 @@
 
 exports[`Issue Commits Command - Help Text 1`] = `
 "stdout:
-"Usage: commits [options] [issueId]
+"Usage: issue commits [options] [issueId]
 
 Show all commits for a Linear issue (jj only)
 

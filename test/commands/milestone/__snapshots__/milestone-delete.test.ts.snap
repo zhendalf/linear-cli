@@ -2,7 +2,7 @@
 
 exports[`Milestone Delete Command - Help Text 1`] = `
 "stdout:
-"Usage: delete [options] <id>
+"Usage: milestone delete [options] <id>
 
 Delete a project milestone
 

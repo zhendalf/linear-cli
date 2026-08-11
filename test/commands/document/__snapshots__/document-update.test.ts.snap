@@ -2,7 +2,7 @@
 
 exports[`Document Update Command - Help Text 1`] = `
 "stdout:
-"Usage: update|u [options] <documentId>
+"Usage: document update|u [options] <documentId>
 
 Update an existing document
 

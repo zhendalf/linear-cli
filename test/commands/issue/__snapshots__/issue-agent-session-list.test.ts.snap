@@ -2,7 +2,7 @@
 
 exports[`Issue Agent Session List Command - Help Text 1`] = `
 "stdout:
-"Usage: list [options] [issueId]
+"Usage: issue agent-session list [options] [issueId]
 
 List agent sessions for an issue
 

@@ -2,7 +2,7 @@
 
 exports[`Project List Command - Help Text 1`] = `
 "stdout:
-"Usage: list [options]
+"Usage: project list [options]
 
 List projects
 

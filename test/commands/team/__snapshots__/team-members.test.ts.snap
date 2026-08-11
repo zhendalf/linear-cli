@@ -2,7 +2,7 @@
 
 exports[`Team Members Command - Help Text 1`] = `
 "stdout:
-"Usage: members [options] [teamKey]
+"Usage: team members [options] [teamKey]
 
 List team members
 

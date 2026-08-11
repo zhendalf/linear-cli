@@ -2,7 +2,7 @@
 
 exports[`Issue Create Command - Help Text 1`] = `
 "stdout:
-"Usage: create [options]
+"Usage: issue create [options]
 
 Create a linear issue
 

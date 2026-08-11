@@ -15,6 +15,10 @@
  */
 
 import { expect, setSystemTime, test } from "bun:test"
+// Side-effect import: registers every command group so a subcommand's help
+// renders with the same parent chain it has in production, no matter which
+// test files a run happens to load. See the module for the full rationale.
+import "./command-groups.ts"
 
 // Mutex to serialize snapshot tests - they modify process globals (argv, env, stdout)
 // and must not run concurrently even when bun:test runs tests in parallel

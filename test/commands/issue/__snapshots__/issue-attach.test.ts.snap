@@ -55,7 +55,7 @@ stderr:
 
 exports[`Issue Attach Command - Help 1`] = `
 "stdout:
-"Usage: attach [options] <issueId> <filepath>
+"Usage: issue attach [options] <issueId> <filepath>
 
 Create a sidebar link attachment on an issue (images do not render inline)
 

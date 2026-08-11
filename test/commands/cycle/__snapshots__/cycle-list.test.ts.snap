@@ -2,7 +2,7 @@
 
 exports[`Cycle List Command - Help Text 1`] = `
 "stdout:
-"Usage: list [options]
+"Usage: cycle list [options]
 
 List cycles for a team
 

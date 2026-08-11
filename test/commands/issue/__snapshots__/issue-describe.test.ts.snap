@@ -2,7 +2,7 @@
 
 exports[`Issue Describe Command - Help Text 1`] = `
 "stdout:
-"Usage: describe [options] [issueId]
+"Usage: issue describe [options] [issueId]
 
 Print the issue title and Linear-issue trailer
 
