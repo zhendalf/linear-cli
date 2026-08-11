@@ -35,18 +35,20 @@ From the `fc85b91..cf349ba` range:
 - `ad630c5` + `43a6290` — `project create` content/priority/label/member/icon/color
 - `ad15638` — `project create|update --description-file` + 255-char limit
 - `7e84ad9` — `project update --label`
-
-## pending
-
-Analyzed and queued, not yet landed:
-
 - `b3a41f7` — `team states` + list valid states on wrong `--state`
 - `1393c70` — `user list`, `team members --json`, role markers, `includeDisabled` fix
-- `7097624` — config suggestions name a nonexistent `linear configure`
+- `7097624` — config suggestions named a nonexistent `linear configure`; added `configure` alias
 - `97d6077` (+ `b4013c9` context) — shared sort resolution; error on invalid configured sort
 - `eb6f074` — `issue mine` no-team error wording + git-repo hint
 - `96f0e04` + `95097b8` — label `id` in `issue view --json`
-- `aad5f2f` — the `--search` + `--cycle` silent filter drop
+- `aad5f2f` — **partial**: also the `--search` + `--cycle` silent filter drop
+
+All of the above shipped in **v2.0.0**.
+
+## pending
+
+Nothing queued. Upstream has moved to `dcbb7ab` (`v2.5.0`) since the last review — that range is
+unreviewed and is the next run's work.
 
 ## deferred (large)
 
@@ -54,7 +56,8 @@ Understood and intentionally not ported yet — re-evaluate, don't re-analyze fr
 
 - `aad5f2f` (the rest) — full cycle exposure: `CYC` table column, relative cycle vocabulary
   (`now`/`next`/`+2`), cycle flags in JSON. ~1700 lines upstream; our table renderer differs, so it
-  is a re-implementation rather than a port.
+  is a re-implementation rather than a port. (`--clear-cycle` and the `--search`/`--cycle` fix are
+  already done; what remains is the display work.)
 - `9e08748` — `issue create` interactive project selection + `issue_create_ask_project` /
   `issue_create_assign_self` config keys. Our interactive flow was restructured during the port.
 - `07e7d4b` — Codex-based eval harness for the skill. Tied to Deno tasks and upstream's frozen

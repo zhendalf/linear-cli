@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test"
+import { teamCommand } from "../../../src/commands/team/team.ts"
 import { autolinksCommand } from "../../../src/commands/team/team-autolinks.ts"
 import { captureOutput, snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
+
+// See team-id.test.ts: importing the group pins the parent (and so the help
+// usage line) regardless of which test file bun loads first.
+test("team autolinks - is registered on the team command", () => {
+  expect(teamCommand.commands).toContain(autolinksCommand)
+})
 
 await snapshotTest({
   name: "Team Autolinks Command - Help Text",

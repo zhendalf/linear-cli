@@ -1,6 +1,16 @@
 import { expect, test } from "bun:test"
+import { teamCommand } from "../../../src/commands/team/team.ts"
 import { idCommand } from "../../../src/commands/team/team-id.ts"
 import { captureOutput, snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
+
+// Import the group even though the tests drive `idCommand` directly: bun shares
+// one module registry across test files, so whether some *other* file has
+// already imported `team.ts` decides if `idCommand` has a parent — and that
+// changes the help usage line between `id` and `team id`. Importing it here
+// pins the parent regardless of file order (and pins the registration).
+test("team id - is registered on the team command", () => {
+  expect(teamCommand.commands).toContain(idCommand)
+})
 
 await snapshotTest({
   name: "Team Id Command - Help Text",

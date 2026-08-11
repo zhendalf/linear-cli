@@ -42,7 +42,6 @@ exports[`Issue Agent Session List Command - JSON Output 1`] = `
       "agentSession": {
         "id": "session-1",
         "status": "active",
-        "type": "commentThread",
         "createdAt": "2026-03-20T10:00:00.000Z",
         "startedAt": "2026-03-20T10:00:05.000Z",
         "endedAt": null,

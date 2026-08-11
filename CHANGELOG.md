@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+## [2.1.0] - 2026-08-11
+
+### Changed
+
+- refreshed the vendored `graphql/schema.graphql` from the live Linear API — it had not been updated since the port baseline. Generated types, typecheck, and the test suite are unaffected. Surfaced two deprecations we still query on `AgentSession`: `externalLink` (migrate to `externalLinks`; note the intermediate `externalUrls` is also deprecated) and `type` ("slated for removal").
+- `issue agent-session view` now queries the deprecated `AgentSession.externalLink` as `externalLinks { label url }` (skipping the intermediate, also-deprecated `externalUrls`). The human-readable output replaces the single `**External Link:** <url>` line with an `## External Links` section listing each `label`/`url`, and is omitted entirely when there are none. **`--json` shape change:** the top-level `externalLink` string is replaced by an `externalLinks` array of `{ label, url }` objects, preserving the GraphQL field names and nesting.
+- dropped the deprecated `AgentSession.type` from the `issue agent-session view` and `issue agent-session list` selection sets. The enum has a single value (`commentThread`) and no replacement field in the schema, so `view` no longer prints a `**Type:**` line and `type` no longer appears in either command's `--json` output.
+
+
 ## [2.0.0] - 2026-08-11
 
 ### Security

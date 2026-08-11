@@ -34,19 +34,23 @@ git fetch origin && git status --porcelain && git log --oneline origin/main..HEA
 **Stop and report instead of proceeding** if the working tree is dirty or `main` has unpushed
 commits — do not stash, reset, or push work that is not yours.
 
-Detect what this environment can do, because it changes what you can verify:
+Detect what this environment can do, because it decides which steps are possible at all:
 
 ```bash
-bun --version && gh auth status
+bun --version; command -v gh && gh auth status; [ -n "$LINEAR_API_KEY$LINEAR_TEST_API_KEY" ] && echo "key present"
 ```
 
-- **No `bun`** → stop and report that. This project has no Node build and no `dist/`; do not try to
-  make it run under Node.
-- **No authenticated `gh`** → you can still branch and commit, but say clearly in the final report
-  that PRs could not be opened, and leave the work on pushed branches if you can push.
-- **`LINEAR_API_KEY` or `LINEAR_TEST_API_KEY` set** → live smoke tests are available (see Step 4).
-  If neither is set, skip live smoke tests and say so. **Never** go hunting for credentials in
-  config files, and never hard-code or commit a key.
+| capability | if missing |
+| --- | --- |
+| `bun` | **Stop and report.** No Node build, no `dist/` — do not try to run this under Node. |
+| authenticated `gh` | Step 5 falls back to pushing branches instead of opening PRs. |
+| a Linear API key | **Step 2 is impossible** — skip it entirely and say so. Steps 1, 3 are unaffected. |
+
+Never go hunting for credentials in config files, and never hard-code or commit a key.
+
+Note that **`bun run codegen` does not need a key or network** — it generates types from the
+committed `graphql/schema.graphql`, not from live introspection. It should succeed unconditionally;
+if it fails, that is a real problem worth reporting, not an environment limitation.
 
 ## Step 1: Dependency upgrades
 
@@ -68,9 +72,20 @@ Verify with the green loop (Step 4) before opening the PR.
 
 ## Step 2: Linear API changes
 
+**Requires a Linear API key. Without one, skip this step and say so in the report.**
+
+`graphql/schema.graphql` is a committed snapshot, and `codegen.ts` reads *from* it — so running
+codegen never discovers anything new. Detecting API drift means re-fetching the live schema and
+diffing it:
+
 ```bash
-bun run codegen && git diff --stat graphql/schema.graphql
+LINEAR_API_KEY=$LINEAR_TEST_API_KEY bun src/main.ts schema > /tmp/schema-live.graphql
+diff <(sort graphql/schema.graphql) <(sort /tmp/schema-live.graphql) | head -50
 ```
+
+If the live schema has drifted, update the committed copy, re-run `bun run codegen`, and let
+typecheck tell you what broke — `strictScalars` is on, so a newly added scalar fails loudly rather
+than silently becoming `unknown`.
 
 Look for, in priority order:
 
@@ -85,10 +100,6 @@ Also check [linear.app/changelog](https://linear.app/changelog) and
 New capabilities are *proposals*: implement one only if it is small and clearly useful. Otherwise
 write it up in the final report rather than building speculatively.
 
-> `bun run codegen` reaches Linear's API for the schema. If it fails for lack of a key or network,
-> fall back to the committed `graphql/schema.graphql` and say so — generated types are not broken
-> just because codegen could not reach the network.
-
 ## Step 3: Review the upstream reference project
 
 **`docs/dev/upstream-sync.md` is the bookmark.** Read it first. It records the last-reviewed
@@ -101,6 +112,11 @@ git clone https://github.com/schpet/linear-cli.git /tmp/linear-upstream 2>/dev/n
   || git -C /tmp/linear-upstream fetch origin
 git -C /tmp/linear-upstream log --oneline <last-reviewed>..origin/main
 ```
+
+> As of upstream v2.5.0 the reference project restructured — it is Deno-only now, with no
+> `package.json` (`deno.json`, `mise.toml`, `justfile`). We only ever *read* its diffs, never build
+> it, so this does not block anything — but file paths may have moved, so locate code by content
+> rather than assuming the old layout.
 
 For each new commit:
 
@@ -173,10 +189,39 @@ LINEAR_API_KEY=$LINEAR_TEST_API_KEY bun src/main.ts <command>
 `src/main.ts` imports every command, so one broken command breaks the whole CLI — keep typecheck and
 the `--help` smoke green.
 
+> **A green local suite does not guarantee a green CI.** Bun shares one module registry across test
+> files, so whether a command group was already imported decides whether its subcommands have a
+> parent — which changes the `Usage:` line in help snapshots. File load order differs between macOS
+> and CI's Linux, so snapshot tests can pass locally and fail on CI (this has already happened
+> once — see `52f1e6e`). After delivering, **check CI** (`gh run list --branch <branch>`) rather
+> than trusting the local run, and suspect load order first when a help snapshot disagrees across
+> platforms.
+
 ## Step 5: Deliver
 
-Per concern: branch off current `main`, commit with a conventional-commit message, push, open a PR
-with `gh pr create`.
+One branch and one PR per concern. **How you deliver depends on the environment** — pick the first
+route that works and state in the report which one you used:
+
+**Route A — local git (developer machines).** Branch off current `main`, commit with a
+conventional-commit message, `git push`, then `gh pr create`.
+
+**Route B — GitHub MCP tools (scheduled cloud runs).** In the cloud environment `git push` is
+hard-blocked at the network proxy (`HTTP 403`), and `gh` is not installed — but the connected
+`github` MCP server (`mcp__github__*`) reaches the REST API on a different path and works. Use:
+
+1. `create_branch` from `main`
+2. commit your changes to that branch (`push_files` for a batch if available, otherwise
+   `create_or_update_file` per file)
+3. `create_pull_request`
+
+⚠ That tool set has **no branch-deletion capability**, so only create a branch you actually intend
+to open a PR from — an abandoned branch has to be cleaned up by hand afterwards.
+
+**Route C — neither.** Leave the commits on local branches, list the branch names, and quote the
+exact error that blocked delivery.
+
+Never bypass the `pre-push` hook with `--no-verify`; it runs the test suite, and a hook failure is a
+real failure, not an obstacle to route around.
 
 - The PR body says what changed, why, which upstream commits it corresponds to (if any), and what
   verification was run.
