@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-11
+
 ### Changed
 
 - refreshed the vendored `graphql/schema.graphql` from the live Linear API — it had not been updated since the port baseline. Generated types, typecheck, and the test suite are unaffected. Surfaced two deprecations we still query on `AgentSession`: `externalLink` (migrate to `externalLinks`; note the intermediate `externalUrls` is also deprecated) and `type` ("slated for removal").
