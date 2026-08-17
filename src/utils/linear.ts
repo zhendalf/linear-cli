@@ -12,7 +12,7 @@ import type {
   PaginationOrderBy,
   SearchIssuesQuery,
 } from "../__codegen__/graphql.ts"
-import { getOption, resolveIssueSort } from "../config.ts"
+import { getOptionWithSource, type OptionSource, resolveIssueSort } from "../config.ts"
 import { CliError, NotFoundError, ValidationError } from "./errors.ts"
 import { getGraphQLClient } from "./graphql.ts"
 import { shouldShowSpinner } from "./hyperlink.ts"
@@ -65,12 +65,16 @@ export function formatIssueIdentifier(providedId: string): string {
   return normalizeIssueIdentifier(providedId) ?? providedId.toUpperCase()
 }
 
-export function getTeamKey(): string | undefined {
-  const teamId = getOption("team_id")
-  if (teamId) {
-    return teamId.toUpperCase()
+export function getTeamKeyWithSource(): { key: string; source: OptionSource } | undefined {
+  const resolved = getOptionWithSource("team_id")
+  if (resolved == null || resolved.value === "") {
+    return undefined
   }
-  return undefined
+  return { key: resolved.value.toUpperCase(), source: resolved.source }
+}
+
+export function getTeamKey(): string | undefined {
+  return getTeamKeyWithSource()?.key
 }
 
 /**

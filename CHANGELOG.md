@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `issue query`'s "Note: using default team ..." message no longer fires when the default team comes from the project's own `.linear.toml` or a project `.env` — those are explicit, directory-scoped configuration, not an ambient default silently narrowing the query. The note still shows when the team comes from a shell-exported `LINEAR_TEAM_ID` or the global config file. Ported from upstream schpet/linear-cli@5af8286, adapted to this project's config-source tracking (`getOptionWithSource` / `OptionSource` in `src/config.ts`).
+
 ## [2.1.0] - 2026-08-11
 
 ### Changed
