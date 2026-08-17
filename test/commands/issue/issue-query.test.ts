@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
-import { queryCommand } from "../../../src/commands/issue/issue-query.ts"
+import { queryCommand, shouldShowDefaultTeamNote } from "../../../src/commands/issue/issue-query.ts"
+import type { OptionSource } from "../../../src/config.ts"
 import { snapshotTest } from "../../utils/snapshot_with_fake_time.ts"
 import { setupMockLinearServer } from "../../utils/test-helpers.ts"
 
@@ -493,4 +494,91 @@ test("Issue Query Command - search passes --cycle through to the search filter",
   }
 
   expect(logs.join("\n")).toContain("ENG-101")
+})
+
+// --- default-team note policy ---
+//
+// The note exists to flag an *ambient* default (a shell-exported env var or
+// the developer's global config) silently narrowing the query. A team
+// configured by the project itself (a .linear.toml in the repo, or a
+// project .env) is explicit local intent, so the note would just be noise.
+
+const emptyIssuesResponse = {
+  queryName: "GetIssuesForQuery",
+  response: {
+    data: {
+      issues: {
+        nodes: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    },
+  },
+}
+
+test("Issue Query Command - shows note when default team comes from env var", async () => {
+  const { cleanup } = await setupMockLinearServer([emptyIssuesResponse], {
+    LINEAR_TEAM_ID: "ENG",
+    NO_COLOR: "true",
+  })
+
+  const errorLogs: string[] = []
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    errorLogs.push(args.map(String).join(" "))
+  }
+
+  try {
+    await queryCommand.parseAsync([], { from: "user" })
+  } finally {
+    console.error = origConsoleError
+    await cleanup()
+  }
+
+  expect(
+    errorLogs.some((l) =>
+      l.includes("Note: using default team ENG. Pass --team <key> or --all-teams to be explicit."),
+    ),
+  ).toBe(true)
+})
+
+test("Issue Query Command - suppresses note when default team comes from project config", async () => {
+  // With LINEAR_TEAM_ID absent, the default team falls through to this
+  // repo's own root .linear.toml (loaded at module init), a project-config
+  // source. This test intentionally depends on that file setting team_id.
+  const priorTeamId = process.env["LINEAR_TEAM_ID"]
+  delete process.env["LINEAR_TEAM_ID"]
+  const { cleanup } = await setupMockLinearServer([emptyIssuesResponse], {
+    NO_COLOR: "true",
+  })
+
+  const errorLogs: string[] = []
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    errorLogs.push(args.map(String).join(" "))
+  }
+
+  try {
+    await queryCommand.parseAsync([], { from: "user" })
+  } finally {
+    console.error = origConsoleError
+    if (priorTeamId !== undefined) {
+      process.env["LINEAR_TEAM_ID"] = priorTeamId
+    }
+    await cleanup()
+  }
+
+  expect(errorLogs.some((l) => l.includes("using default team"))).toBe(false)
+})
+
+test("shouldShowDefaultTeamNote - full source matrix", () => {
+  const expectations: Record<OptionSource, boolean> = {
+    cli: false,
+    "project-env": false,
+    "project-config": false,
+    env: true,
+    "global-config": true,
+  }
+  for (const [source, expected] of Object.entries(expectations)) {
+    expect(shouldShowDefaultTeamNote(source as OptionSource)).toBe(expected)
+  }
 })

@@ -5,6 +5,7 @@ import { join } from "node:path"
 import {
   DEFAULT_ISSUE_SORT,
   getOption,
+  getOptionWithSource,
   ISSUE_SORT_VALUES,
   init,
   resolveIssueSort,
@@ -359,7 +360,7 @@ test("getOption - env var takes precedence over home config", async () => {
  * first so an env var in the runner's environment can't decide the result.
  */
 async function withIsolatedConfig(
-  opts: { toml?: string; env?: Record<string, string | undefined> },
+  opts: { toml?: string; dotenv?: string; env?: Record<string, string | undefined> },
   fn: () => void | Promise<void>,
 ): Promise<void> {
   const tempHome = await mkdtemp(join(tmpdir(), "linear-sort-home-"))
@@ -378,6 +379,9 @@ async function withIsolatedConfig(
   try {
     if (opts.toml != null) {
       await writeFile(join(workDir, ".linear.toml"), opts.toml)
+    }
+    if (opts.dotenv != null) {
+      await writeFile(join(workDir, ".env"), opts.dotenv)
     }
     setEnv("HOME", tempHome)
     setEnv("XDG_CONFIG_HOME", join(tempHome, ".config"))
@@ -478,4 +482,152 @@ test("resolveIssueSort - error names the valid values and every input channel", 
     expect(suggestion).toContain("issue_sort")
     expect(suggestion).toContain("LINEAR_ISSUE_SORT")
   })
+})
+
+// ---------------------------------------------------------------------------
+// getOptionWithSource
+//
+// getOption() is a thin wrapper around this that drops the source. These
+// tests cover the provenance itself, which callers like issue-query use to
+// decide whether an ambient default deserves a note (see
+// shouldShowDefaultTeamNote in commands/issue/issue-query.ts).
+// ---------------------------------------------------------------------------
+
+test("getOptionWithSource - cli value yields cli source", () => {
+  expect(getOptionWithSource("workspace", "from-cli")).toEqual({
+    value: "from-cli",
+    source: "cli",
+  })
+})
+
+test("getOptionWithSource - process env yields env source", async () => {
+  await withIsolatedConfig({ env: { LINEAR_WORKSPACE: "from-env" } }, () => {
+    expect(getOptionWithSource("workspace")).toEqual({ value: "from-env", source: "env" })
+  })
+})
+
+test("getOptionWithSource - project .env yields project-env source", async () => {
+  await withIsolatedConfig(
+    { dotenv: "LINEAR_WORKSPACE=from-dotenv\n", env: { LINEAR_WORKSPACE: undefined } },
+    () => {
+      expect(getOptionWithSource("workspace")).toEqual({
+        value: "from-dotenv",
+        source: "project-env",
+      })
+    },
+  )
+})
+
+test("getOptionWithSource - process env wins over project .env and is classified env", async () => {
+  await withIsolatedConfig(
+    { dotenv: "LINEAR_WORKSPACE=from-dotenv\n", env: { LINEAR_WORKSPACE: "from-process" } },
+    () => {
+      expect(getOptionWithSource("workspace")).toEqual({
+        value: "from-process",
+        source: "env",
+      })
+    },
+  )
+})
+
+test("getOptionWithSource - project config yields project-config source", async () => {
+  await withIsolatedConfig(
+    { toml: 'workspace = "from-project-config"\n', env: { LINEAR_WORKSPACE: undefined } },
+    () => {
+      expect(getOptionWithSource("workspace")).toEqual({
+        value: "from-project-config",
+        source: "project-config",
+      })
+    },
+  )
+})
+
+test("getOptionWithSource - global config yields global-config source", async () => {
+  const tempHome = await mkdtemp(join(tmpdir(), "linear-config-home-test-"))
+  const workDir = await mkdtemp(join(tmpdir(), "linear-config-work-test-"))
+  const originalCwd = process.cwd()
+  const origXdg = process.env["XDG_CONFIG_HOME"]
+  const origHome = process.env["HOME"]
+  const origLinearWorkspace = process.env["LINEAR_WORKSPACE"]
+
+  try {
+    await mkdir(join(tempHome, ".config", "linear"), { recursive: true })
+    await writeFile(
+      join(tempHome, ".config", "linear", "linear.toml"),
+      'workspace = "from-global-config"\n',
+    )
+    process.chdir(workDir)
+    delete process.env["LINEAR_WORKSPACE"]
+    delete process.env["XDG_CONFIG_HOME"]
+    process.env["HOME"] = tempHome
+    await init()
+    expect(getOptionWithSource("workspace")).toEqual({
+      value: "from-global-config",
+      source: "global-config",
+    })
+  } finally {
+    process.chdir(originalCwd)
+    if (origLinearWorkspace !== undefined) {
+      process.env["LINEAR_WORKSPACE"] = origLinearWorkspace
+    } else {
+      delete process.env["LINEAR_WORKSPACE"]
+    }
+    if (origXdg !== undefined) {
+      process.env["XDG_CONFIG_HOME"] = origXdg
+    } else {
+      delete process.env["XDG_CONFIG_HOME"]
+    }
+    if (origHome !== undefined) {
+      process.env["HOME"] = origHome
+    } else {
+      delete process.env["HOME"]
+    }
+    await init()
+    await rm(tempHome, { recursive: true, force: true })
+    await rm(workDir, { recursive: true, force: true })
+  }
+})
+
+test("getOptionWithSource - invalid project value shadows a valid global value", async () => {
+  // A present-but-invalid higher-precedence value must block fallback to a
+  // lower-precedence source, matching getOption's pre-existing precedence
+  // (project config always wins over global config once the key is present).
+  const tempHome = await mkdtemp(join(tmpdir(), "linear-config-home-test-"))
+  const workDir = await mkdtemp(join(tmpdir(), "linear-config-work-test-"))
+  const originalCwd = process.cwd()
+  const origXdg = process.env["XDG_CONFIG_HOME"]
+  const origHome = process.env["HOME"]
+  const origLinearIssueSort = process.env["LINEAR_ISSUE_SORT"]
+
+  try {
+    await mkdir(join(tempHome, ".config", "linear"), { recursive: true })
+    await writeFile(join(tempHome, ".config", "linear", "linear.toml"), 'issue_sort = "priority"\n')
+    await writeFile(join(workDir, ".linear.toml"), 'issue_sort = "not-a-real-sort"\n')
+    process.chdir(workDir)
+    delete process.env["LINEAR_ISSUE_SORT"]
+    delete process.env["XDG_CONFIG_HOME"]
+    process.env["HOME"] = tempHome
+    await init()
+    expect(getOptionWithSource("issue_sort")).toBeUndefined()
+  } finally {
+    process.chdir(originalCwd)
+    if (origLinearIssueSort !== undefined) {
+      process.env["LINEAR_ISSUE_SORT"] = origLinearIssueSort
+    } else {
+      delete process.env["LINEAR_ISSUE_SORT"]
+    }
+    if (origXdg !== undefined) {
+      process.env["XDG_CONFIG_HOME"] = origXdg
+    } else {
+      delete process.env["XDG_CONFIG_HOME"]
+    }
+    if (origHome !== undefined) {
+      process.env["HOME"] = origHome
+    } else {
+      delete process.env["HOME"]
+    }
+    await init()
+    await rm(tempHome, { recursive: true, force: true })
+    await rm(workDir, { recursive: true, force: true })
+  }
 })

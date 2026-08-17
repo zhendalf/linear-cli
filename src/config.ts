@@ -16,7 +16,12 @@ import * as v from "valibot"
 import { ValidationError } from "./utils/errors.ts"
 import { isWindows, runCommand } from "./utils/runtime.ts"
 
-let config: Record<string, unknown> = {}
+let globalConfig: Record<string, unknown> = {}
+let projectConfig: Record<string, unknown> = {}
+
+// Env keys that loadEnvFiles() actually wrote from a project .env file, as
+// opposed to values that were already present in the process environment.
+const dotenvAppliedKeys = new Set<string>()
 
 // ---------------------------------------------------------------------------
 // TOML file loading
@@ -35,7 +40,8 @@ async function loadConfig(): Promise<void> {
   // Start from a clean slate so repeated init() calls don't accumulate stale
   // keys from a previously-loaded config (relevant when cwd/env change, e.g.
   // tests, but also correct in general).
-  config = {}
+  globalConfig = {}
+  projectConfig = {}
 
   // Build list of global config paths (lowest priority)
   const globalConfigPaths: string[] = []
@@ -68,18 +74,18 @@ async function loadConfig(): Promise<void> {
 
   // Load global config first (lowest priority)
   for (const path of globalConfigPaths) {
-    const globalConfig = await loadConfigFromPath(path)
-    if (globalConfig) {
-      config = globalConfig
+    const loaded = await loadConfigFromPath(path)
+    if (loaded) {
+      globalConfig = loaded
       break
     }
   }
 
-  // Load project config and merge on top (project overrides global)
+  // Load project config (higher priority; shadows global per option)
   for (const path of projectConfigPaths) {
-    const projectConfig = await loadConfigFromPath(path)
-    if (projectConfig) {
-      config = { ...config, ...projectConfig }
+    const loaded = await loadConfigFromPath(path)
+    if (loaded) {
+      projectConfig = loaded
       break
     }
   }
@@ -109,6 +115,7 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 async function loadEnvFiles(): Promise<void> {
+  dotenvAppliedKeys.clear()
   let envVars: Record<string, string> = {}
 
   if (await fileExists(".env")) {
@@ -131,6 +138,7 @@ async function loadEnvFiles(): Promise<void> {
       // dotenv precedence: don't override an already-set env var
       if (process.env[key] !== undefined) continue
       process.env[key] = value
+      dotenvAppliedKeys.add(key)
     }
   }
 }
@@ -178,8 +186,9 @@ export const ISSUE_SORT_VALUES = ["manual", "priority"] as const
 export type IssueSort = (typeof ISSUE_SORT_VALUES)[number]
 export const DEFAULT_ISSUE_SORT: IssueSort = "priority"
 
-// Options schema
-const OptionsSchema = v.object({
+// Per-option schemas, indexable by option name so parsed values keep their
+// option-specific output types without casts.
+const OptionSchemas = {
   team_id: v.optional(v.string()),
   api_key: v.optional(v.string()),
   workspace: v.optional(v.string()),
@@ -189,22 +198,73 @@ const OptionsSchema = v.object({
   hyperlink_format: v.optional(v.string()),
   attachment_dir: v.optional(v.string()),
   auto_download_attachments: v.optional(BooleanLike),
-})
-
-export type Options = v.InferOutput<typeof OptionsSchema>
-export type OptionName = keyof Options
-
-function getRawOption(optionName: OptionName, cliValue?: string): unknown {
-  return cliValue ?? process.env["LINEAR_" + optionName.toUpperCase()] ?? config[optionName]
 }
 
-export function getOption<T extends OptionName>(optionName: T, cliValue?: string): Options[T] {
-  const raw = getRawOption(optionName, cliValue)
-  const result = v.safeParse(OptionsSchema, { [optionName]: raw })
-  if (result.success) {
-    return result.output[optionName] as Options[T]
+export type OptionName = keyof typeof OptionSchemas
+type OptionValue<T extends OptionName> = v.InferOutput<(typeof OptionSchemas)[T]>
+export type Options = { [K in OptionName]: OptionValue<K> }
+
+/** Where a resolved option value came from. */
+export type OptionSource =
+  | "cli"
+  | "env" // pre-existing process environment variable
+  | "project-env" // LINEAR_* applied from a project .env file
+  | "project-config" // linear.toml / .linear.toml in cwd or git root
+  | "global-config" // XDG / ~/.config / APPDATA linear.toml
+
+export interface ResolvedOption<T> {
+  value: T
+  source: OptionSource
+}
+
+function resolveRawOption(
+  optionName: OptionName,
+  cliValue?: string,
+): { raw: unknown; source: OptionSource } | undefined {
+  if (cliValue != null) {
+    return { raw: cliValue, source: "cli" }
   }
-  return undefined as Options[T]
+  const envKey = "LINEAR_" + optionName.toUpperCase()
+  const envValue = process.env[envKey]
+  if (envValue != null) {
+    return { raw: envValue, source: dotenvAppliedKeys.has(envKey) ? "project-env" : "env" }
+  }
+  // Check key presence rather than value nullishness so a present-but-invalid
+  // higher-precedence value still shadows lower-precedence values, matching
+  // the previous spread-merge behavior.
+  if (Object.hasOwn(projectConfig, optionName)) {
+    return { raw: projectConfig[optionName], source: "project-config" }
+  }
+  if (Object.hasOwn(globalConfig, optionName)) {
+    return { raw: globalConfig[optionName], source: "global-config" }
+  }
+  return undefined
+}
+
+export function getOptionWithSource<T extends OptionName>(
+  optionName: T,
+  cliValue?: string,
+): ResolvedOption<NonNullable<OptionValue<T>>> | undefined {
+  const resolved = resolveRawOption(optionName, cliValue)
+  if (resolved == null) {
+    return undefined
+  }
+  const parsed = v.safeParse(OptionSchemas[optionName], resolved.raw)
+  if (!parsed.success) {
+    return undefined
+  }
+  const value = parsed.output
+  if (value == null) {
+    return undefined
+  }
+  return { value, source: resolved.source }
+}
+
+export function getOption<T extends OptionName>(
+  optionName: T,
+  cliValue?: string,
+): OptionValue<T> | undefined {
+  return getOptionWithSource(optionName, cliValue)?.value
 }
 
 /**
@@ -214,11 +274,11 @@ export function getOption<T extends OptionName>(optionName: T, cliValue?: string
  * errors instead of silently falling back to the default.
  */
 export function resolveIssueSort(cliValue?: string): IssueSort {
-  const raw = getRawOption("issue_sort", cliValue)
-  if (raw == null) return DEFAULT_ISSUE_SORT
-  const parsed = v.safeParse(v.picklist(ISSUE_SORT_VALUES), raw)
+  const resolved = resolveRawOption("issue_sort", cliValue)
+  if (resolved == null || resolved.raw == null) return DEFAULT_ISSUE_SORT
+  const parsed = v.safeParse(v.picklist(ISSUE_SORT_VALUES), resolved.raw)
   if (!parsed.success) {
-    throw new ValidationError(`Invalid issue sort: ${JSON.stringify(raw)}`, {
+    throw new ValidationError(`Invalid issue sort: ${JSON.stringify(resolved.raw)}`, {
       suggestion: `Use one of: ${ISSUE_SORT_VALUES.join(
         ", ",
       )} (via --sort, the issue_sort config option, or the LINEAR_ISSUE_SORT environment variable)`,
