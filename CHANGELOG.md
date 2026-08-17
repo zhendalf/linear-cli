@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- bumped `open` (11.0.0 → 11.0.1), `smol-toml` (1.7.2 → 1.8.0), and `@graphql-codegen/client-preset` (6.1.2 → 6.1.3, dev-only). `graphql` stays pinned to 16.x — `graphql-request`'s peer range (`14 - 16`) still hasn't widened to allow 17.x.
+
 ## [2.1.0] - 2026-08-11
 
 ### Changed
